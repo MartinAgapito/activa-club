@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "tsConfigPath": "tsconfig.build.json"
+  },
+  "projects": {
+    "members": {
+      "type": "application",
+      "root": "services/members",
+      "entryFile": "src/main",
+      "sourceRoot": "services/members/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/members/tsconfig.build.json"
+      }
+    },
+    "reservations": {
+      "type": "application",
+      "root": "services/reservations",
+      "entryFile": "src/main",
+      "sourceRoot": "services/reservations/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/reservations/tsconfig.build.json"
+      }
+    },
+    "payments": {
+      "type": "application",
+      "root": "services/payments",
+      "entryFile": "src/main",
+      "sourceRoot": "services/payments/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/payments/tsconfig.build.json"
+      }
+    },
+    "promotions": {
+      "type": "application",
+      "root": "services/promotions",
+      "entryFile": "src/main",
+      "sourceRoot": "services/promotions/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/promotions/tsconfig.build.json"
+      }
+    },
+    "guests": {
+      "type": "application",
+      "root": "services/guests",
+      "entryFile": "src/main",
+      "sourceRoot": "services/guests/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/guests/tsconfig.build.json"
+      }
+    },
+    "areas": {
+      "type": "application",
+      "root": "services/areas",
+      "entryFile": "src/main",
+      "sourceRoot": "services/areas/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/areas/tsconfig.build.json"
+      }
+    },
+    "admin": {
+      "type": "application",
+      "root": "services/admin",
+      "entryFile": "src/main",
+      "sourceRoot": "services/admin/src",
+      "compilerOptions": {
+        "tsConfigPath": "services/admin/tsconfig.build.json"
+      }
+    }
+  },
+  "monorepo": true
+}

@@ -1,0 +1,162 @@
+%% ActivaClub - System Architecture Diagrams
+%% Maintained by: Senior Software & Cloud Architect
+%% Last updated: 2026-02-20
+
+%% ============================================================
+%% DIAGRAM 1: High-Level System Overview (C4 Container Level)
+%% ============================================================
+
+graph TB
+    subgraph Actors
+        Admin["Admin User"]
+        Manager["Manager User"]
+        Member["Member User"]
+    end
+
+    subgraph AWS_CloudFront["AWS CloudFront + S3"]
+        CF["CloudFront Distribution"]
+        S3["S3 Bucket (SPA + Assets)"]
+        CF --> S3
+    end
+
+    subgraph Frontend["React SPA (Vite)"]
+        FE["ActivaClub Web App"]
+    end
+
+    subgraph Auth["Amazon Cognito"]
+        UP["User Pool"]
+        UG["Groups: Admin | Manager | Member"]
+        UP --> UG
+    end
+
+    subgraph API["Amazon API Gateway HTTP API"]
+        APIGW["HTTP API /v1/*"]
+        Authorizer["JWT Authorizer (Cognito)"]
+        APIGW --> Authorizer
+    end
+
+    subgraph Lambdas["AWS Lambda (one per service)"]
+        LM["activa-club-members"]
+        LR["activa-club-reservations"]
+        LP["activa-club-payments"]
+        LPR["activa-club-promotions"]
+        LG["activa-club-guests"]
+        LA["activa-club-areas"]
+        LAD["activa-club-admin"]
+    end
+
+    subgraph DynamoDB["Amazon DynamoDB (Multi-Table)"]
+        MT["MembersTable"]
+        RT["ReservationsTable"]
+        PT["PaymentsTable"]
+        PRT["PromotionsTable"]
+        GT["GuestsTable"]
+        AT["AreasTable"]
+    end
+
+    subgraph External["External Services"]
+        Stripe["Stripe (Payments)"]
+        SNS["Amazon SNS (Notifications)"]
+    end
+
+    Admin --> CF
+    Manager --> CF
+    Member --> CF
+    CF --> FE
+    FE --> APIGW
+    FE --> UP
+
+    APIGW --> LM
+    APIGW --> LR
+    APIGW --> LP
+    APIGW --> LPR
+    APIGW --> LG
+    APIGW --> LA
+    APIGW --> LAD
+
+    LM --> MT
+    LR --> RT
+    LP --> PT
+    LP --> Stripe
+    LPR --> PRT
+    LPR --> SNS
+    LG --> GT
+    LA --> AT
+    LAD --> MT
+    LAD --> RT
+    LAD --> PT
+    LAD --> PRT
+    LAD --> GT
+    LAD --> AT
+
+    Stripe -.->|Webhook POST /v1/payments/webhook| APIGW
+
+%% ============================================================
+%% DIAGRAM 2: Authentication Flow (Cognito + Onboarding)
+%% ============================================================
+
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant MembersLambda
+    participant DynamoDB as DynamoDB (MembersTable)
+    participant Cognito
+
+    User->>Frontend: Enter DNI on /onboarding
+    Frontend->>MembersLambda: POST /v1/members/onboard { dni }
+    MembersLambda->>DynamoDB: Query GSI_DNI for matching legacy record
+    alt DNI found
+        DynamoDB-->>MembersLambda: Legacy member data
+        MembersLambda-->>Frontend: 200 { memberId, firstName, lastName }
+        Frontend->>Cognito: SignUp / SignIn with email + password
+        Cognito-->>Frontend: ID Token + Access Token
+        Frontend->>MembersLambda: PATCH /v1/members/:id (link cognitoSub)
+        MembersLambda->>DynamoDB: UpdateItem cognitoSub + status=Active
+    else DNI not found
+        MembersLambda-->>Frontend: 404 { error: "DNI not registered" }
+    end
+
+%% ============================================================
+%% DIAGRAM 3: Stripe Payment + Webhook Flow
+%% ============================================================
+
+sequenceDiagram
+    participant Member
+    participant Frontend
+    participant PaymentsLambda
+    participant DynamoDB as DynamoDB (PaymentsTable + MembersTable)
+    participant Stripe
+
+    Member->>Frontend: Click "Pay Membership"
+    Frontend->>PaymentsLambda: POST /v1/payments/checkout { billingCycle }
+    PaymentsLambda->>Stripe: Create Checkout Session
+    Stripe-->>PaymentsLambda: { sessionId, sessionUrl }
+    PaymentsLambda->>DynamoDB: PutItem payment (status=Pending)
+    PaymentsLambda-->>Frontend: { sessionUrl }
+    Frontend->>Stripe: Redirect to Stripe Checkout
+    Member->>Stripe: Complete payment
+    Stripe->>PaymentsLambda: POST /v1/payments/webhook (checkout.session.completed)
+    PaymentsLambda->>PaymentsLambda: Verify Stripe signature
+    PaymentsLambda->>DynamoDB: UpdateItem payment (status=Succeeded)
+    PaymentsLambda->>DynamoDB: UpdateItem member (status=Active, membershipExpiry=...)
+    Frontend->>Frontend: Redirect to success page
+
+%% ============================================================
+%% DIAGRAM 4: Promotions Broadcast Flow (SNS)
+%% ============================================================
+
+sequenceDiagram
+    participant Manager
+    participant Frontend
+    participant PromotionsLambda
+    participant DynamoDB as DynamoDB (PromotionsTable)
+    participant SNS
+    participant Members
+
+    Manager->>Frontend: Create promotion + click Broadcast
+    Frontend->>PromotionsLambda: POST /v1/promotions/:id/broadcast
+    PromotionsLambda->>DynamoDB: GetItem promotion
+    PromotionsLambda->>SNS: Publish(topicArn, message, attributes: { membershipTier })
+    SNS-->>Members: Email / Push notification delivered to filtered subscribers
+    PromotionsLambda->>DynamoDB: UpdateItem promotion (broadcastAt = now)
+    PromotionsLambda-->>Frontend: 200 { broadcastAt }
