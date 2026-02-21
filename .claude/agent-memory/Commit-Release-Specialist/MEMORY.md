@@ -1,5 +1,27 @@
 # Commit & Release Specialist - MEMORY
 
+## MANDATORY Commit Style Rules (user-enforced, never override)
+
+- NO Co-Authored-By: never add "Co-Authored-By: Claude" or any Anthropic reference in any commit.
+- NO emojis: never use gitmojis or any emoji in commit messages.
+- Strict format: `type(scope): lowercase description`
+- Messages in English, plain text, professional tone.
+
+### Correct examples
+```
+chore(infra): tear down all AWS infrastructure and reset to zero
+feat(auth): add cognito user pool configuration
+fix(dynamodb): correct table billing mode
+docs(members): add user story AC-001
+```
+
+### Incorrect examples (never do)
+```
+chore(infra): 🔨 tear down all AWS infrastructure    <- emoji forbidden
+feat(auth): ✨ Add Cognito User Pool Configuration   <- emoji + uppercase forbidden
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>  <- reference forbidden
+```
+
 ## Files NEVER to commit (Terraform artifacts)
 - `infrastructure/bootstrap/.terraform/` — provider cache, always local
 - `infrastructure/bootstrap/terraform.tfstate` — bootstrap uses local backend intentionally
