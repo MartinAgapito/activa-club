@@ -2,24 +2,42 @@
 
 ## MANDATORY Commit Style Rules (user-enforced, never override)
 
-- NO Co-Authored-By: never add "Co-Authored-By: Claude" or any Anthropic reference in any commit.
-- NO emojis: never use gitmojis or any emoji in commit messages.
-- Strict format: `type(scope): lowercase description`
-- Messages in English, plain text, professional tone.
+### ALWAYS FORBIDDEN
+- Co-Authored-By of any kind (Claude, Anthropic, AI, human)
+- Emojis of any kind (Gitmoji, Unicode, etc.)
+- Uppercase letters in the description
+- Trailing period at the end of the message
+
+### MANDATORY FORMAT
+```
+type(scope): lowercase description in english
+```
+
+### ALLOWED TYPES (only these)
+- `feat` — new feature
+- `fix` — bug fix
+- `chore` — maintenance, cleanup, configuration tasks
+- `docs` — documentation
+- `refactor` — refactoring without behavior change
+- `test` — tests
+- `ci` — CI/CD pipelines and workflows
 
 ### Correct examples
 ```
-chore(infra): tear down all AWS infrastructure and reset to zero
-feat(auth): add cognito user pool configuration
+chore(infra): remove all terraform temporary files
+feat(cognito): add user pool with admin and member groups
+ci(github-actions): add terraform production workflow
 fix(dynamodb): correct table billing mode
 docs(members): add user story AC-001
+refactor(backend): extract shared dynamo client
 ```
 
 ### Incorrect examples (never do)
 ```
-chore(infra): 🔨 tear down all AWS infrastructure    <- emoji forbidden
-feat(auth): ✨ Add Cognito User Pool Configuration   <- emoji + uppercase forbidden
-Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>  <- reference forbidden
+chore(infra): 🔨 Remove Terraform files      <- emoji + uppercase forbidden
+feat(auth): ✨ add cognito user pool          <- emoji forbidden
+Co-Authored-By: Claude Sonnet 4.6 <...>      <- any Co-Authored-By forbidden
+chore(repo): update files.                   <- trailing period forbidden
 ```
 
 ## Files NEVER to commit (Terraform artifacts)
@@ -36,7 +54,7 @@ Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>  <- reference forbidde
 
 ## Commit grouping strategy for this project
 Order of commits when infrastructure and docs land together:
-1. `build(infra)` — bootstrap resources (S3 state, DynamoDB lock, IAM/OIDC)
+1. `chore(infra)` — bootstrap resources (S3 state, DynamoDB lock, IAM/OIDC)
 2. `feat(<scope>)` — reusable modules (one commit per module)
 3. `feat(infra)` — environment composition wiring the modules
 4. `ci(infra)` — GitHub Actions workflows
@@ -47,5 +65,8 @@ Order of commits when infrastructure and docs land together:
 ## Scope mapping confirmed in use
 - `infra` — Terraform environments, bootstrap, cross-cutting AWS resources
 - `auth` — Cognito module and auth-related infrastructure
+- `cognito` — Cognito-specific infrastructure and configuration
 - `members` — DynamoDB module, member domain docs
 - `repo` — root config, agent memory, lock files, placeholders
+- `agents` — agent memory and configuration files
+- `github-actions` — GitHub Actions workflow files
