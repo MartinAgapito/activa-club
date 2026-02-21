@@ -1,0 +1,38 @@
+# ============================================================
+# bootstrap/variables.tf
+#
+# Input variables for the bootstrap configuration.
+# Pass these on the command line when running:
+#   terraform apply -var="github_org=MartinAgapito" \
+#                   -var="github_repo=activa-club"
+# ============================================================
+
+variable "aws_account_id" {
+  description = "AWS account ID. Used to construct resource ARNs and bucket names."
+  type        = string
+  default     = "583075178346"
+}
+
+variable "aws_profile" {
+  description = "AWS CLI profile to use for bootstrap operations. Must have permissions to create S3, DynamoDB, IAM, and OIDC resources."
+  type        = string
+  default     = "activaclub-prd"
+}
+
+variable "github_org" {
+  description = "GitHub organisation or username that owns the repository. Used in the OIDC trust policy subject condition."
+  type        = string
+  # No default — must be supplied explicitly to avoid accidental misconfiguration.
+}
+
+variable "github_repo" {
+  description = "GitHub repository name (without the org prefix). Combined with github_org to form the OIDC sub claim."
+  type        = string
+  default     = "activa-club"
+}
+
+variable "env" {
+  description = "Deployment environment label. Used for tagging bootstrap resources."
+  type        = string
+  default     = "production"
+}
