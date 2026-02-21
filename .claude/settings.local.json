@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(terraform -chdir=/c/Users/Martin/Desktop/Tesis/infrastructure/modules/dynamodb fmt -check -diff)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
