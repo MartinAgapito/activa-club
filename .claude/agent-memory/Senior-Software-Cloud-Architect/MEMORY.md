@@ -34,5 +34,17 @@ All tables use composite PK/SK with prefix pattern:
 - S3: 5 GB free (images/uploads can exceed)
 - SNS email delivery: $2/100k notifications
 
+## Registration Flow (AC-001) — Key Decisions
+- POST /v1/auth/register is PUBLIC (no JWT authorizer on API Gateway route)
+- Cognito: AdminCreateUser + AdminSetUserPassword (Permanent:true) + AdminAddUserToGroup("Member")
+- Rollback: if DynamoDB PutItem fails after Cognito user created, call AdminDeleteUser
+- SeedMembersTable PK pattern: `DNI#<dni>` (no SK), read-only, GetItem only
+- MembersTable GSIs: GSI_DNI (dni), GSI_Email (email), GSI_CognitoSub (cognito_user_id)
+- Error envelope: { status, error: { code, message, details[] } } — same for all services
+- Two public routes total: POST /v1/auth/register + POST /v1/payments/webhook
+
+## Design Doc Template (11 sections, confirmed in AC-001)
+Sections: Overview, System Context, DynamoDB Schema, API Contract, Architecture Flow (Mermaid sequenceDiagram), Lambda Design (Clean Arch file tree + key types), Cognito Config, Security, Terraform, Frontend Changes, Open Questions
+
 ## Links to Detail Files
 - `patterns.md` - Full directory tree, service map, Clean Architecture layers
