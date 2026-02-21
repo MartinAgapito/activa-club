@@ -1,19 +1,50 @@
+# ============================================================
+# .gitignore — ActivaClub monorepo
+# Covers: Terraform, Node.js, React/Vite, OS/IDE artifacts,
+#         and Claude Code local configuration.
+# ============================================================
+
+# ------------------------------------------------------------
 # Terraform
+# ------------------------------------------------------------
 **/.terraform/
 *.tfstate
 *.tfstate.backup
 *.tfplan
 tfplan
+override.tf
+*_override.tf
+crash.log
+# .terraform.lock.hcl is intentionally NOT ignored — commit it to pin provider versions
 
-# Node
+# ------------------------------------------------------------
+# Node.js / npm
+# ------------------------------------------------------------
 node_modules/
 dist/
+build/
+
+# Environment files — never commit real secrets
 .env
 .env.*
 !.env.example
 
-# OS / IDE
+# ------------------------------------------------------------
+# Test coverage
+# ------------------------------------------------------------
+coverage/
+*.lcov
+
+# ------------------------------------------------------------
+# OS / IDE artifacts
+# ------------------------------------------------------------
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+
+# ------------------------------------------------------------
+# Claude Code local configuration
+# (settings.local.json contains machine-specific overrides)
+# ------------------------------------------------------------
+.claude/settings.local.json
