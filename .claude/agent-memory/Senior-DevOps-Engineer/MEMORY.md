@@ -54,6 +54,13 @@ tf_state_bucket_name, tf_lock_table_name, cicd_role_arn
 - Apply job uses `environment: production` for manual approval gate.
 - Required GitHub secrets: `AWS_ROLE_ARN`, `TF_BACKEND_BUCKET`, `TF_BACKEND_DYNAMODB_TABLE`
 
+## Bootstrap Operations
+- AWS profile for local bootstrap apply: `activa-prd` (IAM user `activa-prod-user`, account 583075178346). NOT `activaclub-prd`.
+- Bootstrap `variables.tf` has no `terraform.tfvars`. Pass `github_repo=MartinAgapito/activa-club` via `-var` flag.
+- The `activa-prd` user lacks S3 bucket management permissions (GetBucketVersioning, GetEncryptionConfiguration, GetPublicAccessBlock). `terraform apply` on bootstrap fails due to S3 state drift detection. Use `aws iam create-policy-version --set-as-default` via CLI to update the cicd policy directly when bootstrap apply is blocked.
+- Bootstrap S3 state drift: Terraform reports `aws_s3_bucket.tf_state` as deleted because `activa-prd` cannot read bucket metadata. Bucket still exists. Do NOT run full bootstrap apply — it will try to recreate the bucket and fail.
+- IAM policy ARN: `arn:aws:iam::583075178346:policy/activa-club-cicd-terraform-policy` | Current version: v3
+
 ## Security Rules
 - No AWS Secrets Manager (cost). Use SSM Parameter Store (Standard, free).
 - No static IAM access keys. OIDC only for GitHub Actions.
