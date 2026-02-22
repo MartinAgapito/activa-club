@@ -50,3 +50,9 @@ variable "github_repo" {
   type        = string
   default     = "activa-club"
 }
+
+variable "env" {
+  description = "Deployment environment label. Used for tagging bootstrap resources."
+  type        = string
+  default     = "dev"
+}
