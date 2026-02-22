@@ -33,7 +33,7 @@ terraform {
 # Versioning is enabled so previous state files can be recovered.
 # ------------------------------------------------------------
 resource "aws_s3_bucket" "tf_state" {
-  bucket = "activa-club-tfstate-${var.aws_account_id}"
+  bucket = var.state_bucket_name
 
   # Prevent accidental deletion of the bucket that holds all state
   lifecycle {

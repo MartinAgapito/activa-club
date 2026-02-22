@@ -23,9 +23,9 @@ output "lock_table_name" {
   value       = aws_dynamodb_table.tf_lock.name
 }
 
-output "cicd_role_arn" {
-  description = "ARN of the IAM role assumed by GitHub Actions via OIDC. Set this as the AWS_ROLE_ARN secret in the GitHub repository."
-  value       = aws_iam_role.cicd.arn
+output "terraform_prd_role_arn" {
+  description = "ARN of the Terraform PRD role assumed by GitHub Actions via OIDC. Set this as the AWS_ROLE_ARN secret in the GitHub repository."
+  value       = aws_iam_role.terraform_prd.arn
 }
 
 output "github_oidc_provider_arn" {

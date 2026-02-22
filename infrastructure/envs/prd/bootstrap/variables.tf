@@ -13,6 +13,12 @@ variable "aws_account_id" {
   default     = "583075178346"
 }
 
+variable "aws_role_name" {
+  description = "Name of the IAM role in the PRD account that Terraform will assume. The role must trust the identity running Terraform locally."
+  type        = string
+  default     = "activa-club-terraform-role"
+}
+
 variable "aws_profile" {
   description = "AWS CLI profile to use for bootstrap operations. Must have permissions to create S3, DynamoDB, IAM, and OIDC resources."
   type        = string
@@ -43,8 +49,14 @@ variable "env" {
   default     = "prd"
 }
 
-variable "lock_table_name" {
-  description = "Name of the DynamoDB table for Terraform state locking."
+variable "state_bucket_name" {
+  description = "Name of the S3 bucket for Terraform remote state. Must match the bucket name in the prd workflow backend config."
   type        = string
-  default     = "activa-club-tflock"
+  default     = "activa-club-tfstate-prd-583075178346"
+}
+
+variable "lock_table_name" {
+  description = "Name of the DynamoDB table for Terraform state locking. Must match the dynamodb_table value in the prd workflow backend config."
+  type        = string
+  default     = "activa-club-tflock-prd"
 }
