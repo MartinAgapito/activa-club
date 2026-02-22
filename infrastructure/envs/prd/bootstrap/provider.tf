@@ -6,5 +6,5 @@
 
 provider "aws" {
   region  = var.aws_region
-  profile = "prd"
+  profile = var.env
 }
