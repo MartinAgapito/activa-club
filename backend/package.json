@@ -25,6 +25,7 @@
     ]
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.995.0",
     "@aws-sdk/client-dynamodb": "^3.540.0",
     "@aws-sdk/lib-dynamodb": "^3.540.0",
     "@nestjs/common": "^10.3.3",
@@ -40,7 +41,8 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.1",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "ulid": "^3.0.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.3.2",
@@ -53,6 +55,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@typescript-eslint/eslint-plugin": "^7.2.0",
     "@typescript-eslint/parser": "^7.2.0",
+    "aws-sdk-client-mock": "^4.1.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
@@ -66,35 +69,5 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.4.2"
-  },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "rootDir": ".",
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "./coverage",
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/src/",
-      "<rootDir>/libs/",
-      "<rootDir>/services/"
-    ],
-    "moduleNameMapper": {
-      "^@libs/auth(|/.*)$": "<rootDir>/libs/auth/src/$1",
-      "^@libs/dto(|/.*)$": "<rootDir>/libs/dto/src/$1",
-      "^@libs/dynamodb(|/.*)$": "<rootDir>/libs/dynamodb/src/$1",
-      "^@libs/errors(|/.*)$": "<rootDir>/libs/errors/src/$1",
-      "^@libs/logging(|/.*)$": "<rootDir>/libs/logging/src/$1",
-      "^@libs/utils(|/.*)$": "<rootDir>/libs/utils/src/$1"
-    }
   }
 }
