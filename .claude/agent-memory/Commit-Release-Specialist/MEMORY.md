@@ -2,11 +2,12 @@
 
 ## MANDATORY Commit Style Rules (user-enforced, never override)
 
-### ALWAYS FORBIDDEN
-- Co-Authored-By of any kind (Claude, Anthropic, AI, human)
-- Emojis of any kind (Gitmoji, Unicode, etc.)
-- Uppercase letters in the description
-- Trailing period at the end of the message
+- NO Co-Authored-By: never add "Co-Authored-By: Claude" or any Anthropic reference in any commit.
+- NO emojis: never use gitmojis or any emoji in commit messages.
+- Strict format: `type(scope): lowercase description`
+- Messages in English, plain text, professional tone.
+
+
 
 ### MANDATORY FORMAT
 ```
@@ -24,20 +25,17 @@ type(scope): lowercase description in english
 
 ### Correct examples
 ```
-chore(infra): remove all terraform temporary files
-feat(cognito): add user pool with admin and member groups
-ci(github-actions): add terraform production workflow
+chore(infra): tear down all AWS infrastructure and reset to zero
+feat(auth): add cognito user pool configuration
 fix(dynamodb): correct table billing mode
 docs(members): add user story AC-001
-refactor(backend): extract shared dynamo client
 ```
 
 ### Incorrect examples (never do)
 ```
-chore(infra): 🔨 Remove Terraform files      <- emoji + uppercase forbidden
-feat(auth): ✨ add cognito user pool          <- emoji forbidden
-Co-Authored-By: Claude Sonnet 4.6 <...>      <- any Co-Authored-By forbidden
-chore(repo): update files.                   <- trailing period forbidden
+chore(infra): 🔨 tear down all AWS infrastructure    <- emoji forbidden
+feat(auth): ✨ Add Cognito User Pool Configuration   <- emoji + uppercase forbidden
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>  <- reference forbidden
 ```
 
 ## Files NEVER to commit (Terraform artifacts)
