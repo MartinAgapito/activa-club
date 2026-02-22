@@ -16,11 +16,21 @@ export interface ErrorResponse {
   path: string;
 }
 
+/** Maps a domain exception class name to its HTTP status code. */
+const DOMAIN_EXCEPTION_MAP: Record<string, number> = {
+  DniNotFoundException: HttpStatus.NOT_FOUND,
+  AccountInactiveException: HttpStatus.FORBIDDEN,
+  DniAlreadyRegisteredException: HttpStatus.CONFLICT,
+  EmailAlreadyInUseException: HttpStatus.CONFLICT,
+  PasswordPolicyViolationException: HttpStatus.UNPROCESSABLE_ENTITY,
+};
+
 /**
  * Global exception filter.
  *
  * Catches all unhandled exceptions and returns a consistent JSON error shape.
  * HttpExceptions are passed through with their status code.
+ * Domain exceptions are mapped to HTTP status codes via DOMAIN_EXCEPTION_MAP.
  * All other errors are treated as Internal Server Errors (500).
  */
 @Catch()
@@ -51,6 +61,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         message = exception.message;
         error = HttpStatus[statusCode];
       }
+    } else if (exception instanceof Error && exception.name in DOMAIN_EXCEPTION_MAP) {
+      // Domain exceptions — mapped to HTTP status by exception class name
+      statusCode = DOMAIN_EXCEPTION_MAP[exception.name];
+      message = exception.message;
+      error = (exception as Error & { code?: string }).code ?? exception.name;
     } else {
       statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
       message = 'Internal server error';
