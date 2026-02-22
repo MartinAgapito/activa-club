@@ -1,0 +1,12 @@
+# Required 
+github_org        = "MartinAgapito"
+
+# Optional overrides (defaults shown)
+# dev_account_id = "463310123916"
+# aws_profile       = "activaclub-dev"
+# aws_region        = "us-east-1"
+# dev_role_name     = "activa-club-terraform-dev-role"
+# github_repo       = "activa-club"
+# env               = "dev"
+# state_bucket_name = "activa-club-tfstate-dev-463310123916"
+# lock_table_name   = "activa-club-tflock-dev"
