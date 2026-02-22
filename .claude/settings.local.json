@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(terraform -chdir=/c/Users/Martin/Desktop/Tesis/infrastructure/modules/dynamodb fmt -check -diff)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(cd /c/Users/Martin/Desktop/Tesis/backend && npm test -- --testPathPattern=\"register-member.handler|dynamo-member.repository\" --no-coverage 2>&1)",
+      "Bash(cd /c/Users/Martin/Desktop/Tesis/backend && node -e \"const m = require\\('aws-sdk-client-mock-jest'\\); console.log\\(Object.keys\\(m\\)\\);\" 2>&1)",
+      "Bash(grep:*)",
+      "Bash(cd:*)"
     ]
   }
 }

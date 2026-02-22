@@ -59,29 +59,54 @@ Available locally at `/api/docs`. Auth scheme: `cognito-jwt` (Bearer JWT).
 `@libs/auth`, `@libs/dto`, `@libs/dynamodb`, `@libs/errors`, `@libs/logging`, `@libs/utils`
 each resolving to `libs/<name>/src/index.ts`.
 
-### Test Structure
-- Root-level tests: `backend/test/unit/`
-- Per-service tests: `backend/services/<name>/src/test/unit/` (or `test/unit/`)
-- Coverage threshold: 80% branches/functions/lines/statements on application layer.
-- Use `aws-sdk-client-mock` for DynamoDB mocking in repository tests.
+### Jest Config
+- Canonical config: `backend/jest.config.ts` (has coverage thresholds).
+- The `jest` key was REMOVED from `package.json` to avoid dual-config conflict.
+- Per-service tests go in `services/<name>/src/test/unit/` (discovered by roots config).
+- `aws-sdk-client-mock` v4.x: use `ddbMock.commandCalls(Command)` for assertions.
+  Do NOT import `aws-sdk-client-mock-jest` — it is a separate uninstalled package.
+- Coverage threshold: 80% branches/functions/lines/statements (global).
 
 ### Husky Hooks (backend root)
 - pre-commit: `npx lint-staged` (eslint --fix + prettier --write on *.ts)
 - pre-push: `npm run test`
 
-### services/ Directory Layout (per service README)
-```
-src/
-  application/commands/ & queries/   # Use cases
-  domain/entities/ & value-objects/ & repositories/
-  infrastructure/repositories/ & handlers/
-  presentation/controllers/ & dtos/
-```
-Note: The existing project uses `presentation/` not `infrastructure/controllers/`.
-Align with existing structure when implementing service features.
+### libs/ Status
+All libs (auth, dto, dynamodb, errors, logging, utils) have only README files — no src/.
+Do NOT import @libs/* until the source is implemented.
+For members service, use direct implementations in the service's infrastructure layer.
 
-### .env.example Key Variables
+### DI Token Pattern
+```typescript
+export const MEMBER_REPOSITORY = Symbol('MemberRepositoryInterface');
+// Module: { provide: MEMBER_REPOSITORY, useFactory: (client) => new DynamoMemberRepository(client), inject: [DYNAMODB_CLIENT] }
+// Handler: @Inject(MEMBER_REPOSITORY) private readonly repo: MemberRepositoryInterface
+```
+
+### Domain Exception Pattern
+Exceptions set `this.name` in constructor and have a `code` string property.
+GlobalExceptionFilter maps via `DOMAIN_EXCEPTION_MAP[exception.name]` → HTTP status.
+Import domain exceptions from service path (not @libs/errors — not yet implemented).
+
+### services/ Directory Layout (confirmed from AC-001 implementation)
+```
+services/<name>/
+  <name>.module.ts           # NestJS module at root of service dir
+  src/
+    application/commands/<use-case>/   # command.ts, handler.ts, result.ts
+    domain/entities/ value-objects/ repositories/ exceptions/
+    infrastructure/repositories/ cognito/ dynamo-client.factory.ts
+    presentation/controllers/ dtos/
+    test/unit/
+```
+
+### AC-001 Members Service: COMPLETE
+- POST /v1/auth/register with full Clean Architecture + 24 passing unit tests
+- MembersModule registered in AppModule
+- GlobalExceptionFilter updated with domain exception mappings
+
+### .env.example Key Variables (Members Service)
 DYNAMODB_REGION, COGNITO_USER_POOL_ID, COGNITO_CLIENT_ID, COGNITO_REGION,
-STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, SNS_PROMOTIONS_TOPIC_ARN, ENV, PORT
+MEMBERS_TABLE_NAME, SEED_MEMBERS_TABLE_NAME, ENV, PORT
 
-See: `C:/Users/Martin/Desktop/Tesis/backend/patterns.md` for per-service setup patterns.
+See: `C:/Users/Martin/Desktop/Tesis/.claude/agent-memory/Senior-Backend-Engineer/patterns.md`
