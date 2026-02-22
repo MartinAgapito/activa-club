@@ -130,6 +130,7 @@ resource "aws_iam_policy" "cicd_terraform" {
           "dynamodb:DescribeTimeToLive",
           "dynamodb:TagResource",
           "dynamodb:UntagResource",
+          "dynamodb:UpdateContinuousBackups",
           "dynamodb:UpdateTable",
           "dynamodb:ListTagsOfResource",
         ]
