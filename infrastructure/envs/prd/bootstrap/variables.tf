@@ -19,6 +19,12 @@ variable "aws_profile" {
   default     = "activaclub-prd"
 }
 
+variable "aws_region" {
+  description = "AWS region where bootstrap resources are created."
+  type        = string
+  default     = "us-east-1"
+}
+
 variable "github_org" {
   description = "GitHub organisation or username that owns the repository. Used in the OIDC trust policy subject condition."
   type        = string
@@ -34,5 +40,11 @@ variable "github_repo" {
 variable "env" {
   description = "Deployment environment label. Used for tagging bootstrap resources."
   type        = string
-  default     = "production"
+  default     = "prd"
+}
+
+variable "lock_table_name" {
+  description = "Name of the DynamoDB table for Terraform state locking."
+  type        = string
+  default     = "activa-club-tflock"
 }
