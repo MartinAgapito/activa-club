@@ -1,5 +1,5 @@
 # ============================================================
-# bootstrap/iam-cicd.tf
+# bootstrap/iam.tf
 #
 # IAM Role and Policy for GitHub Actions CI/CD pipeline.
 #
@@ -54,8 +54,9 @@ resource "aws_iam_role" "cicd" {
   })
 
   tags = {
-    Project   = "activa-club"
-    ManagedBy = "terraform-bootstrap"
+    Project     = "activa-club"
+    Environment = var.env
+    ManagedBy   = "terraform-bootstrap"
   }
 }
 
@@ -112,7 +113,7 @@ resource "aws_iam_policy" "cicd_terraform" {
           "dynamodb:DeleteItem",
           "dynamodb:DescribeTable",
         ]
-        Resource = "arn:aws:dynamodb:us-east-1:${var.aws_account_id}:table/activa-club-tflock"
+        Resource = "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/${var.lock_table_name}"
       },
 
       # ----------------------------------------------------------
@@ -136,8 +137,8 @@ resource "aws_iam_policy" "cicd_terraform" {
         ]
         # Scoped to the ActivaClub application tables only
         Resource = [
-          "arn:aws:dynamodb:us-east-1:${var.aws_account_id}:table/MembersTable-*",
-          "arn:aws:dynamodb:us-east-1:${var.aws_account_id}:table/SeedMembersTable-*",
+          "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/MembersTable-*",
+          "arn:aws:dynamodb:${var.aws_region}:${var.aws_account_id}:table/SeedMembersTable-*",
         ]
       },
 
@@ -209,14 +210,15 @@ resource "aws_iam_policy" "cicd_terraform" {
           "logs:PutRetentionPolicy",
           "logs:DeleteRetentionPolicy",
         ]
-        Resource = "arn:aws:logs:us-east-1:${var.aws_account_id}:log-group:/aws/lambda/activa-club-*"
+        Resource = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/aws/lambda/activa-club-*"
       }
     ]
   })
 
   tags = {
-    Project   = "activa-club"
-    ManagedBy = "terraform-bootstrap"
+    Project     = "activa-club"
+    Environment = var.env
+    ManagedBy   = "terraform-bootstrap"
   }
 }
 

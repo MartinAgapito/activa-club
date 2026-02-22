@@ -28,11 +28,6 @@ terraform {
   }
 }
 
-provider "aws" {
-  region  = "us-east-1"
-  profile = var.aws_profile
-}
-
 # ------------------------------------------------------------
 # S3 bucket — Terraform remote state storage
 # Versioning is enabled so previous state files can be recovered.
@@ -47,6 +42,7 @@ resource "aws_s3_bucket" "tf_state" {
 
   tags = {
     Project     = "activa-club"
+    Environment = var.env
     ManagedBy   = "terraform-bootstrap"
     Description = "Terraform remote state storage"
   }
@@ -86,7 +82,7 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
 # PAY_PER_REQUEST keeps costs at zero when not actively running.
 # ------------------------------------------------------------
 resource "aws_dynamodb_table" "tf_lock" {
-  name         = "activa-club-tflock"
+  name         = var.lock_table_name
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
 
@@ -106,6 +102,7 @@ resource "aws_dynamodb_table" "tf_lock" {
 
   tags = {
     Project     = "activa-club"
+    Environment = var.env
     ManagedBy   = "terraform-bootstrap"
     Description = "Terraform state lock table"
   }
@@ -131,7 +128,8 @@ resource "aws_iam_openid_connect_provider" "github_actions" {
   ]
 
   tags = {
-    Project   = "activa-club"
-    ManagedBy = "terraform-bootstrap"
+    Project     = "activa-club"
+    Environment = var.env
+    ManagedBy   = "terraform-bootstrap"
   }
 }

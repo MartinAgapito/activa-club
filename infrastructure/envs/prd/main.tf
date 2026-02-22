@@ -1,5 +1,5 @@
 # ============================================================
-# envs/production/main.tf
+# envs/prd/main.tf
 #
 # Production environment — wires together all infrastructure
 # modules for ActivaClub.
@@ -19,16 +19,7 @@ terraform {
     }
   }
 
-  # Remote state backend — created by infrastructure/bootstrap/
-  # During CI/CD, backend config flags are passed via -backend-config
-  # arguments in the Terraform Init step.
-  backend "s3" {
-    bucket         = "activa-club-tfstate-583075178346"
-    key            = "production/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "activa-club-tflock"
-    encrypt        = true
-  }
+  backend "s3" {}
 }
 
 provider "aws" {
