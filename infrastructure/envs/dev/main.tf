@@ -27,13 +27,6 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-
-  # Assume a role in the DEV account.
-  # The role must trust the identity running Terraform locally
-  # (typically an IAM user or SSO session from the PRD account).
-  assume_role {
-    role_arn = "arn:aws:iam::${var.dev_account_id}:role/${var.dev_role_name}"
-  }
 }
 
 # ============================================================
