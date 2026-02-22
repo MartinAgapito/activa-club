@@ -60,8 +60,8 @@ module "members_table" {
 
   # Declare every attribute used as a key or index key
   attributes = [
-    { name = "PK",     type = "S" },
-    { name = "SK",     type = "S" },
+    { name = "PK", type = "S" },
+    { name = "SK", type = "S" },
     { name = "GSI1PK", type = "S" },
     { name = "GSI1SK", type = "S" },
   ]
