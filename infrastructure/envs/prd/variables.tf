@@ -2,6 +2,12 @@
 # envs/prd/variables.tf
 # ============================================================
 
+variable "prd_account_id" {
+  description = "AWS account ID of the PRD account."
+  type        = string
+  default     = "583075178346"
+}
+
 variable "aws_region" {
   description = "AWS region where all resources are deployed. Changing this requires updating the backend config and provider in main.tf as well."
   type        = string
