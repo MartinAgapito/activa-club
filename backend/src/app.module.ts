@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { MembersModule } from '../services/members/members.module';
 
 /**
  * Root application module.
@@ -13,8 +14,9 @@ import { Module } from '@nestjs/common';
  */
 @Module({
   imports: [
-    // Feature modules are imported here.
-    // Example: MembersModule, ReservationsModule, etc.
+    MembersModule,
+    // Additional feature modules will be registered here as stories are implemented.
+    // Example: ReservationsModule, PaymentsModule, etc.
   ],
   controllers: [],
   providers: [],
