@@ -10,3 +10,13 @@ github_org = "MartinAgapito"
 # env               = "prd"
 # state_bucket_name = "activa-club-tfstate-prd-583075178346"
 # lock_table_name   = "activa-club-tflock-prd"
+
+github_oidc_provider_arn = "arn:aws:iam::583075178346:oidc-provider/token.actions.githubusercontent.com"
+lock_table_name = "activa-club-tflock-prd"
+state_bucket_arn = "arn:aws:s3:::activa-club-tfstate-prd-583075178346"
+state_bucket_name = "activa-club-tfstate-prd-583075178346"
+terraform_prd_role_arn = "arn:aws:iam::583075178346:role/activa-club-terraform-prd-role"
+
+
+AWS_PROFILE=prd terraform init
+AWS_PROFILE=prd terraform apply -auto-approve

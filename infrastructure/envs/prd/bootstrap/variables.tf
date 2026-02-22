@@ -34,7 +34,7 @@ variable "aws_region" {
 variable "github_org" {
   description = "GitHub organisation or username that owns the repository. Used in the OIDC trust policy subject condition."
   type        = string
-  # No default — must be supplied explicitly to avoid accidental misconfiguration.
+  default     = "MartinAgapito"
 }
 
 variable "github_repo" {

@@ -45,7 +45,7 @@ resource "aws_s3_bucket" "tf_state" {
 
   tags = {
     Project     = "activa-club"
-    Environment = "dev"
+    Environment = var.env
     ManagedBy   = "terraform-bootstrap"
     Description = "Terraform remote state storage for DEV"
   }
