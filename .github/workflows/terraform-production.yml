@@ -36,10 +36,10 @@ permissions:
 env:
   TF_VERSION: "1.6.6"
   AWS_REGION: "us-east-1"
-  WORKING_DIR: infrastructure/envs/production
+  WORKING_DIR: infrastructure/envs/prd
   # Backend configuration — matches the bootstrap-created resources
   TF_BACKEND_BUCKET: activa-club-tfstate-583075178346
-  TF_BACKEND_KEY: production/terraform.tfstate
+  TF_BACKEND_KEY: prd/terraform.tfstate
   TF_BACKEND_REGION: us-east-1
   TF_BACKEND_DYNAMODB_TABLE: activa-club-tflock
 
@@ -50,7 +50,7 @@ jobs:
     # The 'production' environment in GitHub requires manual approval
     # before the apply step runs. Configure reviewers in:
     # Settings > Environments > production > Required reviewers
-    environment: production
+    environment: prd
 
     steps:
       # ----------------------------------------------------------

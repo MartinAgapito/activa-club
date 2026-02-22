@@ -1,5 +1,5 @@
 # ============================================================
-# envs/production/variables.tf
+# envs/prd/variables.tf
 # ============================================================
 
 variable "aws_region" {
@@ -11,7 +11,7 @@ variable "aws_region" {
 variable "env" {
   description = "Deployment environment name. Used as a suffix on all resource names. Must match the S3 backend key prefix."
   type        = string
-  default     = "production"
+  default     = "prd"
 }
 
 variable "project" {

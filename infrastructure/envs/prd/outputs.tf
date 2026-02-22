@@ -1,7 +1,7 @@
 # ============================================================
-# envs/production/outputs.tf
+# envs/prd/outputs.tf
 #
-# Exposes key resource identifiers from the production environment.
+# Exposes key resource identifiers from the prd environment.
 # These values are used by:
 #   - Lambda functions (via environment variables or SSM)
 #   - The frontend build (injected as environment variables)
