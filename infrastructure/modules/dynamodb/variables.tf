@@ -43,7 +43,7 @@ variable "global_secondary_indexes" {
     name               = string
     hash_key           = string
     range_key          = optional(string)
-    projection_type    = string           # "ALL", "KEYS_ONLY", or "INCLUDE"
+    projection_type    = string                 # "ALL", "KEYS_ONLY", or "INCLUDE"
     non_key_attributes = optional(list(string)) # Required when projection_type = "INCLUDE"
   }))
   default = []

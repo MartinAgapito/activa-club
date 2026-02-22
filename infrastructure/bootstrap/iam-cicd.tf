@@ -41,7 +41,7 @@ resource "aws_iam_role" "cicd" {
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
-          StringEquals = {
+          StringLike = {
             # Restrict to the correct GitHub repository.
             # Wildcard on ref allows main branch, PRs, and other branches.
             "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:*"
