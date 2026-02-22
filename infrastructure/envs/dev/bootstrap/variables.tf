@@ -18,7 +18,7 @@ variable "aws_region" {
 variable "dev_account_id" {
   description = "AWS account ID of the DEV account. Used to construct the assume_role ARN. Must be supplied via terraform.tfvars or TF_VAR_dev_account_id — no default to avoid accidental misconfiguration."
   type        = string
-  # No default — must be supplied explicitly.
+  default     = "463310123916"
 }
 
 variable "dev_role_name" {
@@ -30,13 +30,13 @@ variable "dev_role_name" {
 variable "state_bucket_name" {
   description = "Name of the S3 bucket to create for DEV Terraform remote state. Must be globally unique. This value must match the bucket name in dev/main.tf backend config."
   type        = string
-  default     = "ac-tfstate-dev"
+  default     = "activa-club-tfstate-dev-463310123916"
 }
 
 variable "lock_table_name" {
   description = "Name of the DynamoDB table to create for DEV Terraform state locking. Must match the dynamodb_table value in dev/main.tf backend config."
   type        = string
-  default     = "ac-tflock-dev"
+  default     = "activa-club-tflock-dev"
 }
 
 variable "github_org" {
