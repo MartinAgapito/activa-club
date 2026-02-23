@@ -32,8 +32,10 @@ resource "aws_iam_role" "terraform_prd" {
         Condition = {
           StringLike = {
             # Restricted to tags matching prd-v* — branch pushes and PRs
-            # cannot assume this role, only release tags can.
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:ref:refs/tags/prd-v*"
+            # cannot assume this role, only release tags can.            
+            "token.actions.githubusercontent.com:sub" = [
+              "repo:${var.github_org}/${var.github_repo}:ref:refs/tags/prd-v*"
+            ]
           }
           StringEquals = {
             # Exact match on audience — sts.amazonaws.com is the only valid value.
