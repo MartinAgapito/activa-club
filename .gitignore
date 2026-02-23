@@ -48,5 +48,4 @@ Thumbs.db
 # (settings.local.json contains machine-specific overrides;
 #  agent-memory/ is generated at runtime and stays local)
 # ------------------------------------------------------------
-.claude/settings.local.json
-.claude/agent-memory/
+.claude/
