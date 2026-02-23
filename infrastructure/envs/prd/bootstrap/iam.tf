@@ -34,7 +34,9 @@ resource "aws_iam_role" "terraform_prd" {
             # Restricted to tags matching prd-v* — branch pushes and PRs
             # cannot assume this role, only release tags can.
             "token.actions.githubusercontent.com:sub" = "repo:${var.github_org}/${var.github_repo}:ref:refs/tags/prd-v*"
-            # Restrict audience to AWS STS
+          }
+          StringEquals = {
+            # Exact match on audience — sts.amazonaws.com is the only valid value.
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
         }
