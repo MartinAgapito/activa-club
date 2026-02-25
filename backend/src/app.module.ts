@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { MembersModule } from '../services/members/members.module';
 
 /**
@@ -14,6 +15,7 @@ import { MembersModule } from '../services/members/members.module';
  */
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     MembersModule,
     // Additional feature modules will be registered here as stories are implemented.
     // Example: ReservationsModule, PaymentsModule, etc.
