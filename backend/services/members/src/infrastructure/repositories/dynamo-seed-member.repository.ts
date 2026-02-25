@@ -9,10 +9,10 @@ import { AccountStatus, isAccountStatus } from '../../domain/value-objects/accou
 
 /**
  * DynamoDB item shape for SeedMembersTable.
+ * Hash key is DNI (plain value, no prefix).
  */
 interface SeedMemberDynamoItem {
-  pk: string;
-  dni: string;
+  DNI: string;
   full_name: string;
   membership_type: string;
   account_status: string;
@@ -26,8 +26,8 @@ interface SeedMemberDynamoItem {
  */
 function toDomain(item: SeedMemberDynamoItem): SeedMemberRecord {
   return {
-    pk: item.pk,
-    dni: item.dni,
+    pk: item.DNI,
+    dni: item.DNI,
     fullName: item.full_name,
     membershipType: isMembershipType(item.membership_type)
       ? item.membership_type
@@ -60,20 +60,31 @@ export class DynamoSeedMemberRepository implements SeedMemberRepositoryInterface
   }
 
   async findByDni(dni: string): Promise<SeedMemberRecord | null> {
-    const pk = `DNI#${dni}`;
-    this.logger.debug(`findByDni: GetItem pk=${pk}`);
+    this.logger.debug(`findByDni: GetItem DNI=${dni}`);
 
-    const result = await this.client.send(
-      new GetCommand({
-        TableName: this.tableName,
-        Key: { pk },
-      }),
-    );
+    try {
+      const result = await this.client.send(
+        new GetCommand({
+          TableName: this.tableName,
+          Key: { DNI: dni },
+        }),
+      );
 
-    if (!result.Item) {
-      return null;
+      if (!result.Item) {
+        return null;
+      }
+
+      return toDomain(result.Item as SeedMemberDynamoItem);
+    } catch (error) {
+      throw this.wrapError(error, 'GetItem', this.tableName);
     }
+  }
 
-    return toDomain(result.Item as SeedMemberDynamoItem);
+  private wrapError(error: unknown, operation: string, table: string): Error {
+    const original = error instanceof Error ? error : new Error(String(error));
+    const wrapped = new Error(`DynamoDB ${operation} on "${table}": ${original.message}`);
+    wrapped.name = original.name;
+    wrapped.stack = original.stack;
+    return wrapped;
   }
 }
