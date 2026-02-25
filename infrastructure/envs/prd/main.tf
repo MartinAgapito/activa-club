@@ -53,20 +53,26 @@ module "members_table" {
   attributes = [
     { name = "PK", type = "S" },
     { name = "SK", type = "S" },
-    { name = "GSI1PK", type = "S" },
-    { name = "GSI1SK", type = "S" },
+    { name = "dni", type = "S" },
+    { name = "email", type = "S" },
   ]
 
-  # GSI1 allows queries keyed on GSI1PK / GSI1SK.
-  # ALL projection copies every attribute to the index —
-  # avoids extra fetches but uses more storage (acceptable at this scale).
+  # GSI_DNI: uniqueness check and lookup by DNI.
+  # GSI_Email: uniqueness check and lookup by email.
+  # Both use KEYS_ONLY projection — the handler fetches the full item via GetItem.
   global_secondary_indexes = [
     {
-      name            = "GSI1"
-      hash_key        = "GSI1PK"
-      range_key       = "GSI1SK"
-      projection_type = "ALL"
-    }
+      name            = "GSI_DNI"
+      hash_key        = "dni"
+      range_key       = null
+      projection_type = "KEYS_ONLY"
+    },
+    {
+      name            = "GSI_Email"
+      hash_key        = "email"
+      range_key       = null
+      projection_type = "KEYS_ONLY"
+    },
   ]
 
   tags = {
