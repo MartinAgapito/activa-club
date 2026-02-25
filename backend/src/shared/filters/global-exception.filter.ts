@@ -68,7 +68,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       error = (exception as Error & { code?: string }).code ?? exception.name;
     } else {
       statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-      message = 'Internal server error';
       error = 'Internal Server Error';
 
       // Log unexpected errors with full stack trace
@@ -76,6 +75,17 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         `Unhandled exception on ${request.method} ${request.url}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
+
+      // In local dev expose the real error — in production keep it generic
+      if (process.env.ENV === 'local') {
+        message =
+          exception instanceof Error
+            ? `[${exception.name}] ${exception.message}`
+            : String(exception);
+        error = exception instanceof Error ? exception.name : 'Internal Server Error';
+      } else {
+        message = 'Internal server error';
+      }
     }
 
     const errorResponse: ErrorResponse = {
