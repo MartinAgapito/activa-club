@@ -78,11 +78,7 @@ async function bootstrapLambda(): Promise<Handler> {
  * Convention used across all ActivaClub services:
  *   handler: "dist/src/lambda.handler"
  */
-export const handler: Handler = async (
-  event: unknown,
-  context: Context,
-  callback: Callback,
-) => {
+export const handler: Handler = async (event: unknown, context: Context, callback: Callback) => {
   // Reuse the cached handler across warm Lambda invocations
   if (!cachedHandler) {
     cachedHandler = await bootstrapLambda();
