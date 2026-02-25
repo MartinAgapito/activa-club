@@ -15,8 +15,8 @@ import { AccountStatus, isAccountStatus } from '../../domain/value-objects/accou
  * Reflects the physical storage schema (snake_case attribute names).
  */
 interface MemberDynamoItem {
-  pk: string;
-  sk: string;
+  PK: string;
+  SK: string;
   member_id: string;
   dni: string;
   full_name: string;
@@ -74,53 +74,61 @@ export class DynamoMemberRepository implements MemberRepositoryInterface {
   async findByDni(dni: string): Promise<MemberEntity | null> {
     this.logger.debug(`findByDni: querying GSI_DNI for dni=${dni}`);
 
-    const result = await this.client.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: 'GSI_DNI',
-        KeyConditionExpression: 'dni = :dni',
-        ExpressionAttributeValues: { ':dni': dni },
-        Limit: 1,
-      }),
-    );
+    try {
+      const result = await this.client.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'GSI_DNI',
+          KeyConditionExpression: 'dni = :dni',
+          ExpressionAttributeValues: { ':dni': dni },
+          Limit: 1,
+        }),
+      );
 
-    if (!result.Items || result.Items.length === 0) {
-      return null;
+      if (!result.Items || result.Items.length === 0) {
+        return null;
+      }
+
+      // GSI_DNI has KEYS_ONLY projection — retrieve the full item via GetItem
+      const key = result.Items[0] as { PK: string; SK: string };
+      return this.findByKey(key.PK, key.SK);
+    } catch (error) {
+      throw this.wrapError(error, 'Query GSI_DNI', this.tableName);
     }
-
-    // GSI_DNI has KEYS_ONLY projection — retrieve the full item via GetItem
-    const key = result.Items[0] as { pk: string; sk: string };
-    return this.findByKey(key.pk, key.sk);
   }
 
   async findByEmail(email: string): Promise<MemberEntity | null> {
     this.logger.debug(`findByEmail: querying GSI_Email for email=${email}`);
 
-    const result = await this.client.send(
-      new QueryCommand({
-        TableName: this.tableName,
-        IndexName: 'GSI_Email',
-        KeyConditionExpression: 'email = :email',
-        ExpressionAttributeValues: { ':email': email },
-        Limit: 1,
-      }),
-    );
+    try {
+      const result = await this.client.send(
+        new QueryCommand({
+          TableName: this.tableName,
+          IndexName: 'GSI_Email',
+          KeyConditionExpression: 'email = :email',
+          ExpressionAttributeValues: { ':email': email },
+          Limit: 1,
+        }),
+      );
 
-    if (!result.Items || result.Items.length === 0) {
-      return null;
+      if (!result.Items || result.Items.length === 0) {
+        return null;
+      }
+
+      // GSI_Email has KEYS_ONLY projection — retrieve the full item via GetItem
+      const key = result.Items[0] as { PK: string; SK: string };
+      return this.findByKey(key.PK, key.SK);
+    } catch (error) {
+      throw this.wrapError(error, 'Query GSI_Email', this.tableName);
     }
-
-    // GSI_Email has KEYS_ONLY projection — retrieve the full item via GetItem
-    const key = result.Items[0] as { pk: string; sk: string };
-    return this.findByKey(key.pk, key.sk);
   }
 
   async save(member: MemberEntity): Promise<void> {
     this.logger.debug(`save: putting member pk=MEMBER#${member.memberId}`);
 
     const item: MemberDynamoItem = {
-      pk: `MEMBER#${member.memberId}`,
-      sk: 'PROFILE',
+      PK: `MEMBER#${member.memberId}`,
+      SK: 'PROFILE',
       member_id: member.memberId,
       dni: member.dni,
       full_name: member.fullName,
@@ -138,20 +146,24 @@ export class DynamoMemberRepository implements MemberRepositoryInterface {
     if (!item.phone) delete item.phone;
     if (!item.membership_expiry) delete item.membership_expiry;
 
-    await this.client.send(
-      new PutCommand({
-        TableName: this.tableName,
-        Item: item,
-        ConditionExpression: 'attribute_not_exists(pk)',
-      }),
-    );
+    try {
+      await this.client.send(
+        new PutCommand({
+          TableName: this.tableName,
+          Item: item,
+          ConditionExpression: 'attribute_not_exists(PK)',
+        }),
+      );
+    } catch (error) {
+      throw this.wrapError(error, 'PutItem', this.tableName);
+    }
   }
 
-  private async findByKey(pk: string, sk: string): Promise<MemberEntity | null> {
+  private async findByKey(PK: string, SK: string): Promise<MemberEntity | null> {
     const result = await this.client.send(
       new GetCommand({
         TableName: this.tableName,
-        Key: { pk, sk },
+        Key: { PK, SK },
       }),
     );
 
@@ -160,5 +172,13 @@ export class DynamoMemberRepository implements MemberRepositoryInterface {
     }
 
     return toDomain(result.Item as MemberDynamoItem);
+  }
+
+  private wrapError(error: unknown, operation: string, table: string): Error {
+    const original = error instanceof Error ? error : new Error(String(error));
+    const wrapped = new Error(`DynamoDB ${operation} on "${table}": ${original.message}`);
+    wrapped.name = original.name;
+    wrapped.stack = original.stack;
+    return wrapped;
   }
 }
