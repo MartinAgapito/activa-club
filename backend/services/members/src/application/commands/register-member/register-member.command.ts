@@ -1,15 +1,14 @@
 /**
  * Register member command.
  *
- * Plain data object carrying validated input from the presentation layer
- * to the use case handler. No decorators or framework dependencies.
+ * Carries only the fields the member explicitly provides (DNI, email, password).
+ * Full name, phone and membership_type are sourced from SeedMembersTable
+ * at verify-email time — they are never sent by the client at registration.
  */
 export class RegisterMemberCommand {
   constructor(
     public readonly dni: string,
     public readonly email: string,
     public readonly password: string,
-    public readonly fullName?: string,
-    public readonly phone?: string,
   ) {}
 }

@@ -1,5 +1,4 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { ulid } from 'ulid';
 import { RegisterMemberCommand } from './register-member.command';
 import { RegisterMemberResult } from './register-member.result';
 import {
@@ -11,7 +10,6 @@ import {
   SEED_MEMBER_REPOSITORY,
 } from '../../../domain/repositories/seed-member.repository.interface';
 import { CognitoService } from '../../../infrastructure/cognito/cognito.service';
-import { MemberEntity } from '../../../domain/entities/member.entity';
 import { AccountStatus } from '../../../domain/value-objects/account-status.vo';
 import {
   DniNotFoundException,
@@ -25,19 +23,22 @@ import {
 const PASSWORD_POLICY_REGEX = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 /**
- * Register member handler (use case).
+ * Register member handler (use case) — AC-001 Rev2.
  *
- * Orchestrates the member registration flow:
- *   1. Validate password strength client-side before calling Cognito.
+ * Orchestrates the member registration flow (Step 1):
+ *   1. Validate password strength before calling any external service.
  *   2. Look up the DNI in SeedMembersTable (read-only legacy data).
- *   3. Enforce seed-level account_status.
- *   4. Reject duplicate DNI or email in MembersTable.
- *   5. Create Cognito user and assign to Member group.
- *   6. Persist member profile in MembersTable.
- *   7. Rollback Cognito user if any downstream step fails.
+ *   3. Enforce seed-level account_status (reject inactive records).
+ *   4. Reject duplicate DNI in MembersTable.
+ *   5. Reject duplicate email in MembersTable.
+ *   6. Call Cognito SignUp — creates UNCONFIRMED user and sends OTP email.
+ *   7. Return HTTP 202 — pending email verification.
+ *
+ * No DynamoDB profile is persisted at this stage. Profile creation happens
+ * in VerifyEmailHandler after the OTP is confirmed (Step 2).
  *
  * This class depends exclusively on domain interfaces — it has no knowledge
- * of DynamoDB, Cognito SDK, or NestJS HTTP concerns.
+ * of DynamoDB internals, Cognito SDK details, or NestJS HTTP concerns.
  */
 @Injectable()
 export class RegisterMemberHandler {
@@ -72,72 +73,27 @@ export class RegisterMemberHandler {
       throw new AccountInactiveException();
     }
 
-    // Step 4 — Ensure no existing member with the same DNI
+    // Step 4 — Ensure no existing confirmed member with the same DNI
     const existingByDni = await this.memberRepo.findByDni(command.dni);
     if (existingByDni) {
       throw new DniAlreadyRegisteredException();
     }
 
-    // Step 5 — Ensure no existing member with the same email
+    // Step 5 — Ensure no existing confirmed member with the same email
     const existingByEmail = await this.memberRepo.findByEmail(command.email);
     if (existingByEmail) {
       throw new EmailAlreadyInUseException();
     }
 
-    // Step 6 — Create Cognito identity (permanent password, no forced change)
-    let cognitoSub: string;
-    try {
-      cognitoSub = await this.cognitoService.adminCreateUser(command.email, command.password);
-      await this.cognitoService.adminSetUserPassword(command.email, command.password);
-      await this.cognitoService.adminAddUserToGroup(command.email, 'Member');
-    } catch (cognitoError) {
-      this.logger.error(
-        `Cognito operation failed for ${command.email} — rolling back`,
-        cognitoError instanceof Error ? cognitoError.stack : String(cognitoError),
-      );
-      await this.cognitoService.adminDeleteUser(command.email).catch((rollbackError) => {
-        this.logger.error(
-          `Rollback (AdminDeleteUser) also failed for ${command.email}`,
-          rollbackError instanceof Error ? rollbackError.stack : String(rollbackError),
-        );
-      });
-      throw cognitoError;
-    }
+    // Step 6 — Call Cognito SignUp (creates UNCONFIRMED user, sends OTP email)
+    // No rollback needed here — if SignUp fails, no user was created.
+    await this.cognitoService.signUp(command.email, command.password, command.dni);
 
-    // Step 7 — Persist member profile in MembersTable
-    const memberId = ulid();
-    const now = new Date().toISOString();
-    const member = new MemberEntity({
-      memberId,
-      dni: command.dni,
-      fullName: command.fullName ?? seedRecord.fullName,
-      email: command.email,
-      phone: command.phone ?? seedRecord.phone,
-      membershipType: seedRecord.membershipType,
-      accountStatus: AccountStatus.ACTIVE,
-      cognitoUserId: cognitoSub,
-      createdAt: now,
-      updatedAt: now,
-    });
+    this.logger.log(
+      `RegisterMemberHandler: SignUp accepted for email=${command.email}, awaiting OTP verification`,
+    );
 
-    try {
-      await this.memberRepo.save(member);
-    } catch (dbError) {
-      this.logger.error(
-        `DynamoDB PutItem failed for member ${memberId} — rolling back Cognito user`,
-        dbError instanceof Error ? dbError.stack : String(dbError),
-      );
-      await this.cognitoService.adminDeleteUser(command.email).catch((rollbackError) => {
-        this.logger.error(
-          `Rollback (AdminDeleteUser) also failed for ${command.email}`,
-          rollbackError instanceof Error ? rollbackError.stack : String(rollbackError),
-        );
-      });
-      throw dbError;
-    }
-
-    this.logger.log(`Member registered successfully: memberId=${memberId}, email=${command.email}`);
-
-    return new RegisterMemberResult(member);
+    // Step 7 — Return 202 result (profile persisted in VerifyEmailHandler)
+    return new RegisterMemberResult(command.email);
   }
 }
