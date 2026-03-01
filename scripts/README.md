@@ -4,12 +4,12 @@ Utility scripts for data seeding, imports, and administrative tasks.
 
 ## Contents
 
-| Script                      | Purpose                                                |
-|-----------------------------|--------------------------------------------------------|
-| `seed-legacy-members.ts`    | Import pre-existing member DNI data into MembersTable  |
-| `seed-areas.ts`             | Seed initial recreational areas into AreasTable        |
-| `seed-dev-users.ts`         | Create Cognito test users for local development        |
-| `export-members.ts`         | Export member list to CSV for reporting                |
+| Script                      | Purpose                                                     |
+|-----------------------------|-------------------------------------------------------------|
+| `seed-legacy-members.ts`    | Import pre-existing member data into SeedMembersTable       |
+| `seed-areas.ts`             | Seed initial recreational areas into AreasTable             |
+| `seed-dev-users.ts`         | Create Cognito test users for local development             |
+| `export-members.ts`         | Export member list to JSON for reporting                    |
 
 ## Running Scripts
 
@@ -18,28 +18,73 @@ Scripts use `ts-node` and assume AWS credentials are configured.
 ```bash
 cd scripts
 npm install
-npx ts-node seed-legacy-members.ts --env dev --file ./data/legacy-members.csv
+npx ts-node seed-legacy-members.ts --env dev --file ./data/legacy-members.json
 ```
 
 ## Legacy Data Import (seed-legacy-members.ts)
 
-The club provides a CSV with pre-existing member DNI records.
-The script:
-1. Reads the CSV file
-2. Validates each row (required: `dni`, `firstName`, `lastName`)
-3. Writes items to `MembersTable` with `status=Pending` (not yet onboarded via app)
-4. Skips duplicates (conditional put on `GSI_DNI`)
-5. Outputs a summary: total processed, inserted, skipped, errors
+Reads a JSON array of pre-existing member records and writes each one into
+`SeedMembersTable-<env>`. Used as the **precondition of AC-001**: the registration
+flow validates every DNI against this table before creating a Cognito user.
 
-### CSV Format Expected
+### Behaviour
 
-```csv
-dni,firstName,lastName,email,membershipTier
-12345678,Juan,Perez,juan@example.com,Silver
-87654321,Maria,Garcia,maria@example.com,Gold
+1. Loads and validates every record in the JSON file.
+2. Writes each valid record with `ConditionExpression: attribute_not_exists(DNI)` — existing records are never overwritten.
+3. Prints progress per record and a final summary (inserted / skipped / errors).
+4. Exits with code `1` if any validation or write error occurred.
+
+### JSON Format
+
+```json
+[
+  {
+    "dni":            "20345678",
+    "firstName":      "Juan",
+    "lastName":       "Pérez",
+    "membershipTier": "Gold",
+    "email":          "juan.perez@email.com",
+    "phone":          "+5491112345678",
+    "accountStatus":  "active"
+  }
+]
+```
+
+| Field           | Required | Values                  | Notes                          |
+|-----------------|----------|-------------------------|--------------------------------|
+| `dni`           | yes      | 7–8 numeric digits      |                                |
+| `firstName`     | yes      | string                  |                                |
+| `lastName`      | yes      | string                  |                                |
+| `membershipTier`| yes      | `VIP` \| `Gold` \| `Silver` | case-insensitive           |
+| `email`         | no       | string                  | stored in lowercase            |
+| `phone`         | no       | string                  |                                |
+| `accountStatus` | no       | `active` \| `inactive`  | defaults to `active`           |
+
+### Options
+
+```
+--env <env>      Derives table name as SeedMembersTable-<env>
+--table <name>   Explicit DynamoDB table name (overrides --env)
+--file <path>    Path to the JSON file (required)
+--region <r>     AWS region (default: us-east-1)
+--profile <p>    AWS CLI named profile
+--dry-run        Validate without writing to DynamoDB
+```
+
+### Examples
+
+```bash
+# Validate first without writing
+npx ts-node seed-legacy-members.ts --env dev --file ./data/legacy-members.json --dry-run
+
+# Run against dev environment with local AWS profile
+npx ts-node seed-legacy-members.ts --env dev --file ./data/legacy-members.json --profile activaclub-prd
+
+# Explicit table name
+npx ts-node seed-legacy-members.ts --table SeedMembersTable-dev --file ./data/legacy-members.json
 ```
 
 ## Environment Configuration
 
 Scripts read AWS config from environment variables or `~/.aws/credentials`.
-DynamoDB table names are passed via `--env` flag or directly as arguments.
+Table names are derived from `--env` (e.g. `SeedMembersTable-dev`) or passed explicitly via `--table`.
