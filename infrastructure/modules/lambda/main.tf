@@ -15,10 +15,10 @@
 # ============================================================
 
 locals {
-  has_dynamodb = length(var.dynamodb_table_arns) > 0
-  has_cognito  = length(var.cognito_user_pool_arns) > 0 && length(var.cognito_actions) > 0
-  has_sns      = length(var.sns_topic_arns) > 0
-  has_ssm      = length(var.ssm_parameter_paths) > 0
+  has_dynamodb      = length(var.dynamodb_table_arns) > 0
+  has_cognito       = length(var.cognito_user_pool_arns) > 0 && length(var.cognito_actions) > 0
+  has_sns           = length(var.sns_topic_arns) > 0
+  has_ssm           = length(var.ssm_parameter_paths) > 0
   has_custom_policy = local.has_dynamodb || local.has_cognito || local.has_sns || local.has_ssm
 
   common_tags = merge(var.tags, {

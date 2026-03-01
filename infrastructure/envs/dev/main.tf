@@ -48,10 +48,10 @@ module "members_table" {
 
   # Declare every attribute used as a key or index key
   attributes = [
-    { name = "PK",              type = "S" },
-    { name = "SK",              type = "S" },
-    { name = "dni",             type = "S" },
-    { name = "email",           type = "S" },
+    { name = "PK", type = "S" },
+    { name = "SK", type = "S" },
+    { name = "dni", type = "S" },
+    { name = "email", type = "S" },
     { name = "cognito_user_id", type = "S" },
   ]
 
@@ -192,12 +192,12 @@ module "members_lambda" {
   s3_key    = "members/members.zip"
 
   environment_variables = {
-    ENV                      = var.env
-    DYNAMODB_REGION          = var.aws_region
-    MEMBERS_TABLE_NAME       = module.members_table.table_name
-    SEED_MEMBERS_TABLE_NAME  = module.seed_members_table.table_name
-    COGNITO_USER_POOL_ID     = module.cognito.user_pool_id
-    COGNITO_CLIENT_ID        = module.cognito.app_client_id
+    ENV                     = var.env
+    DYNAMODB_REGION         = var.aws_region
+    MEMBERS_TABLE_NAME      = module.members_table.table_name
+    SEED_MEMBERS_TABLE_NAME = module.seed_members_table.table_name
+    COGNITO_USER_POOL_ID    = module.cognito.user_pool_id
+    COGNITO_CLIENT_ID       = module.cognito.app_client_id
   }
 
   dynamodb_table_arns = [
@@ -238,15 +238,15 @@ module "members_lambda" {
 module "api_gateway" {
   source = "../../modules/api-gateway"
 
-  api_name  = "${var.project}-api-${var.env}"
-  env       = var.env
+  api_name = "${var.project}-api-${var.env}"
+  env      = var.env
 
   cognito_issuer_url = module.cognito.issuer_url
   cognito_audience   = [module.cognito.app_client_id]
 
   cors_origins = [
-    "http://localhost:5173",   # Vite dev server
-    "http://localhost:3000",   # Alternative local port
+    "http://localhost:5173", # Vite dev server
+    "http://localhost:3000", # Alternative local port
   ]
 
   routes = [
