@@ -1,9 +1,7 @@
 import { RegisterMemberHandler } from '../../application/commands/register-member/register-member.handler';
 import { RegisterMemberCommand } from '../../application/commands/register-member/register-member.command';
 import { RegisterMemberResult } from '../../application/commands/register-member/register-member.result';
-import {
-  MemberRepositoryInterface,
-} from '../../domain/repositories/member.repository.interface';
+import { MemberRepositoryInterface } from '../../domain/repositories/member.repository.interface';
 import {
   SeedMemberRepositoryInterface,
   SeedMemberRecord,
@@ -49,8 +47,6 @@ const VALID_COMMAND = new RegisterMemberCommand(
   '20345678',
   'martin.garcia@email.com',
   'SecurePass1!',
-  'Martin Garcia',
-  '+5491112345678',
 );
 
 const ACTIVE_SEED_RECORD: SeedMemberRecord = {
@@ -88,11 +84,7 @@ describe('RegisterMemberHandler (AC-001 Rev2 — SignUp flow)', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    handler = new RegisterMemberHandler(
-      mockSeedMemberRepo,
-      mockMemberRepo,
-      mockCognitoService,
-    );
+    handler = new RegisterMemberHandler(mockSeedMemberRepo, mockMemberRepo, mockCognitoService);
   });
 
   // ── Happy path ──────────────────────────────────────────────────────────────
@@ -191,11 +183,7 @@ describe('RegisterMemberHandler (AC-001 Rev2 — SignUp flow)', () => {
       mockMemberRepo.findByEmail.mockResolvedValue(null);
       mockCognitoService.signUp.mockResolvedValue(COGNITO_USER_SUB);
 
-      const strongCommand = new RegisterMemberCommand(
-        '20345678',
-        'test@email.com',
-        'StrongPass1!',
-      );
+      const strongCommand = new RegisterMemberCommand('20345678', 'test@email.com', 'StrongPass1!');
 
       await expect(handler.execute(strongCommand)).resolves.toBeInstanceOf(RegisterMemberResult);
     });
