@@ -1,24 +1,24 @@
 # ============================================================
-# .github/workflows/deploy-members-dev.yml
+# .github/workflows/deploy-members-prd.yml
 #
 # Builds the NestJS members service, packages it as a Lambda
 # artifact, uploads to S3, and updates the Lambda function.
 #
 # Triggers:
-#   push -> main  (backend/** or this workflow file changed)
+#   push tags prd-v*  (backend/** or this workflow file changed)
 #
-# IAM Role : arn:aws:iam::463310123916:role/activa-club-terraform-dev-role
-#            (AdministratorAccess — same role used by Terraform DEV)
+# IAM Role : arn:aws:iam::583075178346:role/activa-club-terraform-prd-role
+#            (same role used by Terraform PRD)
 # ============================================================
 
-name: Deploy Members Lambda (DEV)
+name: Deploy Members Lambda (PRD)
 
 on:
   push:
-    branches: [main]
+    tags: ["prd-v*"]
     paths:
       - "backend/**"
-      - ".github/workflows/deploy-members-dev.yml"
+      - ".github/workflows/deploy-members-prd.yml"
 
 permissions:
   id-token: write
@@ -26,16 +26,16 @@ permissions:
 
 env:
   NODE_VERSION: "20"
-  ARTIFACTS_BUCKET: activa-club-lambda-artifacts-dev
+  ARTIFACTS_BUCKET: activa-club-lambda-artifacts-prd
   LAMBDA_S3_KEY: members/members.zip
-  LAMBDA_FUNCTION_NAME: activa-club-members-dev
+  LAMBDA_FUNCTION_NAME: activa-club-members-prd
   AWS_REGION: us-east-1
 
 jobs:
   build-and-deploy:
-    name: Build & Deploy Members Lambda (DEV)
+    name: Build & Deploy Members Lambda (PRD)
     runs-on: ubuntu-latest
-    environment: dev
+    environment: prd
 
     steps:
       - name: Checkout repository
@@ -51,9 +51,9 @@ jobs:
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::463310123916:role/activa-club-terraform-dev-role
+          role-to-assume: arn:aws:iam::583075178346:role/activa-club-terraform-prd-role
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: GitHubActions-DeployMembers-DEV
+          role-session-name: GitHubActions-DeployMembers-PRD
 
       # ── Build ──────────────────────────────────────────────────────────────
       - name: Install all dependencies
