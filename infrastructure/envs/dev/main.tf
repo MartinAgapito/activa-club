@@ -255,21 +255,21 @@ module "api_gateway" {
       method               = "POST"
       path                 = "/v1/auth/register"
       lambda_invoke_arn    = module.members_lambda.invoke_arn
-      lambda_function_name = module.members_lambda.function_name
+      lambda_function_name = "${var.project}-members-${var.env}"
       auth_required        = false
     },
     {
       method               = "POST"
       path                 = "/v1/auth/verify-email"
       lambda_invoke_arn    = module.members_lambda.invoke_arn
-      lambda_function_name = module.members_lambda.function_name
+      lambda_function_name = "${var.project}-members-${var.env}"
       auth_required        = false
     },
     {
       method               = "POST"
       path                 = "/v1/auth/resend-code"
       lambda_invoke_arn    = module.members_lambda.invoke_arn
-      lambda_function_name = module.members_lambda.function_name
+      lambda_function_name = "${var.project}-members-${var.env}"
       auth_required        = false
     },
     # ── AC-002: Login ─────────────────────────────────────────────
@@ -277,14 +277,14 @@ module "api_gateway" {
       method               = "POST"
       path                 = "/v1/auth/login"
       lambda_invoke_arn    = module.members_lambda.invoke_arn
-      lambda_function_name = module.members_lambda.function_name
+      lambda_function_name = "${var.project}-members-${var.env}"
       auth_required        = false
     },
     {
       method               = "POST"
       path                 = "/v1/auth/verify-otp"
       lambda_invoke_arn    = module.members_lambda.invoke_arn
-      lambda_function_name = module.members_lambda.function_name
+      lambda_function_name = "${var.project}-members-${var.env}"
       auth_required        = false
     },
   ]
