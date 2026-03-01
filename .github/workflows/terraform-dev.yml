@@ -71,21 +71,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         run: terraform validate
 
-      - name: Terraform Plan
-        working-directory: ${{ env.WORKING_DIR }}
-        run: |
-          terraform plan \
-            -out=tfplan \
-            -var-file=dev.tfvars
-
-      - name: Upload Plan
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan-dev
-          path: ${{ env.WORKING_DIR }}/tfplan
-          retention-days: 3
-
-      # ── Bootstrap: ensure Lambda artifact exists before apply ──────────────
+      # ── Bootstrap: runs BEFORE plan so the plan reflects the real state ──────
       # On first deploy the artifacts S3 bucket doesn't exist yet and there
       # is no members.zip. We create the bucket via a targeted apply, then
       # upload a minimal placeholder so Terraform can create the Lambda
@@ -94,7 +80,7 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: ${{ env.WORKING_DIR }}
         run: |
-          # Create just the S3 bucket resources (idempotent)
+          # Create just the S3 bucket resources (idempotent, updates state)
           terraform apply -auto-approve -input=false \
             -target=aws_s3_bucket.lambda_artifacts \
             -target=aws_s3_bucket_versioning.lambda_artifacts \
@@ -111,6 +97,20 @@ jobs:
             zip -j /tmp/members.zip /tmp/index.js
             aws s3 cp /tmp/members.zip "s3://${BUCKET}/${KEY}"
           fi
+
+      - name: Terraform Plan
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          terraform plan \
+            -out=tfplan \
+            -var-file=dev.tfvars
+
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-dev
+          path: ${{ env.WORKING_DIR }}/tfplan
+          retention-days: 3
 
       # Apply only on push to main, not on pull requests
       - name: Terraform Apply
