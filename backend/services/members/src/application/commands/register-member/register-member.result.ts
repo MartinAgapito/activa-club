@@ -1,27 +1,15 @@
-import { MemberEntity } from '../../../domain/entities/member.entity';
-import { MembershipType } from '../../../domain/value-objects/membership-type.vo';
-import { AccountStatus } from '../../../domain/value-objects/account-status.vo';
-
 /**
- * Register member result.
+ * Register member result — AC-001 Rev2.
  *
- * Encapsulates the data returned by the RegisterMemberHandler to the
- * presentation layer. Contains only the fields required by the API contract.
+ * Returned by RegisterMemberHandler after a successful Cognito SignUp.
+ * The response is HTTP 202 (Accepted) — the account is in UNCONFIRMED state
+ * pending email OTP verification via POST /v1/auth/verify-email.
  */
 export class RegisterMemberResult {
-  readonly memberId: string;
-  readonly fullName: string;
+  /** The email address to which the OTP was sent. */
   readonly email: string;
-  readonly membershipType: MembershipType;
-  readonly accountStatus: AccountStatus;
-  readonly createdAt: string;
 
-  constructor(member: MemberEntity) {
-    this.memberId = member.memberId;
-    this.fullName = member.fullName;
-    this.email = member.email;
-    this.membershipType = member.membershipType;
-    this.accountStatus = member.accountStatus;
-    this.createdAt = member.createdAt;
+  constructor(email: string) {
+    this.email = email;
   }
 }
