@@ -2,9 +2,10 @@
 
 **Epic:** EP-01 - Incorporación de Socios
 **Prioridad:** Alta
-**Story Points:** 8
+**Story Points:** 13
 **Estado:** Backlog
 **Fecha de Creación:** 2026-02-20
+**Última Actualización:** 2026-02-27
 **Autor:** Agente Senior Product Owner
 
 ---
@@ -37,9 +38,11 @@ preservando la integridad de la base de datos migrada del sistema legado y elimi
 
 ## Precondiciones
 
-- La base de datos seed (importada del sistema on-premise legado) está pre-cargada en DynamoDB con registros válidos de DNI.
+- El script `seed-legacy-members.ts` ha sido ejecutado y la tabla `SeedMembersTable` en DynamoDB contiene los registros importados del sistema on-premise del club.
 - Un registro en la base seed debe incluir como mínimo: `dni`, `full_name`, `membership_type` y `account_status`.
-- El Amazon Cognito User Pool está aprovisionado y configurado para aceptar nuevos registros solo desde el backend (auto-registro deshabilitado).
+- El script valida el CSV de origen (requeridos: `dni`, `firstName`, `lastName`) y omite duplicados mediante `GSI_DNI`; los registros se insertan con `status = Pending`.
+- El Amazon Cognito User Pool está aprovisionado con verificación de email habilitada y auto-registro deshabilitado (la creación de usuario es exclusiva del backend).
+- Cognito está configurado para enviar el código OTP de verificación al email del socio al momento de `signUp`.
 - El endpoint de registro es públicamente accesible (no requiere token de autenticación).
 - El socio potencial NO tiene aún una cuenta activa en Cognito (primer registro).
 
@@ -47,14 +50,22 @@ preservando la integridad de la base de datos migrada del sistema legado y elimi
 
 ## Criterios de Aceptación
 
-**Flujo Exitoso:**
+**Flujo Exitoso — Paso 1: Envío de solicitud de registro:**
 
-- [ ] El socio ingresa su DNI y el sistema lo busca en la base de datos seed.
-- [ ] Si el DNI existe y no tiene deuda, se crea el usuario en Cognito y el perfil en DynamoDB.
-- [ ] El socio queda asignado al grupo "Member" en Cognito.
-- [ ] El perfil hereda el `membership_type` del registro seed.
-- [ ] El sistema retorna HTTP 201 con mensaje de éxito.
-- [ ] El socio recibe un email de confirmación vía Cognito.
+- [ ] El socio ingresa DNI, email y contraseña en el formulario de registro.
+- [ ] El sistema busca el DNI en `SeedMembersTable` y verifica que exista y tenga `account_status = "active"`.
+- [ ] Si es válido, el backend crea el usuario en Cognito (estado: `UNCONFIRMED`) sin asignarlo aún al grupo "Member".
+- [ ] Cognito envía automáticamente un código OTP de 6 dígitos al email registrado.
+- [ ] El sistema retorna HTTP 202 indicando que se envió el código de verificación y que el registro está pendiente de confirmación.
+
+**Flujo Exitoso — Paso 2: Verificación del código OTP:**
+
+- [ ] El socio ingresa el código OTP de 6 dígitos recibido por email.
+- [ ] El backend llama a `confirmSignUp` de Cognito con el código OTP.
+- [ ] Cognito marca el usuario como `CONFIRMED`.
+- [ ] El backend asigna al usuario al grupo "Member" en Cognito.
+- [ ] El backend crea el perfil en `MembersTable` de DynamoDB heredando `membership_type` del registro seed.
+- [ ] El sistema retorna HTTP 201 con mensaje de éxito y la cuenta queda activa.
 
 **DNI No Encontrado:**
 
@@ -74,6 +85,13 @@ preservando la integridad de la base de datos migrada del sistema legado y elimi
 - [ ] El mensaje indica que la membresía está inactiva por deuda pendiente.
 - [ ] No se crea ningún usuario en Cognito ni perfil en DynamoDB.
 
+**Código OTP Inválido o Expirado:**
+
+- [ ] Si el código OTP ingresado es incorrecto, el sistema retorna HTTP 400 con mensaje claro.
+- [ ] Si el código OTP ha expirado (TTL Cognito: 24 hs), el sistema retorna HTTP 410.
+- [ ] El socio puede solicitar el reenvío del código OTP mediante `POST /v1/auth/resend-code`; el endpoint es público.
+- [ ] Después de 3 intentos fallidos consecutivos, Cognito bloquea al usuario `UNCONFIRMED` y el sistema retorna HTTP 429.
+
 **Validaciones de Formulario:**
 
 - [ ] Si faltan campos obligatorios, el sistema retorna HTTP 400 con la lista de campos inválidos.
@@ -85,10 +103,11 @@ preservando la integridad de la base de datos migrada del sistema legado y elimi
 ## Fuera de Alcance
 
 - Login con redes sociales (Google, Facebook) — no forma parte del MVP.
-- Recuperación de cuenta — cubierto en historia futura.
-- Autenticación de dos factores (2FA) — diferido a historia de seguridad post-MVP.
+- Recuperación de cuenta (contraseña olvidada) — cubierto en historia futura.
+- TOTP con aplicación de autenticación (Google Authenticator, Authy) — diferido a historia de seguridad post-MVP.
 - Subida de foto de perfil — diferido a historia de gestión de perfil.
 - Pago de membresía durante el registro — cubierto en AC-004.
+- OTP en el login (MFA post-autenticación) — cubierto en AC-002.
 
 ---
 
@@ -118,20 +137,38 @@ preservando la integridad de la base de datos migrada del sistema legado y elimi
 
 ## Definition of Done
 
-- [ ] Endpoint backend `POST /v1/auth/register` implementado y desplegado en dev.
-- [ ] Búsqueda de DNI contra la tabla seed de DynamoDB implementada correctamente.
+**Script de Seed:**
+- [ ] Script `seed-legacy-members.ts` ejecutado exitosamente en el ambiente dev.
+- [ ] Tabla `SeedMembersTable` poblada con al menos un dataset de prueba; resumen de ejecución (insertados / omitidos / errores) documentado.
+
+**Endpoints:**
+- [ ] `POST /v1/auth/register` implementado y desplegado en dev (retorna HTTP 202 con mensaje de código enviado).
+- [ ] `POST /v1/auth/verify-email` implementado y desplegado en dev (llama a `confirmSignUp` de Cognito; retorna HTTP 201 al confirmar).
+- [ ] `POST /v1/auth/resend-code` implementado y desplegado en dev (retorna HTTP 200).
+- [ ] Los tres endpoints son públicos (sin token) y excluidos del autorizador de API Gateway.
+
+**Lógica de Negocio:**
+- [ ] Búsqueda de DNI contra `SeedMembersTable` implementada correctamente.
 - [ ] Validación de `account_status = "inactive"` aplicada antes de cualquier escritura (HTTP 403).
 - [ ] Validación de DNI duplicado en Cognito implementada (HTTP 409).
 - [ ] Validación de email duplicado implementada (HTTP 409).
-- [ ] Creación de usuario Cognito disparada solo desde el backend (auto-registro deshabilitado).
-- [ ] Usuario Cognito asignado al grupo "Member" inmediatamente tras su creación.
-- [ ] Perfil DynamoDB creado con todos los campos requeridos: `dni`, `full_name`, `membership_type`, `account_status`, `cognito_user_id`, `email`, `created_at`.
+- [ ] Creación de usuario Cognito disparada solo desde el backend (auto-registro deshabilitado); estado inicial `UNCONFIRMED`.
+- [ ] Tras `confirmSignUp` exitoso: usuario asignado al grupo "Member" y perfil DynamoDB creado.
+- [ ] Perfil DynamoDB incluye todos los campos requeridos: `dni`, `full_name`, `membership_type`, `account_status = "active"`, `cognito_user_id`, `email`, `created_at`.
+- [ ] Manejo de OTP inválido (HTTP 400), expirado (HTTP 410) y exceso de intentos (HTTP 429).
 - [ ] Todos los errores siguen el esquema estándar de respuesta de error del API.
 - [ ] Validación de campos (requeridos, política de contraseña) retorna HTTP 400 o HTTP 422.
-- [ ] Tests unitarios cubren: flujo exitoso, DNI no encontrado, ya registrado, registro inactivo y email duplicado.
-- [ ] Endpoint es público (sin token) y excluido del autorizador de API Gateway.
-- [ ] Pantalla de registro en frontend implementada y conectada a `POST /v1/auth/register`.
+
+**Tests:**
+- [ ] Tests unitarios cubren: flujo exitoso paso 1, flujo exitoso paso 2, DNI no encontrado, ya registrado, registro inactivo, email duplicado, OTP inválido, OTP expirado y reenvío de código.
+
+**Frontend:**
+- [ ] Pantalla de registro conectada a `POST /v1/auth/register`.
+- [ ] Pantalla de verificación de código OTP conectada a `POST /v1/auth/verify-email`.
+- [ ] Opción "Reenviar código" conectada a `POST /v1/auth/resend-code`.
 - [ ] Frontend muestra errores de validación por campo y mapea códigos de error a mensajes amigables.
+
+**General:**
 - [ ] Probado manualmente en ambiente dev usando el dataset seed.
 - [ ] Código revisado y aprobado.
 - [ ] Listo para despliegue.

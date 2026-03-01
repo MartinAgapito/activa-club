@@ -1,11 +1,13 @@
 # AC-001 Technical Design: Member Registration via DNI Matching
 
 **Epic:** EP-01 - Member Onboarding
-**Story Points:** 8
+**Story Points:** 13
 **Priority:** High
-**Status:** Design Complete
+**Status:** Design Updated (Rev 2 — Email OTP Verification + Seed Script)
 **Author:** Senior Software & Cloud Architect
 **Date:** 2026-02-20
+**Last Updated:** 2026-02-27
+**Changelog:** Rev 2 — Changed from `AdminCreateUser` to native `SignUp` + `ConfirmSignUp` flow to support Cognito email OTP verification. Added `/v1/auth/verify-email` and `/v1/auth/resend-code` endpoints. Seed script requirements formalized.
 
 ---
 
@@ -29,14 +31,27 @@
 
 This document describes the technical design for **AC-001: Member Registration via DNI Matching**, the entry point for all member lifecycle flows in ActivaClub.
 
-When a prospective member registers, the system must:
+When a prospective member registers, the system must execute a **two-step flow**:
 
-1. Validate that their DNI exists in the pre-seeded legacy data table (`SeedMembersTable`).
+**Step 1 — Registration (`POST /v1/auth/register`):**
+1. Validate that the DNI exists in the pre-seeded legacy data table (`SeedMembersTable`).
 2. Enforce business rules: block inactive records (`account_status = "inactive"`), reject duplicate DNI or email registrations.
-3. Create the authenticated identity in Amazon Cognito (backend-only, self-signup disabled).
-4. Persist the member profile in DynamoDB `MembersTable`, inheriting `membership_type` from the seed record.
-5. Add the Cognito user to the `Member` group immediately upon creation.
-6. Return HTTP 201 with a success body on the happy path.
+3. Call Cognito's `SignUp` API (backend-orchestrated) — creates the user in `UNCONFIRMED` state and triggers Cognito to send a 6-digit OTP to the member's email automatically.
+4. Return HTTP 202 — "Code sent. Please verify your email."
+
+**Step 2 — Email Verification (`POST /v1/auth/verify-email`):**
+5. Call Cognito's `ConfirmSignUp` with the OTP entered by the member — Cognito marks the account as `CONFIRMED`.
+6. Assign the Cognito user to the `Member` group (`AdminAddUserToGroup`).
+7. Persist the member profile in DynamoDB `MembersTable`, inheriting `membership_type` from the seed record.
+8. Return HTTP 201 — "Account activated."
+
+**Supporting endpoint — Resend Code (`POST /v1/auth/resend-code`):**
+9. Call Cognito's `ResendConfirmationCode` if the OTP expired or was not received.
+
+> **Rev 2 Design Decision — `SignUp` vs `AdminCreateUser`:**
+> The original AC-001 design used `AdminCreateUser` + `AdminSetUserPassword` with `AllowAdminCreateUserOnly = true`. This approach does **not** natively support email OTP verification (it sends a temporary password instead). To fulfill AC-002's requirement of Cognito Email MFA (which requires a confirmed email), the registration flow has been updated to use `SignUp` + `ConfirmSignUp`. `AllowAdminCreateUserOnly` is set to `false`, but the backend Lambda acts as the sole gatekeeper — the frontend never calls Cognito APIs directly for registration.
+
+**Prerequisite:** The `seed-legacy-members.ts` script must have been executed to populate `SeedMembersTable` from the club's on-premise CSV export before any registration attempt.
 
 This story is a prerequisite for AC-002 (Login), AC-003 (Profile), and AC-004 (Membership Payment).
 
@@ -193,77 +208,16 @@ This is the primary operational table for member data, written by the `activa-cl
 
 ## 4. API Contract
 
-### Endpoint
+All three endpoints are **public** (no JWT authorizer) and served by `activa-club-members-dev`.
 
-| Property       | Value                        |
-|----------------|------------------------------|
-| Method         | `POST`                       |
-| Path           | `/v1/auth/register`          |
-| Authorization  | None (public route)          |
-| Lambda         | `activa-club-members-dev`    |
-| Content-Type   | `application/json`           |
+### Common Request Headers
 
-### 4.1 Request Headers
+| Header         | Required | Value                               |
+|----------------|----------|-------------------------------------|
+| `Content-Type` | Yes      | `application/json`                  |
+| `X-Request-ID` | No       | Client-generated UUID for tracing   |
 
-| Header           | Required | Value                      |
-|------------------|----------|----------------------------|
-| `Content-Type`   | Yes      | `application/json`         |
-| `X-Request-ID`   | No       | Client-generated UUID for tracing |
-
-### 4.2 Request Body
-
-```json
-{
-  "dni": "string",
-  "email": "string",
-  "password": "string",
-  "full_name": "string",
-  "phone": "string"
-}
-```
-
-**Field Validation Rules:**
-
-| Field       | Type   | Required | Constraints                                                                 |
-|-------------|--------|----------|-----------------------------------------------------------------------------|
-| `dni`       | string | Yes      | 7–8 alphanumeric characters (Argentine DNI format). Trim whitespace.        |
-| `email`     | string | Yes      | Valid RFC 5322 email address. Max 254 chars. Lowercased before storage.     |
-| `password`  | string | Yes      | Min 8 chars. At least 1 uppercase letter, 1 digit, 1 special character.     |
-| `full_name` | string | Yes      | 2–100 characters. Overrides seed value if provided; seed value used if omitted. |
-| `phone`     | string | No       | E.164 format recommended. Max 20 chars.                                     |
-
-**Example Request:**
-
-```json
-{
-  "dni": "20345678",
-  "email": "martin.garcia@email.com",
-  "password": "SecurePass1!",
-  "full_name": "Martin Garcia",
-  "phone": "+5491112345678"
-}
-```
-
-### 4.3 Success Response — HTTP 201
-
-```json
-{
-  "status": "success",
-  "data": {
-    "member_id": "01JKZP7QR8S9T0UVWX1YZ2AB3C",
-    "full_name": "Martin Garcia",
-    "email": "martin.garcia@email.com",
-    "membership_type": "Gold",
-    "account_status": "active",
-    "created_at": "2026-02-20T15:30:00.000Z"
-  },
-  "message": "Registration successful. Please check your email to confirm your account."
-}
-```
-
-### 4.4 Error Responses
-
-All error responses follow this envelope:
+### Common Error Envelope
 
 ```json
 {
@@ -276,112 +230,180 @@ All error responses follow this envelope:
 }
 ```
 
-#### HTTP 400 — Validation Error (missing/malformed fields)
+---
+
+### 4.1 Endpoint: POST /v1/auth/register (Step 1 — DNI Validation + SignUp)
+
+| Property      | Value                       |
+|---------------|-----------------------------|
+| Method        | `POST`                      |
+| Path          | `/v1/auth/register`         |
+| Authorization | None (public route)         |
+| Lambda        | `activa-club-members-dev`   |
+
+#### Request Body
 
 ```json
 {
-  "status": "error",
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "One or more fields failed validation.",
-    "details": [
-      { "field": "dni", "issue": "dni is required" },
-      { "field": "password", "issue": "password must be at least 8 characters" }
-    ]
+  "dni": "string",
+  "email": "string",
+  "password": "string",
+  "full_name": "string",
+  "phone": "string"
+}
+```
+
+| Field       | Type   | Required | Constraints                                                                     |
+|-------------|--------|----------|---------------------------------------------------------------------------------|
+| `dni`       | string | Yes      | 7–8 alphanumeric characters (Argentine DNI format). Trim whitespace.            |
+| `email`     | string | Yes      | Valid RFC 5322 email. Max 254 chars. Lowercased before use.                     |
+| `password`  | string | Yes      | Min 8 chars. At least 1 uppercase, 1 digit, 1 special character.                |
+| `full_name` | string | No       | 2–100 chars. Overrides seed value if provided; seed value used if omitted.      |
+| `phone`     | string | No       | E.164 format recommended. Max 20 chars.                                         |
+
+#### Example Request
+
+```json
+{
+  "dni": "20345678",
+  "email": "martin.garcia@email.com",
+  "password": "SecurePass1!",
+  "full_name": "Martin Garcia",
+  "phone": "+5491112345678"
+}
+```
+
+#### Success Response — HTTP 202 (Accepted — OTP sent)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "email": "martin.garcia@email.com",
+    "message": "A verification code has been sent to your email. Please enter it to activate your account."
   }
 }
 ```
 
-#### HTTP 403 — Inactive Account
+> **HTTP 202** (not 201) signals that the registration is pending email verification. The account does not exist yet from the application's perspective — only an `UNCONFIRMED` Cognito user exists.
+
+#### Error Responses
+
+| HTTP | Code                     | Trigger                                           |
+|------|--------------------------|---------------------------------------------------|
+| 400  | `VALIDATION_ERROR`       | Missing/malformed fields. `details[]` per-field.  |
+| 403  | `ACCOUNT_INACTIVE`       | `account_status = "inactive"` in SeedMembersTable |
+| 404  | `DNI_NOT_FOUND`          | DNI absent from SeedMembersTable                  |
+| 409  | `DNI_ALREADY_REGISTERED` | DNI already confirmed in MembersTable             |
+| 409  | `EMAIL_ALREADY_IN_USE`   | Email already in MembersTable or Cognito          |
+| 422  | `PASSWORD_POLICY_VIOLATION` | Password doesn't meet Cognito policy           |
+| 500  | `INTERNAL_ERROR`         | Unexpected Cognito/DynamoDB error                 |
+
+---
+
+### 4.2 Endpoint: POST /v1/auth/verify-email (Step 2 — OTP Confirmation)
+
+| Property      | Value                       |
+|---------------|-----------------------------|
+| Method        | `POST`                      |
+| Path          | `/v1/auth/verify-email`     |
+| Authorization | None (public route)         |
+| Lambda        | `activa-club-members-dev`   |
+
+#### Request Body
 
 ```json
 {
-  "status": "error",
-  "error": {
-    "code": "ACCOUNT_INACTIVE",
-    "message": "Your membership is currently inactive. Please contact club administration to resolve any outstanding balance.",
-    "details": []
+  "email": "string",
+  "code": "string"
+}
+```
+
+| Field   | Type   | Required | Constraints                                           |
+|---------|--------|----------|-------------------------------------------------------|
+| `email` | string | Yes      | Must match the email used in Step 1. Lowercased.      |
+| `code`  | string | Yes      | Exactly 6 numeric digits. Example: `"482917"`.        |
+
+#### Example Request
+
+```json
+{
+  "email": "martin.garcia@email.com",
+  "code": "482917"
+}
+```
+
+#### Success Response — HTTP 201 (Account activated)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "member_id": "01JKZP7QR8S9T0UVWX1YZ2AB3C",
+    "full_name": "Martin Garcia",
+    "email": "martin.garcia@email.com",
+    "membership_type": "Gold",
+    "account_status": "active",
+    "created_at": "2026-02-27T15:30:00.000Z"
+  },
+  "message": "Account successfully activated. You can now sign in."
+}
+```
+
+#### Error Responses
+
+| HTTP | Code                  | Trigger                                                    |
+|------|-----------------------|------------------------------------------------------------|
+| 400  | `VALIDATION_ERROR`    | Missing/malformed fields                                   |
+| 400  | `INVALID_CODE`        | OTP code is incorrect (`CodeMismatchException` in Cognito) |
+| 404  | `USER_NOT_FOUND`      | No UNCONFIRMED user for this email in Cognito              |
+| 410  | `CODE_EXPIRED`        | OTP TTL exceeded (24h Cognito default)                     |
+| 429  | `TOO_MANY_ATTEMPTS`   | Exceeded Cognito's max confirmation attempts               |
+| 500  | `INTERNAL_ERROR`      | Unexpected error during group assignment or DynamoDB write |
+
+---
+
+### 4.3 Endpoint: POST /v1/auth/resend-code (Resend OTP)
+
+| Property      | Value                       |
+|---------------|-----------------------------|
+| Method        | `POST`                      |
+| Path          | `/v1/auth/resend-code`      |
+| Authorization | None (public route)         |
+| Lambda        | `activa-club-members-dev`   |
+
+#### Request Body
+
+```json
+{
+  "email": "string"
+}
+```
+
+#### Success Response — HTTP 200
+
+```json
+{
+  "status": "success",
+  "data": {
+    "message": "A new verification code has been sent to your email."
   }
 }
 ```
 
-#### HTTP 404 — DNI Not Found in Seed
+#### Error Responses
 
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "DNI_NOT_FOUND",
-    "message": "The provided DNI is not registered in our system. Please contact club administration.",
-    "details": []
-  }
-}
-```
-
-#### HTTP 409 — Conflict (DNI or Email Already Registered)
-
-**DNI conflict:**
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "DNI_ALREADY_REGISTERED",
-    "message": "An account with this DNI already exists. Please sign in instead.",
-    "details": []
-  }
-}
-```
-
-**Email conflict:**
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "EMAIL_ALREADY_IN_USE",
-    "message": "This email address is already associated with an account. Please sign in or use a different email.",
-    "details": []
-  }
-}
-```
-
-#### HTTP 422 — Password Policy Violation
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "PASSWORD_POLICY_VIOLATION",
-    "message": "Password does not meet security requirements.",
-    "details": [
-      { "field": "password", "issue": "Must contain at least 1 uppercase letter" },
-      { "field": "password", "issue": "Must contain at least 1 special character" }
-    ]
-  }
-}
-```
-
-#### HTTP 500 — Internal Server Error
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "INTERNAL_ERROR",
-    "message": "An unexpected error occurred. Please try again later.",
-    "details": []
-  }
-}
-```
-
-**Note:** The 500 response intentionally omits internal stack traces or Cognito/DynamoDB error details to prevent information leakage.
+| HTTP | Code                  | Trigger                                              |
+|------|-----------------------|------------------------------------------------------|
+| 404  | `USER_NOT_FOUND`      | No UNCONFIRMED user for this email                   |
+| 429  | `TOO_MANY_ATTEMPTS`   | Cognito rate limit on resend (`LimitExceededException`) |
+| 500  | `INTERNAL_ERROR`      | Unexpected Cognito error                             |
 
 ---
 
 ## 5. Architecture Flow
 
-The following sequence diagram describes the complete server-side execution path inside the `activa-club-members` Lambda when `POST /v1/auth/register` is invoked.
+### 5.1 Step 1 — Registration (POST /v1/auth/register)
 
 ```mermaid
 sequenceDiagram
@@ -394,15 +416,15 @@ sequenceDiagram
     participant Cognito as Amazon Cognito User Pool
 
     Client->>APIGW: POST /v1/auth/register { dni, email, password, full_name }
-    Note over APIGW: No JWT authorizer on this route
+    Note over APIGW: No JWT authorizer — public route
     APIGW->>Lambda: Invoke with HTTP event payload
 
-    Lambda->>Lambda: 1. Parse & validate request body (DTO class-validator)
+    Lambda->>Lambda: 1. Parse & validate request body (DTO — class-validator)
     alt Validation fails
         Lambda-->>Client: HTTP 400 VALIDATION_ERROR
     end
 
-    Lambda->>Lambda: 2. Validate password policy (strength rules)
+    Lambda->>Lambda: 2. Validate password policy (strength rules pre-check)
     alt Password too weak
         Lambda-->>Client: HTTP 422 PASSWORD_POLICY_VIOLATION
     end
@@ -418,7 +440,7 @@ sequenceDiagram
     end
 
     Lambda->>MembersDB: 5. Query GSI_DNI { dni: <dni> }
-    alt DNI already in MembersTable
+    alt DNI already confirmed in MembersTable
         Lambda-->>Client: HTTP 409 DNI_ALREADY_REGISTERED
     end
 
@@ -427,29 +449,107 @@ sequenceDiagram
         Lambda-->>Client: HTTP 409 EMAIL_ALREADY_IN_USE
     end
 
-    Lambda->>Cognito: 7. AdminCreateUser { Username: email, TemporaryPassword: password, UserAttributes: [{Name: email, Value: email}] }
-    Note over Cognito: Self-signup is DISABLED — only backend can create users
-    Cognito-->>Lambda: { User: { sub: "cognito-uuid-xxx" } }
+    Lambda->>Cognito: 7. SignUp { ClientId, Username: email, Password: password, UserAttributes: [{ Name: "email", Value: email }, { Name: "custom:dni", Value: dni }] }
+    Note over Cognito: AllowAdminCreateUserOnly = false<br/>Cognito creates UNCONFIRMED user<br/>Sends 6-digit OTP to email automatically
+    Cognito->>Client: Email with 6-digit OTP code (TTL: 24h)
+    Cognito-->>Lambda: { UserSub: "cognito-uuid-xxx", UserConfirmed: false }
 
-    Lambda->>Cognito: 8. AdminSetUserPassword { Username: email, Password: password, Permanent: true }
-    Note over Cognito: Set permanent password so user does not need to change on first login
-
-    Lambda->>Cognito: 9. AdminAddUserToGroup { UserPoolId, Username: email, GroupName: "Member" }
-
-    Lambda->>Lambda: 10. Generate ULID for member_id
-
-    Lambda->>MembersDB: 11. PutItem { pk: "MEMBER#<ulid>", sk: "PROFILE", member_id, dni, full_name, email, membership_type, account_status: "active", cognito_user_id: <sub>, created_at, updated_at }
-
-    Lambda-->>APIGW: HTTP 201 { status: "success", data: { member_id, full_name, email, membership_type, account_status, created_at } }
-    APIGW-->>Client: HTTP 201 Registration successful
+    Lambda-->>APIGW: HTTP 202 { status: "success", data: { email, message: "Code sent..." } }
+    APIGW-->>Client: HTTP 202 — Awaiting email verification
 ```
 
-### Rollback Strategy
+### 5.2 Step 2 — Email Verification (POST /v1/auth/verify-email)
 
-Steps 7–11 must be treated as a logical transaction. DynamoDB does not provide cross-service transactions with Cognito. In case of partial failure:
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Browser / React SPA
+    participant APIGW as API Gateway HTTP API
+    participant Lambda as activa-club-members Lambda
+    participant SeedDB as DynamoDB SeedMembersTable
+    participant MembersDB as DynamoDB MembersTable
+    participant Cognito as Amazon Cognito User Pool
 
-- If `AdminCreateUser` succeeds but `PutItem` to DynamoDB fails: the Lambda must call `AdminDeleteUser` to remove the orphaned Cognito user before returning HTTP 500.
-- If `AdminAddUserToGroup` fails: delete the Cognito user and return HTTP 500. The member can retry registration.
+    Client->>APIGW: POST /v1/auth/verify-email { email, code }
+    Note over APIGW: No JWT authorizer — public route
+    APIGW->>Lambda: Invoke
+
+    Lambda->>Lambda: 1. Parse & validate request body (email, 6-digit code)
+    alt Validation fails
+        Lambda-->>Client: HTTP 400 VALIDATION_ERROR
+    end
+
+    Lambda->>Cognito: 2. ConfirmSignUp { ClientId, Username: email, ConfirmationCode: code }
+    alt CodeMismatchException
+        Cognito-->>Lambda: CodeMismatchException
+        Lambda-->>Client: HTTP 400 INVALID_CODE
+    end
+    alt ExpiredCodeException
+        Cognito-->>Lambda: ExpiredCodeException
+        Lambda-->>Client: HTTP 410 CODE_EXPIRED
+    end
+    alt TooManyFailedAttemptsException
+        Cognito-->>Lambda: TooManyFailedAttemptsException
+        Lambda-->>Client: HTTP 429 TOO_MANY_ATTEMPTS
+    end
+    Cognito-->>Lambda: Success — user status: CONFIRMED
+
+    Lambda->>Cognito: 3. AdminGetUser { UserPoolId, Username: email }
+    Note over Lambda: Read custom:dni and sub from confirmed user attributes
+    Cognito-->>Lambda: { Username, UserAttributes: [sub, email, custom:dni, ...] }
+
+    Lambda->>SeedDB: 4. GetItem { pk: "DNI#<dni>" } — retrieve membership_type
+    SeedDB-->>Lambda: { membership_type, full_name, ... }
+
+    Lambda->>Cognito: 5. AdminAddUserToGroup { UserPoolId, Username: email, GroupName: "Member" }
+    Cognito-->>Lambda: Success
+
+    Lambda->>Lambda: 6. Generate ULID for member_id
+
+    Lambda->>MembersDB: 7. PutItem { pk: "MEMBER#<ulid>", sk: "PROFILE", member_id, dni, full_name, email, membership_type, account_status: "active", cognito_user_id: sub, created_at, updated_at }
+    alt DynamoDB write fails
+        Lambda->>Cognito: AdminDeleteUser (rollback — remove orphaned confirmed user)
+        Lambda-->>Client: HTTP 500 INTERNAL_ERROR
+    end
+    MembersDB-->>Lambda: Success
+
+    Lambda-->>APIGW: HTTP 201 { status: "success", data: { member_id, full_name, email, membership_type, account_status, created_at } }
+    APIGW-->>Client: HTTP 201 — Account activated
+```
+
+### 5.3 Resend Code (POST /v1/auth/resend-code)
+
+```mermaid
+sequenceDiagram
+    participant Client as Browser / React SPA
+    participant APIGW as API Gateway HTTP API
+    participant Lambda as activa-club-members Lambda
+    participant Cognito as Amazon Cognito User Pool
+
+    Client->>APIGW: POST /v1/auth/resend-code { email }
+    APIGW->>Lambda: Invoke
+
+    Lambda->>Cognito: ResendConfirmationCode { ClientId, Username: email }
+    alt LimitExceededException
+        Cognito-->>Lambda: LimitExceededException
+        Lambda-->>Client: HTTP 429 TOO_MANY_ATTEMPTS
+    end
+    Cognito->>Client: New 6-digit OTP sent to email
+    Cognito-->>Lambda: Success
+
+    Lambda-->>Client: HTTP 200 { message: "New code sent." }
+```
+
+### 5.4 Rollback Strategy
+
+The critical window is between `ConfirmSignUp` (Step 2.2) and `PutItem` to MembersTable (Step 2.7). If `PutItem` fails after a successful confirm:
+
+- The Lambda calls `AdminDeleteUser` to remove the now-confirmed Cognito user.
+- Returns HTTP 500. The member can retry registration from Step 1 (new `SignUp` → new OTP).
+- The SeedMembersTable record is not modified at any point — it remains available for retry.
+
+If `AdminAddUserToGroup` (Step 2.5) fails after a successful `ConfirmSignUp`:
+- Similarly, call `AdminDeleteUser` and return HTTP 500. The member retries registration.
 
 ---
 
@@ -634,15 +734,23 @@ These exceptions are defined in `backend/libs/errors/` and caught by a NestJS gl
 
 ## 7. Cognito Configuration
 
-### 7.1 User Pool Settings Relevant to AC-001
+### 7.1 User Pool Settings Relevant to AC-001 (Rev 2)
 
-| Setting                          | Value                                     | Rationale                                               |
-|----------------------------------|-------------------------------------------|---------------------------------------------------------|
-| `allow_self_registration`        | `false`                                   | Only the backend Lambda may create users via AdminAPI   |
-| `username_attributes`            | `["email"]`                               | Email is the login identifier                           |
-| `auto_verified_attributes`       | `["email"]`                               | Cognito sends verification email automatically          |
-| `mfa_configuration`              | `OFF`                                     | MFA deferred to post-MVP security story                 |
-| `account_recovery_setting`       | Email only                                | Password reset via email link                           |
+| Setting                                     | Rev 1 Value | Rev 2 Value (current)  | Rationale for Change                                          |
+|---------------------------------------------|-------------|------------------------|---------------------------------------------------------------|
+| `allow_self_registration`                   | `false`     | `true`                 | Required for `SignUp` API; Lambda is the sole gatekeeper      |
+| `username_attributes`                       | `["email"]` | `["email"]`            | No change                                                     |
+| `auto_verified_attributes`                  | `["email"]` | `["email"]`            | Cognito sends OTP automatically on `SignUp`                   |
+| `mfa_configuration`                         | `OFF`       | `ON`                   | Email MFA required for all users (AC-002)                     |
+| `email_mfa_configuration`                   | Not set     | Enabled (custom msg)   | OTP delivery for registration verification and login          |
+| `software_token_mfa_configuration.enabled`  | Not set     | `false`                | Disable TOTP; use email OTP exclusively for MVP               |
+| `account_recovery_setting`                  | Email only  | Email only             | No change                                                     |
+
+**Custom User Pool Attributes (new in Rev 2):**
+
+| Attribute    | Type   | Mutable | Purpose                                                                    |
+|--------------|--------|---------|----------------------------------------------------------------------------|
+| `custom:dni` | String | No      | Passed at `SignUp`; read via `AdminGetUser` in `verify-email` to look up seed |
 
 ### 7.2 Password Policy
 
@@ -653,38 +761,45 @@ These exceptions are defined in `backend/libs/errors/` and caught by a NestJS gl
 | Require lowercase       | Yes   |
 | Require numbers         | Yes   |
 | Require symbols         | Yes   |
-| Temporary password validity | 7 days (not used — permanent password set immediately) |
 
 ### 7.3 Cognito Groups
 
 | Group Name | Description                                      | Precedence |
 |------------|--------------------------------------------------|------------|
 | `Admin`    | Full platform access                             | 1          |
-| `Manager`  | Promotions + analytics access                   | 2          |
+| `Manager`  | Promotions + analytics access                    | 2          |
 | `Member`   | Standard member access (reservations, guests...) | 3          |
 
-AC-001 adds every successfully registered user to the `Member` group via `AdminAddUserToGroup`.
+AC-001 assigns every confirmed member to the `Member` group via `AdminAddUserToGroup` during `verify-email` (Step 2), not during `SignUp` (Step 1).
 
-### 7.4 API Calls Made by Lambda
+### 7.4 Cognito API Calls Made by Lambda (Rev 2)
 
-| Cognito API Call          | When Called                              | Parameters                                                  |
-|---------------------------|------------------------------------------|-------------------------------------------------------------|
-| `AdminCreateUser`         | After all validations pass               | `Username: email`, `TemporaryPassword: password`, `UserAttributes: [{Name: "email", Value: email}]`, `MessageAction: "SUPPRESS"` (optional: suppress welcome email for custom flow) |
-| `AdminSetUserPassword`    | Immediately after `AdminCreateUser`      | `Username: email`, `Password: password`, `Permanent: true`  |
-| `AdminAddUserToGroup`     | After password set                       | `GroupName: "Member"`, `Username: email`                    |
-| `AdminDeleteUser`         | On rollback (partial failure)            | `Username: email`                                           |
+| Cognito API Call           | Auth Method    | Called In        | Parameters                                                                                |
+|----------------------------|----------------|------------------|-------------------------------------------------------------------------------------------|
+| `SignUp`                   | App Client     | `register`       | `ClientId`, `Username: email`, `Password`, `UserAttributes: [email, custom:dni]`          |
+| `ConfirmSignUp`            | App Client     | `verify-email`   | `ClientId`, `Username: email`, `ConfirmationCode: code`                                   |
+| `AdminGetUser`             | IAM            | `verify-email`   | `UserPoolId`, `Username: email` — reads `custom:dni` and `sub`                            |
+| `AdminAddUserToGroup`      | IAM            | `verify-email`   | `UserPoolId`, `Username: email`, `GroupName: "Member"`                                    |
+| `AdminDeleteUser`          | IAM            | Rollback only    | `UserPoolId`, `Username: email`                                                            |
+| `ResendConfirmationCode`   | App Client     | `resend-code`    | `ClientId`, `Username: email`                                                              |
 
-**Note on `MessageAction: "SUPPRESS"`:** If the club uses a custom welcome email via SNS or SES in a future story, set `MessageAction: "SUPPRESS"` on `AdminCreateUser` to prevent Cognito's default temporary-password email. If Cognito's built-in email is the intended channel, omit this flag. This is captured as an open question in Section 11.
+> `SignUp`, `ConfirmSignUp`, and `ResendConfirmationCode` use the **App Client** (clientId) — no IAM credentials required for these calls.
+> `AdminGetUser`, `AdminAddUserToGroup`, and `AdminDeleteUser` use **IAM credentials** (Lambda execution role).
 
-### 7.5 IAM Permissions Required by Lambda Execution Role
+### 7.5 IAM Permissions Required by Lambda Execution Role (Rev 2)
 
 ```
-cognito-idp:AdminCreateUser
-cognito-idp:AdminSetUserPassword
+# AC-001 (registration)
+cognito-idp:AdminGetUser
 cognito-idp:AdminAddUserToGroup
 cognito-idp:AdminDeleteUser
-cognito-idp:ListUsersInGroup
+
+# AC-002 (login) — also applied to the same Lambda
+cognito-idp:AdminInitiateAuth
+cognito-idp:AdminRespondToAuthChallenge
 ```
+
+**Removed from Rev 1:** `cognito-idp:AdminCreateUser`, `cognito-idp:AdminSetUserPassword`, `cognito-idp:ListUsersInGroup`
 
 Scoped to the specific User Pool ARN only (least privilege).
 
@@ -859,23 +974,36 @@ module "members_lambda" {
 }
 ```
 
-#### API Gateway — Route (public, no authorizer)
+#### API Gateway — Routes (all public, no authorizer)
 
 ```hcl
-# Inside the api-gateway module or env overlay:
+# infrastructure/envs/dev/main.tf (or api-gateway module)
+
 resource "aws_apigatewayv2_route" "register" {
-  api_id             = module.api_gateway.api_id
-  route_key          = "POST /v1/auth/register"
-  target             = "integrations/${module.members_lambda.apigw_integration_id}"
-  # authorization_type intentionally omitted (defaults to NONE — public route)
+  api_id    = module.api_gateway.api_id
+  route_key = "POST /v1/auth/register"
+  target    = "integrations/${module.members_lambda.apigw_integration_id}"
+  # authorization_type omitted → defaults to NONE (public route)
+}
+
+resource "aws_apigatewayv2_route" "verify_email" {
+  api_id    = module.api_gateway.api_id
+  route_key = "POST /v1/auth/verify-email"
+  target    = "integrations/${module.members_lambda.apigw_integration_id}"
+}
+
+resource "aws_apigatewayv2_route" "resend_code" {
+  api_id    = module.api_gateway.api_id
+  route_key = "POST /v1/auth/resend-code"
+  target    = "integrations/${module.members_lambda.apigw_integration_id}"
 }
 ```
 
-#### Cognito — User Pool (relevant settings)
+#### Cognito — User Pool (updated settings Rev 2)
 
 ```hcl
 module "cognito" {
-  source    = "../../modules/cognito"
+  source         = "../../modules/cognito"
   user_pool_name = "activa-club-${var.env}"
 
   password_policy = {
@@ -886,9 +1014,31 @@ module "cognito" {
     require_symbols   = true
   }
 
-  allow_self_registration = false
+  # Rev 2: allow_self_registration = true (SignUp API used from backend Lambda)
+  allow_self_registration  = true
   auto_verified_attributes = ["email"]
   username_attributes      = ["email"]
+
+  # Rev 2: Email MFA required for all users (AC-002)
+  mfa_configuration = "ON"
+
+  software_token_mfa_enabled = false  # Disable TOTP; email MFA only
+
+  email_mfa_message = "Tu código de verificación ActivaClub es: {####}. Válido por 3 minutos."
+
+  # Rev 2: Custom attribute to pass DNI through Cognito lifecycle
+  schema_attributes = [
+    {
+      name                = "dni"
+      attribute_data_type = "String"
+      mutable             = false
+      required            = false
+      string_constraints = {
+        min_length = 7
+        max_length = 8
+      }
+    }
+  ]
 
   groups = [
     { name = "Admin",   precedence = 1 },
@@ -914,76 +1064,128 @@ No paid services are introduced by AC-001.
 
 ## 10. Frontend Changes
 
-### 10.1 New Page
+### 10.1 New Pages (Rev 2 — Two-Step Flow)
 
-**Path:** `frontend/src/pages/auth/RegisterPage.tsx`
+```
+frontend/src/pages/auth/
+├── RegisterPage.tsx        # Step 1: DNI + email + password form
+└── VerifyEmailPage.tsx     # Step 2: OTP input form
+```
 
-**Route:** `/register` (public, no auth required)
+**Routes:**
+- `/register` — public, no auth required
+- `/verify-email` — public, but shows only if email state is present (from Step 1)
 
 ### 10.2 Component Structure
 
 ```
 frontend/src/pages/auth/
-└── RegisterPage.tsx          # Page wrapper, form orchestration
+├── RegisterPage.tsx               # Multi-step form orchestration
+└── VerifyEmailPage.tsx            # OTP verification form
 
 frontend/src/components/auth/
-├── RegisterForm.tsx           # Controlled form component
-└── PasswordStrengthIndicator.tsx  # Visual password strength feedback
+├── RegisterForm.tsx               # Step 1 controlled form
+├── PasswordStrengthIndicator.tsx  # Visual password strength feedback
+└── OtpInput.tsx                   # 6-digit OTP input (split fields)
 
 frontend/src/api/
-└── auth.api.ts               # POST /v1/auth/register API call
+└── auth.api.ts                    # postRegister(), postVerifyEmail(), postResendCode()
 ```
 
 ### 10.3 Form Fields
 
-| Field         | Input Type | Validation (client-side)                                      |
-|---------------|------------|---------------------------------------------------------------|
-| DNI           | text       | Required, 7–8 chars, alphanumeric                             |
-| Full Name     | text       | Optional, 2–100 chars                                         |
-| Email         | email      | Required, valid email format                                  |
-| Password      | password   | Required, min 8 chars, pattern check                          |
-| Phone         | tel        | Optional, E.164 format hint                                   |
+**Step 1 — RegisterPage:**
 
-### 10.4 Error Code to User Message Mapping
+| Field     | Input Type | Validation (client-side)                       |
+|-----------|------------|------------------------------------------------|
+| DNI       | text       | Required, 7–8 chars, alphanumeric              |
+| Full Name | text       | Optional, 2–100 chars                          |
+| Email     | email      | Required, valid email format                   |
+| Password  | password   | Required, min 8 chars, pattern check           |
+| Phone     | tel        | Optional, E.164 format hint                    |
 
-| API Error Code              | User-facing Message (Spanish for UI)                                                    |
+**Step 2 — VerifyEmailPage:**
+
+| Field | Input Type | Validation (client-side)              |
+|-------|------------|---------------------------------------|
+| Code  | text       | Required, exactly 6 numeric digits    |
+
+### 10.4 Registration State Machine
+
+```
+State: IDLE
+  → user submits form (Step 1)
+State: SUBMITTING
+  → POST /v1/auth/register
+  → on HTTP 202: save { email } in state → navigate to VerifyEmailPage
+  → on error: State: IDLE (display error)
+
+State: AWAITING_VERIFICATION (in VerifyEmailPage)
+  → user enters OTP
+  → POST /v1/auth/verify-email { email, code }
+  → on HTTP 201: navigate to /login with success toast
+  → on HTTP 400 INVALID_CODE: show inline error (allow retry)
+  → on HTTP 410 CODE_EXPIRED: show "Código expirado" + Resend button
+  → user clicks Resend
+  → POST /v1/auth/resend-code { email } → show success toast
+```
+
+### 10.5 Error Code to User Message Mapping
+
+**Step 1 errors:**
+
+| API Error Code              | User-facing Message (Spanish)                                                           |
 |-----------------------------|-----------------------------------------------------------------------------------------|
-| `VALIDATION_ERROR`          | Display per-field inline errors from `details[]`                                        |
-| `PASSWORD_POLICY_VIOLATION` | "La contraseña no cumple los requisitos. Debe tener al menos 8 caracteres, 1 mayúscula, 1 número y 1 caracter especial." |
+| `VALIDATION_ERROR`          | Inline per-field errors from `details[]`                                                |
+| `PASSWORD_POLICY_VIOLATION` | "La contraseña no cumple los requisitos. Mínimo 8 caracteres, 1 mayúscula, 1 número y 1 caracter especial." |
 | `DNI_NOT_FOUND`             | "Tu DNI no está registrado en el sistema. Por favor, contactá a la administración."     |
 | `ACCOUNT_INACTIVE`          | "Tu membresía se encuentra inactiva. Contactá a la administración para regularizar."    |
 | `DNI_ALREADY_REGISTERED`    | "Ya existe una cuenta con este DNI. Por favor, iniciá sesión."                          |
 | `EMAIL_ALREADY_IN_USE`      | "Este email ya está asociado a una cuenta. Iniciá sesión o usá otro email."             |
 | `INTERNAL_ERROR`            | "Ocurrió un error inesperado. Por favor, intentá de nuevo más tarde."                   |
 
-### 10.5 State Management
+**Step 2 errors:**
 
-- Form state: React Hook Form (or controlled state; align with team preference).
-- API call: React Query `useMutation` via `auth.api.ts`.
-- On success (HTTP 201): redirect to `/login` with a success toast notification.
-- Auth store (Zustand): not updated during registration — the member must log in separately after registration.
+| API Error Code       | User-facing Message (Spanish)                                                           |
+|----------------------|-----------------------------------------------------------------------------------------|
+| `INVALID_CODE`       | "El código ingresado es incorrecto. Verificá tu email e intentalo de nuevo."            |
+| `CODE_EXPIRED`       | "El código expiró. Solicitá uno nuevo usando el botón 'Reenviar código'."               |
+| `TOO_MANY_ATTEMPTS`  | "Demasiados intentos fallidos. Por favor, volvé a registrarte."                         |
+| `INTERNAL_ERROR`     | "Ocurrió un error al activar tu cuenta. Contactá a soporte."                            |
 
-### 10.6 Router Configuration
+### 10.6 State Management
+
+- Form state: React Hook Form.
+- API calls: React Query `useMutation` in `auth.api.ts`.
+- Email passed between steps: component state (prop or React Router `location.state`).
+- Auth store (Zustand): **not updated** during registration — member must complete login (AC-002) separately.
+
+### 10.7 Router Configuration
 
 ```
 frontend/src/router/index.tsx
-  - Add <Route path="/register" element={<RegisterPage />} /> as a public route
-  - Wrap with PublicOnlyRoute guard (redirect to /dashboard if already authenticated)
+
+Public routes:
+  <Route path="/register"     element={<RegisterPage />} />
+  <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+Both wrapped with PublicOnlyRoute guard (redirect to /dashboard if already authenticated).
 ```
 
 ---
 
 ## 11. Open Questions
 
-| # | Question | Owner | Impact |
-|---|----------|-------|--------|
-| 1 | **Cognito welcome email:** Should `AdminCreateUser` suppress the Cognito-generated welcome email (`MessageAction: "SUPPRESS"`) in favor of a custom SES/SNS email in a future story, or should Cognito's built-in email be used for MVP? | PO / Admin | Affects Cognito call parameters and email UX |
-| 2 | **DNI format:** Is the Argentine DNI always 7–8 numeric digits, or can it include letters (e.g., for foreign nationals)? The current regex `/^[0-9A-Za-z]+$/` is permissive. Should validation be tightened to digits only? | PO / Business | Affects DTO validation and seed data format |
-| 3 | **`full_name` source of truth:** If the member provides a `full_name` in the request that differs from the seed record, which takes precedence? Current design favors the request value (member may have updated their name), falling back to seed if omitted. | PO | Affects data consistency with legacy records |
-| 4 | **Seed record cleanup:** Should a successfully registered member's seed record be marked or deleted after onboarding to prevent re-use attempts? Or should `SeedMembersTable` remain immutable after import? | Architect / PO | Affects SeedMembersTable write permissions for members Lambda |
-| 5 | **Rate limiting / WAF:** Is AWS WAF within budget for dev? If not, API Gateway throttling alone is sufficient for MVP. | PO / Budget | Cost impact: ~$5/month minimum for WAF |
-| 6 | **Email verification flow:** After `AdminCreateUser`, Cognito can send a verification link. Should the member be required to verify their email before being able to log in (AC-002), or is verification optional for MVP? | PO | Affects Cognito `email_verified` attribute handling |
-| 7 | **`SeedMembersTable` in same AWS account/region:** Is the seed table always co-located with the application DynamoDB tables, or does the legacy import process write to a different AWS account? | DevOps | Affects IAM and VPC configuration |
+| #  | Question | Status | Owner | Impact |
+|----|----------|--------|-------|--------|
+| 1  | **Cognito email sender:** Cognito's default email uses SES sandbox (limited to verified addresses). For production, SES must be moved out of sandbox. Should this be configured in dev now? | Open | DevOps | Affects email deliverability in dev |
+| 2  | **DNI format:** Is the Argentine DNI always 7–8 numeric digits, or can it include letters? The current regex `/^[0-9A-Za-z]+$/` is permissive. Should it be tightened to digits only? | Open | PO / Business | Affects DTO validation and seed data format |
+| 3  | **`full_name` source of truth:** If the member provides a `full_name` different from the seed record, which takes precedence? Current design: request value wins; seed used if omitted. | Open | PO | Affects data consistency with legacy records |
+| 4  | **Seed record cleanup:** After successful registration, should the seed record be marked (e.g., `onboarded = true`) to prevent parallel re-registration attempts? `SeedMembersTable` is currently write-protected from Lambda. | Open | Architect / PO | Affects SeedMembersTable write permissions |
+| 5  | **Rate limiting / WAF:** Is AWS WAF within budget for dev? API Gateway throttling alone is sufficient for MVP. | Open | PO / Budget | Cost: ~$5/month minimum for WAF |
+| 6  | **Email verification flow:** ~~Deferred.~~ **RESOLVED** — Email verification via Cognito OTP is now **required** (not optional). `mfa_configuration = ON` + `auto_verified_attributes = ["email"]` enforces this. Accounts remain `UNCONFIRMED` until OTP is entered. | Resolved | Architect | — |
+| 7  | **`SeedMembersTable` co-location:** Is the seed table always in the same AWS account/region as application DynamoDB tables, or does the legacy import target a different account? | Open | DevOps | Affects IAM and cross-account config |
+| 8  | **`allow_self_registration = true` risk:** With `SignUp` API enabled, someone with the `clientId` could attempt to call Cognito `SignUp` directly (bypassing Lambda). Mitigation: add a Cognito pre-signup Lambda trigger that validates `custom:dni` exists in SeedMembersTable. Recommended for production hardening. | Open (post-MVP) | Architect | Security posture vs. implementation complexity |
 
 ---
 
