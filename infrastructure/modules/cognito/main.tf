@@ -62,11 +62,17 @@ resource "aws_cognito_user_pool" "this" {
     message = var.email_mfa_message
   }
 
-  # Account recovery via verified email only
+  # Account recovery — email is primary.
+  # AWS requires at least two recovery mechanisms when Email MFA is enabled;
+  # verified_email alone is rejected with InvalidParameterException.
   account_recovery_setting {
     recovery_mechanism {
       name     = "verified_email"
       priority = 1
+    }
+    recovery_mechanism {
+      name     = "verified_phone_number"
+      priority = 2
     }
   }
 
