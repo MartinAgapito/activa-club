@@ -1,0 +1,18 @@
+{
+  "name": "activa-club-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Utility scripts for ActivaClub data seeding and administrative tasks",
+  "scripts": {
+    "seed:members": "npx ts-node seed-legacy-members.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.0"
+  }
+}
