@@ -51,3 +51,32 @@ output "cognito_user_pool_domain" {
   description = "Cognito-hosted domain prefix. Full URL: https://<domain>.auth.us-east-1.amazoncognito.com"
   value       = module.cognito.user_pool_domain
 }
+
+# ---- Lambda -------------------------------------------------
+
+output "members_lambda_function_name" {
+  description = "Name of the activa-club-members Lambda function."
+  value       = module.members_lambda.function_name
+}
+
+output "members_lambda_function_arn" {
+  description = "ARN of the activa-club-members Lambda function."
+  value       = module.members_lambda.function_arn
+}
+
+output "lambda_artifacts_bucket" {
+  description = "S3 bucket where Lambda deployment packages are uploaded by CI/CD."
+  value       = aws_s3_bucket.lambda_artifacts.bucket
+}
+
+# ---- API Gateway --------------------------------------------
+
+output "api_endpoint" {
+  description = "Base URL of the API Gateway. Append /v1/<resource> to call endpoints (e.g. POST <api_endpoint>/v1/auth/register)."
+  value       = module.api_gateway.api_endpoint
+}
+
+output "api_id" {
+  description = "ID of the API Gateway HTTP API. Used for Terraform cross-references."
+  value       = module.api_gateway.api_id
+}
