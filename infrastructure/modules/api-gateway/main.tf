@@ -17,10 +17,12 @@ locals {
     ManagedBy   = "terraform"
   })
 
-  # Build a map of unique invoke ARNs → the first route that uses each.
+  # Build a map of unique function names → routes that use each Lambda.
   # API Gateway requires one integration per Lambda target.
+  # Key by function_name (known at plan time) — invoke_arn is computed and
+  # cannot be used as a for_each key when the Lambda doesn't exist yet.
   unique_lambdas = {
-    for r in var.routes : r.lambda_invoke_arn => r...
+    for r in var.routes : r.lambda_function_name => r...
   }
 
   # Build a map keyed by "METHOD /path" for route resources.
@@ -72,8 +74,8 @@ resource "aws_apigatewayv2_integration" "lambda" {
 
   api_id                 = aws_apigatewayv2_api.this.id
   integration_type       = "AWS_PROXY"
-  integration_uri        = each.key # invoke_arn
-  payload_format_version = "2.0"    # HTTP API format (smaller payload, faster)
+  integration_uri        = each.value[0].lambda_invoke_arn # invoke_arn is fine as a value
+  payload_format_version = "2.0"                           # HTTP API format (smaller payload, faster)
 }
 
 # ------------------------------------------------------------
@@ -87,7 +89,7 @@ resource "aws_apigatewayv2_route" "routes" {
   api_id    = aws_apigatewayv2_api.this.id
   route_key = each.key # "POST /v1/auth/register"
 
-  target = "integrations/${aws_apigatewayv2_integration.lambda[each.value.lambda_invoke_arn].id}"
+  target = "integrations/${aws_apigatewayv2_integration.lambda[each.value.lambda_function_name].id}"
 
   authorization_type = each.value.auth_required ? "JWT" : "NONE"
   authorizer_id      = each.value.auth_required ? aws_apigatewayv2_authorizer.jwt.id : null
