@@ -10,8 +10,8 @@ import { AccountStatus } from '../../domain/value-objects/account-status.vo';
 const TABLE_NAME = 'MembersTable-test';
 
 const DYNAMO_ITEM = {
-  pk: 'MEMBER#01JKZP7QR8S9T0UVWX1YZ2AB3C',
-  sk: 'PROFILE',
+  PK: 'MEMBER#01JKZP7QR8S9T0UVWX1YZ2AB3C',
+  SK: 'PROFILE',
   member_id: '01JKZP7QR8S9T0UVWX1YZ2AB3C',
   dni: '20345678',
   full_name: 'Martin Garcia',
@@ -57,9 +57,9 @@ describe('DynamoMemberRepository', () => {
 
   describe('findByDni', () => {
     it('returns a MemberEntity when the DNI exists', async () => {
-      // First call: Query on GSI_DNI returns keys
+      // First call: Query on GSI_DNI returns PK/SK keys (KEYS_ONLY projection)
       ddbMock.on(QueryCommand).resolves({
-        Items: [{ pk: DYNAMO_ITEM.pk, sk: DYNAMO_ITEM.sk }],
+        Items: [{ PK: DYNAMO_ITEM.PK, SK: DYNAMO_ITEM.SK }],
         Count: 1,
       });
 
@@ -107,7 +107,7 @@ describe('DynamoMemberRepository', () => {
   describe('findByEmail', () => {
     it('returns a MemberEntity when the email exists', async () => {
       ddbMock.on(QueryCommand).resolves({
-        Items: [{ pk: DYNAMO_ITEM.pk, sk: DYNAMO_ITEM.sk }],
+        Items: [{ PK: DYNAMO_ITEM.PK, SK: DYNAMO_ITEM.SK }],
         Count: 1,
       });
 
@@ -159,11 +159,11 @@ describe('DynamoMemberRepository', () => {
 
       const input = calls[0].args[0].input;
       expect(input.TableName).toBe(TABLE_NAME);
-      expect(input.ConditionExpression).toBe('attribute_not_exists(pk)');
+      expect(input.ConditionExpression).toBe('attribute_not_exists(PK)');
 
       const item = input.Item as Record<string, unknown>;
-      expect(item['pk']).toBe(`MEMBER#${MEMBER_ENTITY.memberId}`);
-      expect(item['sk']).toBe('PROFILE');
+      expect(item['PK']).toBe(`MEMBER#${MEMBER_ENTITY.memberId}`);
+      expect(item['SK']).toBe('PROFILE');
       expect(item['member_id']).toBe(MEMBER_ENTITY.memberId);
       expect(item['dni']).toBe(MEMBER_ENTITY.dni);
       expect(item['full_name']).toBe(MEMBER_ENTITY.fullName);
@@ -199,6 +199,17 @@ describe('DynamoMemberRepository', () => {
       const sentItem = calls[0].args[0].input.Item as Record<string, unknown>;
       expect(sentItem['phone']).toBeUndefined();
       expect(sentItem['membership_expiry']).toBeUndefined();
+    });
+
+    it('throws an error when MEMBERS_TABLE_NAME is not set', () => {
+      delete process.env.MEMBERS_TABLE_NAME;
+
+      expect(
+        () => new DynamoMemberRepository(ddbMock as unknown as DynamoDBDocumentClient),
+      ).toThrow('Environment variable MEMBERS_TABLE_NAME is not set');
+
+      // Restore for other tests
+      process.env.MEMBERS_TABLE_NAME = TABLE_NAME;
     });
   });
 });
