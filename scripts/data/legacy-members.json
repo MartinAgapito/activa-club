@@ -1,0 +1,90 @@
+[
+  {
+    "dni": "20345678",
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "email": "juan.perez@email.com",
+    "membershipTier": "Gold",
+    "phone": "+5491112345678",
+    "accountStatus": "active"
+  },
+  {
+    "dni": "30456789",
+    "firstName": "María",
+    "lastName": "García",
+    "email": "maria.garcia@email.com",
+    "membershipTier": "Silver",
+    "phone": "+5491198765432",
+    "accountStatus": "active"
+  },
+  {
+    "dni": "40567890",
+    "firstName": "Carlos",
+    "lastName": "López",
+    "email": "carlos.lopez@email.com",
+    "membershipTier": "VIP",
+    "phone": "+5491167891234",
+    "accountStatus": "active"
+  },
+  {
+    "dni": "25678901",
+    "firstName": "Ana",
+    "lastName": "Martínez",
+    "email": "ana.martinez@email.com",
+    "membershipTier": "Silver",
+    "accountStatus": "active"
+  },
+  {
+    "dni": "35789012",
+    "firstName": "Luis",
+    "lastName": "Rodríguez",
+    "email": "luis.rodriguez@email.com",
+    "membershipTier": "Gold",
+    "phone": "+5491145678901",
+    "accountStatus": "active"
+  },
+  {
+    "dni": "28901234",
+    "firstName": "Sofía",
+    "lastName": "Fernández",
+    "email": "sofia.fernandez@email.com",
+    "membershipTier": "VIP",
+    "phone": "+5491134567890",
+    "accountStatus": "active"
+  },
+  {
+    "dni": "32012345",
+    "firstName": "Diego",
+    "lastName": "González",
+    "email": "diego.gonzalez@email.com",
+    "membershipTier": "Silver",
+    "accountStatus": "inactive"
+  },
+  {
+    "dni": "41123456",
+    "firstName": "Laura",
+    "lastName": "Sánchez",
+    "email": "laura.sanchez@email.com",
+    "membershipTier": "Gold",
+    "phone": "+5491123456789",
+    "accountStatus": "active"
+  },
+  {
+    "dni": "27234567",
+    "firstName": "Martín",
+    "lastName": "Agapito",
+    "email": "martin.agapito@email.com",
+    "membershipTier": "Gold",
+    "phone": "+5491156789012",
+    "accountStatus": "active"
+  },
+  {
+    "dni": "38345678",
+    "firstName": "Valentina",
+    "lastName": "Torres",
+    "email": "valentina.torres@email.com",
+    "membershipTier": "Silver",
+    "phone": "+5491178901234",
+    "accountStatus": "active"
+  }
+]
