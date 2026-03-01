@@ -66,9 +66,10 @@ jobs:
 
       # ── Package ───────────────────────────────────────────────────────────
       # Reinstall production-only deps so node_modules in the ZIP is lean.
+      # --ignore-scripts skips the `prepare` husky hook (devDep, not available here).
       - name: Install production dependencies only
         working-directory: backend
-        run: npm ci --omit=dev
+        run: npm ci --omit=dev --ignore-scripts
 
       - name: Create Lambda deployment package
         working-directory: backend
