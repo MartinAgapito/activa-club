@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsString,
   IsEmail,
@@ -6,20 +6,19 @@ import {
   MinLength,
   MaxLength,
   Matches,
-  IsOptional,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
- * Request DTO for POST /v1/auth/register.
+ * Request DTO for POST /v1/auth/register — AC-001 Rev2.
  *
- * Validated by NestJS ValidationPipe (class-validator + class-transformer).
- * All string transforms are applied before validation constraints are evaluated.
+ * The member provides only DNI, email and password.
+ * Full name, phone and membership_type are read from SeedMembersTable
+ * at verify-email time (Step 2) — the member never needs to type them.
  */
 export class RegisterMemberRequestDto {
   @ApiProperty({
-    description:
-      'Argentine national identification number (DNI). 7–8 alphanumeric characters.',
+    description: 'Argentine national identification number (DNI). 7–8 numeric characters.',
     example: '20345678',
     minLength: 7,
     maxLength: 8,
@@ -28,7 +27,7 @@ export class RegisterMemberRequestDto {
   @IsNotEmpty({ message: 'dni is required' })
   @MinLength(7, { message: 'dni must be at least 7 characters' })
   @MaxLength(8, { message: 'dni must be at most 8 characters' })
-  @Matches(/^[0-9A-Za-z]+$/, { message: 'dni must contain only alphanumeric characters' })
+  @Matches(/^\d+$/, { message: 'dni must contain only numeric characters' })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   dni: string;
 
@@ -59,26 +58,4 @@ export class RegisterMemberRequestDto {
       'password must contain at least 1 uppercase letter, 1 lowercase letter, 1 digit, and 1 special character',
   })
   password: string;
-
-  @ApiPropertyOptional({
-    description: 'Full name of the member (2–100 chars). Falls back to seed record value if omitted.',
-    example: 'Martin Garcia',
-    minLength: 2,
-    maxLength: 100,
-  })
-  @IsString()
-  @IsOptional()
-  @MinLength(2, { message: 'full_name must be at least 2 characters' })
-  @MaxLength(100, { message: 'full_name must be at most 100 characters' })
-  full_name?: string;
-
-  @ApiPropertyOptional({
-    description: 'Phone number (E.164 format recommended, max 20 chars).',
-    example: '+5491112345678',
-    maxLength: 20,
-  })
-  @IsString()
-  @IsOptional()
-  @MaxLength(20, { message: 'phone must be at most 20 characters' })
-  phone?: string;
 }

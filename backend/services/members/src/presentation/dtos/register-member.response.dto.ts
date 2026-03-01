@@ -1,52 +1,29 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { MembershipType } from '../../domain/value-objects/membership-type.vo';
-import { AccountStatus } from '../../domain/value-objects/account-status.vo';
 
 /**
- * Data portion of the registration success response.
+ * Data portion of the registration accepted response — AC-001 Rev2.
  */
 export class RegisterMemberDataDto {
   @ApiProperty({
-    description: 'ULID identifier of the newly registered member.',
-    example: '01JKZP7QR8S9T0UVWX1YZ2AB3C',
-  })
-  member_id: string;
-
-  @ApiProperty({
-    description: 'Full name of the registered member.',
-    example: 'Martin Garcia',
-  })
-  full_name: string;
-
-  @ApiProperty({
-    description: 'Email address of the registered member.',
+    description: 'Email address to which the verification code was sent.',
     example: 'martin.garcia@email.com',
   })
   email: string;
 
   @ApiProperty({
-    description: 'Membership tier inherited from the seed record.',
-    enum: MembershipType,
-    example: MembershipType.GOLD,
+    description: 'Instruction message for the member.',
+    example:
+      'A verification code has been sent to your email. Please enter it to activate your account.',
   })
-  membership_type: MembershipType;
-
-  @ApiProperty({
-    description: 'Current account status.',
-    enum: AccountStatus,
-    example: AccountStatus.ACTIVE,
-  })
-  account_status: AccountStatus;
-
-  @ApiProperty({
-    description: 'ISO-8601 UTC timestamp of registration.',
-    example: '2026-02-20T15:30:00.000Z',
-  })
-  created_at: string;
+  message: string;
 }
 
 /**
- * Response DTO for POST /v1/auth/register — HTTP 201.
+ * Response DTO for POST /v1/auth/register — HTTP 202 (Accepted).
+ *
+ * HTTP 202 signals that the registration is pending email OTP verification.
+ * The account does not exist in MembersTable yet — only an UNCONFIRMED
+ * Cognito user was created.
  */
 export class RegisterMemberResponseDto {
   @ApiProperty({ example: 'success' })
@@ -54,10 +31,4 @@ export class RegisterMemberResponseDto {
 
   @ApiProperty({ type: RegisterMemberDataDto })
   data: RegisterMemberDataDto;
-
-  @ApiProperty({
-    example:
-      'Registration successful. Please check your email to confirm your account.',
-  })
-  message: string;
 }

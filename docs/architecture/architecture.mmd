@@ -1,6 +1,8 @@
 %% ActivaClub - System Architecture Diagrams
 %% Maintained by: Senior Software & Cloud Architect
-%% Last updated: 2026-02-20
+%% Last updated: 2026-02-27
+%% Rev 2: Updated Auth Flow (Diagram 2) — SignUp + ConfirmSignUp + Email OTP
+%%         Added Login + OTP MFA Flow (Diagram 5)
 
 %% ============================================================
 %% DIAGRAM 1: High-Level System Overview (C4 Container Level)
@@ -92,29 +94,52 @@ graph TB
     Stripe -.->|Webhook POST /v1/payments/webhook| APIGW
 
 %% ============================================================
-%% DIAGRAM 2: Authentication Flow (Cognito + Onboarding)
+%% DIAGRAM 2: Registration + Email Verification Flow (AC-001)
+%% Rev 2: Uses SignUp + ConfirmSignUp (native Cognito OTP)
 %% ============================================================
 
 sequenceDiagram
     participant User
     participant Frontend
     participant MembersLambda
-    participant DynamoDB as DynamoDB (MembersTable)
+    participant SeedDB as DynamoDB (SeedMembersTable)
+    participant MembersDB as DynamoDB (MembersTable)
     participant Cognito
 
-    User->>Frontend: Enter DNI on /onboarding
-    Frontend->>MembersLambda: POST /v1/members/onboard { dni }
-    MembersLambda->>DynamoDB: Query GSI_DNI for matching legacy record
-    alt DNI found
-        DynamoDB-->>MembersLambda: Legacy member data
-        MembersLambda-->>Frontend: 200 { memberId, firstName, lastName }
-        Frontend->>Cognito: SignUp / SignIn with email + password
-        Cognito-->>Frontend: ID Token + Access Token
-        Frontend->>MembersLambda: PATCH /v1/members/:id (link cognitoSub)
-        MembersLambda->>DynamoDB: UpdateItem cognitoSub + status=Active
-    else DNI not found
-        MembersLambda-->>Frontend: 404 { error: "DNI not registered" }
+    Note over User,Cognito: ── STEP 1: Registration (POST /v1/auth/register) ──
+
+    User->>Frontend: Fill DNI, email, password on /register
+    Frontend->>MembersLambda: POST /v1/auth/register { dni, email, password }
+    MembersLambda->>SeedDB: GetItem { pk: "DNI#<dni>" }
+    alt DNI not found
+        MembersLambda-->>Frontend: 404 DNI_NOT_FOUND
     end
+    alt account_status == inactive
+        MembersLambda-->>Frontend: 403 ACCOUNT_INACTIVE
+    end
+    MembersLambda->>MembersDB: Query GSI_DNI + GSI_Email (duplicate check)
+    alt Already registered
+        MembersLambda-->>Frontend: 409 DNI_ALREADY_REGISTERED / EMAIL_ALREADY_IN_USE
+    end
+    MembersLambda->>Cognito: SignUp { email, password, custom:dni } — user UNCONFIRMED
+    Cognito->>User: Email with 6-digit OTP code (TTL 24h)
+    MembersLambda-->>Frontend: HTTP 202 — Code sent to email
+
+    Note over User,Cognito: ── STEP 2: Email Verification (POST /v1/auth/verify-email) ──
+
+    User->>Frontend: Enter 6-digit OTP code on /verify-email
+    Frontend->>MembersLambda: POST /v1/auth/verify-email { email, code }
+    MembersLambda->>Cognito: ConfirmSignUp { email, code }
+    alt Code invalid / expired
+        MembersLambda-->>Frontend: 400 INVALID_CODE / 410 CODE_EXPIRED
+    end
+    Cognito-->>MembersLambda: User status → CONFIRMED
+    MembersLambda->>Cognito: AdminGetUser → read custom:dni + sub
+    MembersLambda->>SeedDB: GetItem → get membership_type
+    MembersLambda->>Cognito: AdminAddUserToGroup { GroupName: "Member" }
+    MembersLambda->>MembersDB: PutItem { MEMBER#<ulid>, PROFILE, all fields }
+    MembersLambda-->>Frontend: HTTP 201 — Account activated
+    Frontend->>Frontend: Redirect to /login
 
 %% ============================================================
 %% DIAGRAM 3: Stripe Payment + Webhook Flow
@@ -160,3 +185,49 @@ sequenceDiagram
     SNS-->>Members: Email / Push notification delivered to filtered subscribers
     PromotionsLambda->>DynamoDB: UpdateItem promotion (broadcastAt = now)
     PromotionsLambda-->>Frontend: 200 { broadcastAt }
+
+%% ============================================================
+%% DIAGRAM 5: Login + OTP MFA Flow (AC-002)
+%% Uses AdminInitiateAuth + AdminRespondToAuthChallenge (EMAIL_OTP)
+%% ============================================================
+
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant MembersLambda
+    participant Cognito
+
+    Note over User,Cognito: ── STEP 1: Credential Validation (POST /v1/auth/login) ──
+
+    User->>Frontend: Enter email + password on /login
+    Frontend->>MembersLambda: POST /v1/auth/login { email, password }
+    MembersLambda->>Cognito: AdminInitiateAuth { USER_PASSWORD_AUTH, email, password }
+    alt Invalid credentials
+        Cognito-->>MembersLambda: NotAuthorizedException / UserNotFoundException
+        MembersLambda-->>Frontend: 401 INVALID_CREDENTIALS (generic — no user enumeration)
+    end
+    alt Account UNCONFIRMED
+        Cognito-->>MembersLambda: UserNotConfirmedException
+        MembersLambda-->>Frontend: 403 ACCOUNT_NOT_CONFIRMED
+    end
+    Cognito->>User: Sends EMAIL_OTP code to verified email (TTL 3 min)
+    Cognito-->>MembersLambda: { ChallengeName: EMAIL_OTP, Session: <token> }
+    MembersLambda-->>Frontend: HTTP 200 { challengeName, session }
+
+    Note over User,Cognito: ── STEP 2: OTP Verification (POST /v1/auth/verify-otp) ──
+
+    User->>Frontend: Enter 6-digit OTP code
+    Frontend->>MembersLambda: POST /v1/auth/verify-otp { email, session, otp }
+    MembersLambda->>Cognito: AdminRespondToAuthChallenge { EMAIL_OTP, session, otp }
+    alt Code invalid
+        Cognito-->>MembersLambda: CodeMismatchException
+        MembersLambda-->>Frontend: 400 INVALID_OTP
+    end
+    alt Session expired (> 3 min)
+        Cognito-->>MembersLambda: ExpiredCodeException
+        MembersLambda-->>Frontend: 410 SESSION_EXPIRED
+    end
+    Cognito-->>MembersLambda: { AuthenticationResult: { AccessToken, IdToken, RefreshToken } }
+    MembersLambda-->>Frontend: HTTP 200 { accessToken, idToken, refreshToken, expiresIn }
+    Frontend->>Frontend: Store tokens in memory / httpOnly cookie
+    Frontend->>Frontend: Redirect to /dashboard
