@@ -1,8 +1,13 @@
 import { RegisterMemberHandler } from '../../application/commands/register-member/register-member.handler';
 import { RegisterMemberCommand } from '../../application/commands/register-member/register-member.command';
 import { RegisterMemberResult } from '../../application/commands/register-member/register-member.result';
-import { MemberRepositoryInterface } from '../../domain/repositories/member.repository.interface';
-import { SeedMemberRepositoryInterface, SeedMemberRecord } from '../../domain/repositories/seed-member.repository.interface';
+import {
+  MemberRepositoryInterface,
+} from '../../domain/repositories/member.repository.interface';
+import {
+  SeedMemberRepositoryInterface,
+  SeedMemberRecord,
+} from '../../domain/repositories/seed-member.repository.interface';
 import { CognitoService } from '../../infrastructure/cognito/cognito.service';
 import { MemberEntity } from '../../domain/entities/member.entity';
 import { MembershipType } from '../../domain/value-objects/membership-type.vo';
@@ -28,10 +33,14 @@ const mockMemberRepo: jest.Mocked<MemberRepositoryInterface> = {
 };
 
 const mockCognitoService = {
-  adminCreateUser: jest.fn(),
-  adminSetUserPassword: jest.fn(),
+  signUp: jest.fn(),
+  confirmSignUp: jest.fn(),
+  resendConfirmationCode: jest.fn(),
+  adminGetUser: jest.fn(),
   adminAddUserToGroup: jest.fn(),
   adminDeleteUser: jest.fn(),
+  adminInitiateAuth: jest.fn(),
+  adminRespondToAuthChallenge: jest.fn(),
 } as unknown as jest.Mocked<CognitoService>;
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -45,7 +54,7 @@ const VALID_COMMAND = new RegisterMemberCommand(
 );
 
 const ACTIVE_SEED_RECORD: SeedMemberRecord = {
-  pk: 'DNI#20345678',
+  pk: '20345678',
   dni: '20345678',
   fullName: 'Martin Garcia',
   membershipType: MembershipType.GOLD,
@@ -58,7 +67,7 @@ const INACTIVE_SEED_RECORD: SeedMemberRecord = {
   accountStatus: AccountStatus.INACTIVE,
 };
 
-const COGNITO_SUB = 'cognito-sub-uuid-1234';
+const COGNITO_USER_SUB = 'cognito-sub-uuid-1234';
 
 const EXISTING_MEMBER = new MemberEntity({
   memberId: '01EXISTING',
@@ -67,19 +76,18 @@ const EXISTING_MEMBER = new MemberEntity({
   email: 'martin.garcia@email.com',
   membershipType: MembershipType.GOLD,
   accountStatus: AccountStatus.ACTIVE,
-  cognitoUserId: COGNITO_SUB,
+  cognitoUserId: COGNITO_USER_SUB,
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
 });
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('RegisterMemberHandler', () => {
+describe('RegisterMemberHandler (AC-001 Rev2 — SignUp flow)', () => {
   let handler: RegisterMemberHandler;
 
   beforeEach(() => {
     jest.clearAllMocks();
-
     handler = new RegisterMemberHandler(
       mockSeedMemberRepo,
       mockMemberRepo,
@@ -90,15 +98,12 @@ describe('RegisterMemberHandler', () => {
   // ── Happy path ──────────────────────────────────────────────────────────────
 
   describe('execute — happy path', () => {
-    it('returns a RegisterMemberResult with the correct data', async () => {
+    it('returns a RegisterMemberResult containing the email on success', async () => {
       // Arrange
       mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
       mockMemberRepo.findByDni.mockResolvedValue(null);
       mockMemberRepo.findByEmail.mockResolvedValue(null);
-      mockCognitoService.adminCreateUser.mockResolvedValue(COGNITO_SUB);
-      mockCognitoService.adminSetUserPassword.mockResolvedValue(undefined);
-      mockCognitoService.adminAddUserToGroup.mockResolvedValue(undefined);
-      mockMemberRepo.save.mockResolvedValue(undefined);
+      mockCognitoService.signUp.mockResolvedValue(COGNITO_USER_SUB);
 
       // Act
       const result = await handler.execute(VALID_COMMAND);
@@ -106,59 +111,93 @@ describe('RegisterMemberHandler', () => {
       // Assert
       expect(result).toBeInstanceOf(RegisterMemberResult);
       expect(result.email).toBe(VALID_COMMAND.email);
-      expect(result.fullName).toBe(VALID_COMMAND.fullName);
-      expect(result.membershipType).toBe(MembershipType.GOLD);
-      expect(result.accountStatus).toBe(AccountStatus.ACTIVE);
-      expect(result.memberId).toBeDefined();
-      expect(result.createdAt).toBeDefined();
     });
 
-    it('falls back to seed fullName when command fullName is not provided', async () => {
+    it('calls Cognito signUp with correct arguments (email, password, dni)', async () => {
       // Arrange
-      const commandWithoutName = new RegisterMemberCommand(
-        '20345678',
-        'martin.garcia@email.com',
-        'SecurePass1!',
-        undefined,
-      );
       mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
       mockMemberRepo.findByDni.mockResolvedValue(null);
       mockMemberRepo.findByEmail.mockResolvedValue(null);
-      mockCognitoService.adminCreateUser.mockResolvedValue(COGNITO_SUB);
-      mockCognitoService.adminSetUserPassword.mockResolvedValue(undefined);
-      mockCognitoService.adminAddUserToGroup.mockResolvedValue(undefined);
-      mockMemberRepo.save.mockResolvedValue(undefined);
-
-      // Act
-      const result = await handler.execute(commandWithoutName);
-
-      // Assert
-      expect(result.fullName).toBe(ACTIVE_SEED_RECORD.fullName);
-    });
-
-    it('calls Cognito operations in order', async () => {
-      // Arrange
-      const callOrder: string[] = [];
-      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
-      mockMemberRepo.findByDni.mockResolvedValue(null);
-      mockMemberRepo.findByEmail.mockResolvedValue(null);
-      mockCognitoService.adminCreateUser.mockImplementation(async () => {
-        callOrder.push('adminCreateUser');
-        return COGNITO_SUB;
-      });
-      mockCognitoService.adminSetUserPassword.mockImplementation(async () => {
-        callOrder.push('adminSetUserPassword');
-      });
-      mockCognitoService.adminAddUserToGroup.mockImplementation(async () => {
-        callOrder.push('adminAddUserToGroup');
-      });
-      mockMemberRepo.save.mockResolvedValue(undefined);
+      mockCognitoService.signUp.mockResolvedValue(COGNITO_USER_SUB);
 
       // Act
       await handler.execute(VALID_COMMAND);
 
       // Assert
-      expect(callOrder).toEqual(['adminCreateUser', 'adminSetUserPassword', 'adminAddUserToGroup']);
+      expect(mockCognitoService.signUp).toHaveBeenCalledTimes(1);
+      expect(mockCognitoService.signUp).toHaveBeenCalledWith(
+        VALID_COMMAND.email,
+        VALID_COMMAND.password,
+        VALID_COMMAND.dni,
+      );
+    });
+
+    it('does NOT persist a member profile to DynamoDB during registration', async () => {
+      // Arrange — profile creation happens in VerifyEmailHandler, not here
+      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
+      mockMemberRepo.findByDni.mockResolvedValue(null);
+      mockMemberRepo.findByEmail.mockResolvedValue(null);
+      mockCognitoService.signUp.mockResolvedValue(COGNITO_USER_SUB);
+
+      // Act
+      await handler.execute(VALID_COMMAND);
+
+      // Assert — memberRepo.save must NOT be called in Step 1
+      expect(mockMemberRepo.save).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Password policy violation ───────────────────────────────────────────────
+
+  describe('execute — password policy violation', () => {
+    it('throws PasswordPolicyViolationException for a weak password before any external call', async () => {
+      const weakCommand = new RegisterMemberCommand(
+        '20345678',
+        'test@email.com',
+        'weakpassword', // no uppercase, no digit, no special char
+      );
+
+      await expect(handler.execute(weakCommand)).rejects.toThrow(PasswordPolicyViolationException);
+
+      // Password check is first — no external calls should be made
+      expect(mockSeedMemberRepo.findByDni).not.toHaveBeenCalled();
+      expect(mockMemberRepo.findByDni).not.toHaveBeenCalled();
+      expect(mockCognitoService.signUp).not.toHaveBeenCalled();
+    });
+
+    it('throws PasswordPolicyViolationException for password missing a special character', async () => {
+      const weakCommand = new RegisterMemberCommand(
+        '20345678',
+        'test@email.com',
+        'Password1', // no special character
+      );
+
+      await expect(handler.execute(weakCommand)).rejects.toThrow(PasswordPolicyViolationException);
+    });
+
+    it('throws PasswordPolicyViolationException for password missing a digit', async () => {
+      const weakCommand = new RegisterMemberCommand(
+        '20345678',
+        'test@email.com',
+        'Password!', // no digit
+      );
+
+      await expect(handler.execute(weakCommand)).rejects.toThrow(PasswordPolicyViolationException);
+    });
+
+    it('accepts a password that meets all policy rules', async () => {
+      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
+      mockMemberRepo.findByDni.mockResolvedValue(null);
+      mockMemberRepo.findByEmail.mockResolvedValue(null);
+      mockCognitoService.signUp.mockResolvedValue(COGNITO_USER_SUB);
+
+      const strongCommand = new RegisterMemberCommand(
+        '20345678',
+        'test@email.com',
+        'StrongPass1!',
+      );
+
+      await expect(handler.execute(strongCommand)).resolves.toBeInstanceOf(RegisterMemberResult);
     });
   });
 
@@ -178,6 +217,7 @@ describe('RegisterMemberHandler', () => {
 
       expect(mockMemberRepo.findByDni).not.toHaveBeenCalled();
       expect(mockMemberRepo.findByEmail).not.toHaveBeenCalled();
+      expect(mockCognitoService.signUp).not.toHaveBeenCalled();
     });
   });
 
@@ -188,6 +228,14 @@ describe('RegisterMemberHandler', () => {
       mockSeedMemberRepo.findByDni.mockResolvedValue(INACTIVE_SEED_RECORD);
 
       await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(AccountInactiveException);
+    });
+
+    it('does not call Cognito signUp when account is inactive', async () => {
+      mockSeedMemberRepo.findByDni.mockResolvedValue(INACTIVE_SEED_RECORD);
+
+      await handler.execute(VALID_COMMAND).catch(() => {});
+
+      expect(mockCognitoService.signUp).not.toHaveBeenCalled();
     });
   });
 
@@ -208,7 +256,7 @@ describe('RegisterMemberHandler', () => {
       await handler.execute(VALID_COMMAND).catch(() => {});
 
       expect(mockMemberRepo.findByEmail).not.toHaveBeenCalled();
-      expect(mockCognitoService.adminCreateUser).not.toHaveBeenCalled();
+      expect(mockCognitoService.signUp).not.toHaveBeenCalled();
     });
   });
 
@@ -222,108 +270,76 @@ describe('RegisterMemberHandler', () => {
 
       await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(EmailAlreadyInUseException);
     });
-  });
 
-  // ── Password policy violation ───────────────────────────────────────────────
-
-  describe('execute — password policy violation', () => {
-    it('throws PasswordPolicyViolationException for a weak password (before calling seed)', async () => {
-      const weakCommand = new RegisterMemberCommand(
-        '20345678',
-        'test@email.com',
-        'weakpassword',   // no uppercase, no digit, no symbol
-      );
-
-      await expect(handler.execute(weakCommand)).rejects.toThrow(PasswordPolicyViolationException);
-      // Seed should not be called — password check is first
-      expect(mockSeedMemberRepo.findByDni).not.toHaveBeenCalled();
-    });
-
-    it('throws PasswordPolicyViolationException for password missing special char', async () => {
-      const weakCommand = new RegisterMemberCommand(
-        '20345678',
-        'test@email.com',
-        'Password1',   // no special character
-      );
-
-      await expect(handler.execute(weakCommand)).rejects.toThrow(PasswordPolicyViolationException);
-    });
-  });
-
-  // ── Cognito failure + rollback ──────────────────────────────────────────────
-
-  describe('execute — Cognito failure with rollback', () => {
-    it('calls adminDeleteUser and re-throws when adminCreateUser fails', async () => {
-      const cognitoError = new Error('Cognito service unavailable');
+    it('does not call Cognito signUp when email is already in use', async () => {
       mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
       mockMemberRepo.findByDni.mockResolvedValue(null);
-      mockMemberRepo.findByEmail.mockResolvedValue(null);
-      mockCognitoService.adminCreateUser.mockRejectedValue(cognitoError);
-      mockCognitoService.adminDeleteUser.mockResolvedValue(undefined);
-
-      await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(cognitoError);
-      expect(mockCognitoService.adminDeleteUser).toHaveBeenCalledWith(VALID_COMMAND.email);
-    });
-
-    it('calls adminDeleteUser and re-throws when adminAddUserToGroup fails', async () => {
-      const groupError = new Error('Group assignment failed');
-      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
-      mockMemberRepo.findByDni.mockResolvedValue(null);
-      mockMemberRepo.findByEmail.mockResolvedValue(null);
-      mockCognitoService.adminCreateUser.mockResolvedValue(COGNITO_SUB);
-      mockCognitoService.adminSetUserPassword.mockResolvedValue(undefined);
-      mockCognitoService.adminAddUserToGroup.mockRejectedValue(groupError);
-      mockCognitoService.adminDeleteUser.mockResolvedValue(undefined);
-
-      await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(groupError);
-      expect(mockCognitoService.adminDeleteUser).toHaveBeenCalledWith(VALID_COMMAND.email);
-    });
-
-    it('still re-throws the original error even if rollback adminDeleteUser also fails', async () => {
-      const cognitoError = new Error('Cognito service unavailable');
-      const rollbackError = new Error('Rollback also failed');
-      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
-      mockMemberRepo.findByDni.mockResolvedValue(null);
-      mockMemberRepo.findByEmail.mockResolvedValue(null);
-      mockCognitoService.adminCreateUser.mockRejectedValue(cognitoError);
-      mockCognitoService.adminDeleteUser.mockRejectedValue(rollbackError);
-
-      await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(cognitoError);
-    });
-  });
-
-  // ── DynamoDB PutItem failure + rollback ────────────────────────────────────
-
-  describe('execute — DynamoDB PutItem failure with rollback', () => {
-    it('calls adminDeleteUser and re-throws when memberRepo.save fails', async () => {
-      const dbError = new Error('DynamoDB write failed');
-      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
-      mockMemberRepo.findByDni.mockResolvedValue(null);
-      mockMemberRepo.findByEmail.mockResolvedValue(null);
-      mockCognitoService.adminCreateUser.mockResolvedValue(COGNITO_SUB);
-      mockCognitoService.adminSetUserPassword.mockResolvedValue(undefined);
-      mockCognitoService.adminAddUserToGroup.mockResolvedValue(undefined);
-      mockMemberRepo.save.mockRejectedValue(dbError);
-      mockCognitoService.adminDeleteUser.mockResolvedValue(undefined);
-
-      await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(dbError);
-      expect(mockCognitoService.adminDeleteUser).toHaveBeenCalledWith(VALID_COMMAND.email);
-    });
-
-    it('does not double-call adminDeleteUser if PutItem fails (only one rollback)', async () => {
-      const dbError = new Error('DynamoDB write failed');
-      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
-      mockMemberRepo.findByDni.mockResolvedValue(null);
-      mockMemberRepo.findByEmail.mockResolvedValue(null);
-      mockCognitoService.adminCreateUser.mockResolvedValue(COGNITO_SUB);
-      mockCognitoService.adminSetUserPassword.mockResolvedValue(undefined);
-      mockCognitoService.adminAddUserToGroup.mockResolvedValue(undefined);
-      mockMemberRepo.save.mockRejectedValue(dbError);
-      mockCognitoService.adminDeleteUser.mockResolvedValue(undefined);
+      mockMemberRepo.findByEmail.mockResolvedValue(EXISTING_MEMBER);
 
       await handler.execute(VALID_COMMAND).catch(() => {});
 
-      expect(mockCognitoService.adminDeleteUser).toHaveBeenCalledTimes(1);
+      expect(mockCognitoService.signUp).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Cognito signUp failure ──────────────────────────────────────────────────
+
+  describe('execute — Cognito signUp failure', () => {
+    it('propagates Cognito errors when signUp fails', async () => {
+      const cognitoError = new Error('Cognito service unavailable');
+      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
+      mockMemberRepo.findByDni.mockResolvedValue(null);
+      mockMemberRepo.findByEmail.mockResolvedValue(null);
+      mockCognitoService.signUp.mockRejectedValue(cognitoError);
+
+      await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(cognitoError);
+    });
+
+    it('does NOT call adminDeleteUser on signUp failure (no user was created yet)', async () => {
+      const cognitoError = new Error('SignUp failed');
+      mockSeedMemberRepo.findByDni.mockResolvedValue(ACTIVE_SEED_RECORD);
+      mockMemberRepo.findByDni.mockResolvedValue(null);
+      mockMemberRepo.findByEmail.mockResolvedValue(null);
+      mockCognitoService.signUp.mockRejectedValue(cognitoError);
+
+      await handler.execute(VALID_COMMAND).catch(() => {});
+
+      // No rollback needed — SignUp is atomic; if it fails, no user exists
+      expect(mockCognitoService.adminDeleteUser).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── Execution order ─────────────────────────────────────────────────────────
+
+  describe('execute — call order', () => {
+    it('validates password before querying any external service', async () => {
+      const callOrder: string[] = [];
+
+      mockSeedMemberRepo.findByDni.mockImplementation(async () => {
+        callOrder.push('seedQuery');
+        return ACTIVE_SEED_RECORD;
+      });
+      mockMemberRepo.findByDni.mockImplementation(async () => {
+        callOrder.push('memberDniQuery');
+        return null;
+      });
+      mockMemberRepo.findByEmail.mockImplementation(async () => {
+        callOrder.push('memberEmailQuery');
+        return null;
+      });
+      mockCognitoService.signUp.mockImplementation(async () => {
+        callOrder.push('cognitoSignUp');
+        return COGNITO_USER_SUB;
+      });
+
+      await handler.execute(VALID_COMMAND);
+
+      expect(callOrder).toEqual([
+        'seedQuery',
+        'memberDniQuery',
+        'memberEmailQuery',
+        'cognitoSignUp',
+      ]);
     });
   });
 });
