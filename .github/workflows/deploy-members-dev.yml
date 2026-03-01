@@ -1,0 +1,106 @@
+# ============================================================
+# .github/workflows/deploy-members-dev.yml
+#
+# Builds the NestJS members service, packages it as a Lambda
+# artifact, uploads to S3, and updates the Lambda function.
+#
+# Triggers:
+#   push -> main  (backend/** or this workflow file changed)
+#
+# IAM Role : arn:aws:iam::463310123916:role/activa-club-terraform-dev-role
+#            (AdministratorAccess — same role used by Terraform DEV)
+# ============================================================
+
+name: Deploy Members Lambda (DEV)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-members-dev.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  ARTIFACTS_BUCKET: activa-club-lambda-artifacts-dev
+  LAMBDA_S3_KEY: members/members.zip
+  LAMBDA_FUNCTION_NAME: activa-club-members-dev
+  AWS_REGION: us-east-1
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Members Lambda (DEV)
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::463310123916:role/activa-club-terraform-dev-role
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-DeployMembers-DEV
+
+      # ── Build ──────────────────────────────────────────────────────────────
+      - name: Install all dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Build NestJS app
+        working-directory: backend
+        run: npm run build
+
+      # ── Package ───────────────────────────────────────────────────────────
+      # Reinstall production-only deps so node_modules in the ZIP is lean.
+      - name: Install production dependencies only
+        working-directory: backend
+        run: npm ci --omit=dev
+
+      - name: Create Lambda deployment package
+        working-directory: backend
+        run: |
+          zip -r ../members.zip dist/ node_modules/ \
+            --exclude "*.spec.js" "*.spec.js.map" \
+            --exclude "dist/**/*.spec.js" "dist/**/*.spec.js.map"
+          echo "Artifact size: $(du -sh ../members.zip | cut -f1)"
+
+      # ── Upload ────────────────────────────────────────────────────────────
+      - name: Upload artifact to S3
+        run: |
+          aws s3 cp members.zip \
+            "s3://${{ env.ARTIFACTS_BUCKET }}/${{ env.LAMBDA_S3_KEY }}"
+
+      # ── Deploy ────────────────────────────────────────────────────────────
+      # update-function-code is a no-op if the function doesn't exist yet;
+      # Terraform will create it pointing to the S3 key on next apply.
+      - name: Update Lambda function code
+        run: |
+          if aws lambda get-function \
+               --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+               --region "${{ env.AWS_REGION }}" \
+               > /dev/null 2>&1; then
+            echo "Lambda exists — updating function code"
+            aws lambda update-function-code \
+              --function-name "${{ env.LAMBDA_FUNCTION_NAME }}" \
+              --s3-bucket     "${{ env.ARTIFACTS_BUCKET }}" \
+              --s3-key        "${{ env.LAMBDA_S3_KEY }}" \
+              --publish \
+              --region        "${{ env.AWS_REGION }}"
+          else
+            echo "Lambda does not exist yet — Terraform will create it on next apply."
+            echo "The artifact is already uploaded to S3 and ready."
+          fi
