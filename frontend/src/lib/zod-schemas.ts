@@ -1,6 +1,59 @@
 import { z } from 'zod'
 
-// Auth schemas
+// ─── Registration schema ─────────────────────────────────────────────────────
+
+export const registerSchema = z
+  .object({
+    dni: z
+      .string()
+      .min(7, 'El DNI debe tener al menos 7 dígitos')
+      .max(8, 'El DNI no debe exceder 8 dígitos')
+      .regex(/^\d+$/, 'El DNI solo debe contener números'),
+    email: z
+      .string()
+      .min(1, 'El email es requerido')
+      .email('Ingresa una dirección de email válida'),
+    password: z
+      .string()
+      .min(8, 'La contraseña debe tener al menos 8 caracteres')
+      .max(128, 'La contraseña no debe exceder 128 caracteres')
+      .regex(
+        /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9])/,
+        'Debe contener mayúscula, minúscula, número y carácter especial'
+      ),
+    confirmPassword: z.string().min(1, 'Confirma tu contraseña'),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  })
+
+export type RegisterFormValues = z.infer<typeof registerSchema>
+
+// ─── Verify email OTP schema ─────────────────────────────────────────────────
+
+export const verifyEmailSchema = z.object({
+  code: z
+    .string()
+    .length(6, 'El código debe tener exactamente 6 dígitos')
+    .regex(/^\d+$/, 'El código solo debe contener números'),
+})
+
+export type VerifyEmailFormValues = z.infer<typeof verifyEmailSchema>
+
+// ─── Verify OTP (login step 2) schema ────────────────────────────────────────
+
+export const verifyOtpSchema = z.object({
+  otp: z
+    .string()
+    .length(6, 'El código debe tener exactamente 6 dígitos')
+    .regex(/^\d+$/, 'El código solo debe contener números'),
+})
+
+export type VerifyOtpFormValues = z.infer<typeof verifyOtpSchema>
+
+// ─── Auth schemas ─────────────────────────────────────────────────────────────
+
 export const loginSchema = z.object({
   email: z
     .string()

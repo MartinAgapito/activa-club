@@ -11,9 +11,16 @@ export const apiClient = axios.create({
   timeout: 30_000,
 })
 
-// Request interceptor: attach Cognito JWT token
+// Request interceptor: attach JWT token (stored idToken first, then Amplify session)
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    // Prefer the idToken stored after a backend verify-otp response
+    const { idToken } = (await import('@/store')).useAuthStore.getState()
+    if (idToken) {
+      config.headers.Authorization = `Bearer ${idToken}`
+      return config
+    }
+    // Fallback: try Amplify session (legacy / SSO flows)
     try {
       const session = await fetchAuthSession()
       const token = session.tokens?.idToken?.toString()
@@ -21,7 +28,7 @@ apiClient.interceptors.request.use(
         config.headers.Authorization = `Bearer ${token}`
       }
     } catch {
-      // User is not authenticated; continue without token
+      // Not authenticated; continue without token
     }
     return config
   },
