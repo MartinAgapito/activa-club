@@ -38,9 +38,9 @@ resource "aws_apigatewayv2_api" "this" {
   description   = "ActivaClub API Gateway — ${var.env}"
 
   cors_configuration {
-    allow_origins = var.cors_origins
-    allow_methods = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    allow_headers = ["Content-Type", "Authorization", "X-Request-ID", "X-Amz-Date", "X-Api-Key"]
+    allow_origins  = var.cors_origins
+    allow_methods  = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+    allow_headers  = ["Content-Type", "Authorization", "X-Request-ID", "X-Amz-Date", "X-Api-Key"]
     expose_headers = ["X-Request-ID"]
     max_age        = 300
   }
