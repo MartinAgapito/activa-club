@@ -85,6 +85,33 @@ jobs:
           path: ${{ env.WORKING_DIR }}/tfplan
           retention-days: 3
 
+      # ── Bootstrap: ensure Lambda artifact exists before apply ──────────────
+      # On first deploy the artifacts S3 bucket doesn't exist yet and there
+      # is no members.zip. We create the bucket via a targeted apply, then
+      # upload a minimal placeholder so Terraform can create the Lambda
+      # function. The real artifact is deployed by deploy-members-dev.yml.
+      - name: Bootstrap Lambda artifact bucket (first-time only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          # Create just the S3 bucket resources (idempotent)
+          terraform apply -auto-approve -input=false \
+            -target=aws_s3_bucket.lambda_artifacts \
+            -target=aws_s3_bucket_versioning.lambda_artifacts \
+            -target=aws_s3_bucket_public_access_block.lambda_artifacts \
+            -var-file=dev.tfvars
+
+          # Upload a stub zip only if the real artifact is not there yet
+          BUCKET="activa-club-lambda-artifacts-dev"
+          KEY="members/members.zip"
+          if ! aws s3 ls "s3://${BUCKET}/${KEY}" 2>/dev/null; then
+            echo "No Lambda artifact found — uploading stub for first-time deploy"
+            echo 'exports.handler=async()=>({statusCode:503,body:"Deploying..."})' \
+              > /tmp/index.js
+            zip -j /tmp/members.zip /tmp/index.js
+            aws s3 cp /tmp/members.zip "s3://${BUCKET}/${KEY}"
+          fi
+
       # Apply only on push to main, not on pull requests
       - name: Terraform Apply
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
