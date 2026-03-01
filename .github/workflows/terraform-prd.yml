@@ -13,7 +13,6 @@ name: Terraform PRD
 on:
   push:
     tags: ["prd-v*"]
-    paths: ["infrastructure/**"]
 
 permissions:
   id-token: write
@@ -66,6 +65,32 @@ jobs:
       - name: Terraform Validate
         working-directory: ${{ env.WORKING_DIR }}
         run: terraform validate
+
+      # ── Bootstrap: runs BEFORE plan so the plan reflects the real state ──────
+      # On first deploy the artifacts S3 bucket doesn't exist yet and there
+      # is no members.zip. We create the bucket via a targeted apply, then
+      # upload a minimal placeholder so Terraform can create the Lambda
+      # function. The real artifact is deployed by deploy-members-prd.yml.
+      - name: Bootstrap Lambda artifact bucket (first-time only)
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          # Create just the S3 bucket resources (idempotent, updates state)
+          terraform apply -auto-approve -input=false \
+            -target=aws_s3_bucket.lambda_artifacts \
+            -target=aws_s3_bucket_versioning.lambda_artifacts \
+            -target=aws_s3_bucket_public_access_block.lambda_artifacts \
+            -var-file=prd.tfvars
+
+          # Upload a stub zip only if the real artifact is not there yet
+          BUCKET="activa-club-lambda-artifacts-prd"
+          KEY="members/members.zip"
+          if ! aws s3 ls "s3://${BUCKET}/${KEY}" 2>/dev/null; then
+            echo "No Lambda artifact found — uploading stub for first-time deploy"
+            echo 'exports.handler=async()=>({statusCode:503,body:"Deploying..."})' \
+              > /tmp/index.js
+            zip -j /tmp/members.zip /tmp/index.js
+            aws s3 cp /tmp/members.zip "s3://${BUCKET}/${KEY}"
+          fi
 
       - name: Terraform Plan
         working-directory: ${{ env.WORKING_DIR }}
