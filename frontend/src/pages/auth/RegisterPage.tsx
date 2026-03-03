@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import axios from 'axios'
 
@@ -19,65 +18,59 @@ import {
 } from '@/components/ui/form'
 import { AuthBrandPanel } from '@/components/auth/AuthBrandPanel'
 import { useToast } from '@/hooks/useToast'
-import { loginSchema, type LoginFormValues } from '@/lib/zod-schemas'
+import { registerSchema, type RegisterFormValues } from '@/lib/zod-schemas'
 import { authApi, type AuthApiError } from '@/api/auth.api'
-import { useAuthStore } from '@/store'
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { toast } = useToast()
-  const { isAuthenticated } = useAuthStore()
 
-  const from =
-    (location.state as { from?: { pathname: string } } | null)?.from?.pathname ??
-    '/member/dashboard'
-
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(from, { replace: true })
-    }
-  }, [isAuthenticated, navigate, from])
-
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
     defaultValues: {
+      dni: '',
       email: '',
       password: '',
+      confirmPassword: '',
     },
   })
 
   const { isSubmitting } = form.formState
 
-  const onSubmit = async (data: LoginFormValues) => {
+  const onSubmit = async (data: RegisterFormValues) => {
     try {
-      const response = await authApi.login({ email: data.email, password: data.password })
-      const { session, challengeName } = response.data.data
-
-      // Navigate to OTP verification step, carrying session + email
-      navigate('/auth/verify-otp', {
-        state: { email: data.email, session, challengeName },
+      await authApi.register({
+        dni: data.dni,
+        email: data.email,
+        password: data.password,
       })
+
+      toast({
+        title: 'Account created',
+        description: 'Please check your email for the verification code.',
+      })
+
+      // Pass email via query param so VerifyEmailPage can pre-fill the field
+      navigate(`/auth/verify-email?email=${encodeURIComponent(data.email)}`)
     } catch (error) {
-      let message = 'An error occurred while signing in. Please try again.'
+      let message = 'An error occurred during registration. Please try again.'
 
       if (axios.isAxiosError(error)) {
         const body = error.response?.data as AuthApiError | undefined
         if (body?.error?.message) {
           message = body.error.message
-        } else if (error.response?.status === 401) {
-          message = 'Incorrect email or password.'
-        } else if (error.response?.status === 403) {
-          message = 'Your account is not confirmed or has been disabled.'
-        } else if (error.response?.status === 429) {
-          message = 'Too many attempts. Please wait a moment and try again.'
+        } else if (error.response?.status === 400) {
+          message = 'Invalid data. Please check all fields and try again.'
+        } else if (error.response?.status === 404) {
+          message = 'The DNI entered was not found in our records.'
+        } else if (error.response?.status === 409) {
+          message = 'An account with this email already exists.'
         }
       }
 
       toast({
         variant: 'destructive',
-        title: 'Sign in failed',
+        title: 'Registration failed',
         description: message,
       })
     }
@@ -89,22 +82,48 @@ export default function LoginPage() {
         {/* Left: Brand panel */}
         <AuthBrandPanel />
 
-        {/* Right: Login form */}
+        {/* Right: Registration form */}
         <div className="flex justify-center lg:justify-start">
           <div className="w-full max-w-md">
             <Card className="border-slate-200 shadow-sm bg-white">
               <CardHeader className="space-y-1 pb-4">
                 <CardTitle className="text-2xl font-bold text-slate-900">
-                  Sign in
+                  Create your account
                 </CardTitle>
                 <CardDescription className="text-slate-500">
-                  Enter your credentials to access your account
+                  Fill in your details to register. Your DNI must match our records.
                 </CardDescription>
               </CardHeader>
 
               <CardContent>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
+                    {/* DNI */}
+                    <FormField
+                      control={form.control}
+                      name="dni"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>DNI</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="text"
+                              placeholder="12345678"
+                              inputMode="numeric"
+                              maxLength={8}
+                              autoComplete="off"
+                              className="border-slate-200 placeholder:text-slate-400"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Use your DNI to validate your membership (7–8 digits)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     {/* Email */}
                     <FormField
                       control={form.control}
@@ -140,13 +159,37 @@ export default function LoginPage() {
                             <Input
                               type="password"
                               placeholder="••••••••"
-                              autoComplete="current-password"
+                              autoComplete="new-password"
                               className="border-slate-200 placeholder:text-slate-400"
                               {...field}
                             />
                           </FormControl>
                           <FormDescription>
-                            Minimum 8 characters
+                            Minimum 8 characters — uppercase, lowercase, number and special character
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Confirm password */}
+                    <FormField
+                      control={form.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm password</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="password"
+                              placeholder="••••••••"
+                              autoComplete="new-password"
+                              className="border-slate-200 placeholder:text-slate-400"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Re-enter your password to confirm
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -161,22 +204,22 @@ export default function LoginPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Signing in...
+                          Creating account...
                         </>
                       ) : (
-                        'Continue'
+                        'Create account'
                       )}
                     </Button>
                   </form>
                 </Form>
 
                 <p className="mt-6 text-center text-sm text-slate-500">
-                  Don&apos;t have an account?{' '}
+                  Already have an account?{' '}
                   <Link
-                    to="/auth/register"
+                    to="/auth/login"
                     className="font-medium text-slate-900 underline underline-offset-4 hover:text-slate-700"
                   >
-                    Sign up
+                    Sign in
                   </Link>
                 </p>
               </CardContent>
