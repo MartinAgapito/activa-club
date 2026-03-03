@@ -86,7 +86,15 @@ resource "aws_cognito_user_pool" "this" {
     }
   }
 
-  # Email verification message (uses Cognito default sender)
+  # SES email sender — required for Email MFA (COGNITO_DEFAULT does not support
+  # EmailMfaConfiguration). The identity must be verified in SES before apply.
+  email_configuration {
+    email_sending_account = "DEVELOPER"
+    from_email_address    = "ActivaClub <${var.ses_from_email}>"
+    source_arn            = var.ses_source_arn
+  }
+
+  # Email verification message
   verification_message_template {
     default_email_option = "CONFIRM_WITH_CODE"
   }
