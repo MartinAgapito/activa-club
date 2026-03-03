@@ -30,3 +30,13 @@ variable "force_recreate_token" {
   type        = string
   default     = "v1"
 }
+
+variable "ses_from_email" {
+  description = "Email address (verified in SES) used as the sender for Cognito emails (MFA OTP, account verification). Required when email_sending_account = DEVELOPER."
+  type        = string
+}
+
+variable "ses_source_arn" {
+  description = "ARN of the verified SES identity that Cognito uses to send emails. Format: arn:aws:ses:<region>:<account>:identity/<email>."
+  type        = string
+}
