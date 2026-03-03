@@ -112,6 +112,17 @@ module "seed_members_table" {
 }
 
 # ============================================================
+# SES — Email identity for Cognito sender
+#
+# Cognito Email MFA requires EmailSendingAccount = DEVELOPER (SES).
+# Terraform creates the identity and sends a verification email to
+# this address. The link must be clicked before Cognito can send OTPs.
+# ============================================================
+resource "aws_ses_email_identity" "cognito_sender" {
+  email = "developer.maas@gmail.com"
+}
+
+# ============================================================
 # Cognito — User Pool, App Client, Domain, Groups
 #
 # Provides authentication and authorisation for the ActivaClub
@@ -124,13 +135,17 @@ module "cognito" {
   project = var.project
 
   # OTP email template for login MFA (AC-002).
-  # Uses Cognito's default sender — for production, configure SES out of sandbox.
   email_mfa_message = "Tu código de verificación ActivaClub es: {####}. Válido por 3 minutos."
+
+  # SES sender — required for Email MFA (COGNITO_DEFAULT not supported).
+  ses_from_email = aws_ses_email_identity.cognito_sender.email
+  ses_source_arn = aws_ses_email_identity.cognito_sender.arn
 
   # Bump to force destroy + recreate of the User Pool (e.g. when schema changes).
   # v1 → v2: recreate to include custom:dni attribute in the pool schema.
   # v2 → v3: recreate any pool created before custom:dni schema was applied.
-  force_recreate_token = "v3"
+  # v3 → v4: recreate to add SES email_configuration for Email MFA support.
+  force_recreate_token = "v4"
 
   tags = {
     Project = var.project
