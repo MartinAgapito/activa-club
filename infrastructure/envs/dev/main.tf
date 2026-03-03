@@ -127,6 +127,11 @@ module "cognito" {
   # Uses Cognito's default sender — for production, configure SES out of sandbox.
   email_mfa_message = "Tu código de verificación ActivaClub es: {####}. Válido por 3 minutos."
 
+  # Bump to force destroy + recreate of the User Pool (e.g. when schema changes).
+  # v1 → v2: recreate to include custom:dni attribute in the pool schema.
+  # v2 → v3: recreate any pool created before custom:dni schema was applied.
+  force_recreate_token = "v3"
+
   tags = {
     Project = var.project
   }
