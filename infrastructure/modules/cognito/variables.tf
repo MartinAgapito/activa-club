@@ -24,3 +24,9 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "force_recreate_token" {
+  description = "Bump this value (e.g. 'v1' → 'v2') to force Terraform to destroy and recreate the Cognito User Pool. Use when schema attributes are added and the existing pool cannot be updated in-place."
+  type        = string
+  default     = "v1"
+}
