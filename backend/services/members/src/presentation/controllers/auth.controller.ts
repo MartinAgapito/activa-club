@@ -106,6 +106,7 @@ export class AuthController {
     description: 'INTERNAL_ERROR — unexpected server-side failure.',
   })
   async register(@Body() dto: RegisterMemberRequestDto): Promise<RegisterMemberResponseDto> {
+    this.logger.log(`Received registration request for DNI=${dto.dni} and email=${dto.email}`);
     this.logger.log(`POST /v1/auth/register — dni=${dto.dni}, email=${dto.email}`);
 
     const command = new RegisterMemberCommand(dto.dni, dto.email, dto.password);
