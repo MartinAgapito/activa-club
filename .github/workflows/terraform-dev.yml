@@ -78,7 +78,7 @@ jobs:
       # upload a minimal placeholder so Terraform can create the Lambda
       # function. The real artifact is deployed by deploy-members-dev.yml.
       - name: Bootstrap Lambda artifact bucket (first-time only)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         working-directory: ${{ env.WORKING_DIR }}
         run: |
           # Create just the S3 bucket resources (idempotent, updates state)
@@ -114,8 +114,8 @@ jobs:
           path: ${{ env.WORKING_DIR }}/tfplan
           retention-days: 3
 
-      # Apply only on push to main, not on pull requests
+      # Apply only on push to main or manual dispatch, not on pull requests
       - name: Terraform Apply
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         working-directory: ${{ env.WORKING_DIR }}
         run: terraform apply -auto-approve -input=false tfplan
