@@ -16,6 +16,15 @@ import { GlobalExceptionFilter } from './shared/filters/global-exception.filter'
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(MembersModule);
 
+  // CORS must be the first middleware registered so it runs before guards,
+  // pipes and exception filters — including OPTIONS preflight requests.
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  });
+
   app.setGlobalPrefix('v1');
 
   app.useGlobalPipes(
