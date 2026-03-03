@@ -21,6 +21,16 @@
 # ============================================================
 
 # ------------------------------------------------------------
+# Recreation trigger
+# Changing force_recreate_token forces destroy + recreate of the
+# User Pool — needed when new schema attributes are added, since
+# Cognito does not allow modifying schema in-place via UpdateUserPool.
+# ------------------------------------------------------------
+resource "terraform_data" "cognito_recreate_trigger" {
+  input = var.force_recreate_token
+}
+
+# ------------------------------------------------------------
 # User Pool
 # ------------------------------------------------------------
 resource "aws_cognito_user_pool" "this" {
@@ -116,6 +126,10 @@ resource "aws_cognito_user_pool" "this" {
     Environment = var.env
     ManagedBy   = "terraform"
   })
+
+  lifecycle {
+    replace_triggered_by = [terraform_data.cognito_recreate_trigger]
+  }
 }
 
 # ------------------------------------------------------------
