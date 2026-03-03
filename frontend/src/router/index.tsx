@@ -10,6 +10,9 @@ import type { UserRole } from '@/types'
 
 // Lazy-loaded pages
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'))
+const RegisterPage = lazy(() => import('@/pages/auth/RegisterPage'))
+const VerifyEmailPage = lazy(() => import('@/pages/auth/VerifyEmailPage'))
+const VerifyOtpPage = lazy(() => import('@/pages/auth/VerifyOtpPage'))
 const AuthCallbackPage = lazy(() => import('@/pages/auth/AuthCallbackPage'))
 const MemberDashboardPage = lazy(() => import('@/pages/member/DashboardPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/DashboardPage'))
@@ -61,6 +64,18 @@ export const router = createBrowserRouter([
       {
         path: 'login',
         element: <LoginPage />,
+      },
+      {
+        path: 'register',
+        element: <RegisterPage />,
+      },
+      {
+        path: 'verify-email',
+        element: <VerifyEmailPage />,
+      },
+      {
+        path: 'verify-otp',
+        element: <VerifyOtpPage />,
       },
       {
         path: 'callback',
