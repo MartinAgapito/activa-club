@@ -103,6 +103,7 @@ jobs:
         run: |
           terraform plan \
             -out=tfplan \
+            -replace=module.cognito.aws_cognito_user_pool.this \
             -var-file=dev.tfvars
 
       - name: Upload Plan
