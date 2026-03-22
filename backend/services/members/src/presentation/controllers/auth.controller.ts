@@ -16,13 +16,10 @@ import { LoginRequestDto } from '../dtos/login.request.dto';
 import { VerifyOtpRequestDto } from '../dtos/verify-otp.request.dto';
 
 // Response DTOs
-import {
-  RegisterMemberResponseDto,
-  RegisterMemberDataDto,
-} from '../dtos/register-member.response.dto';
-import { VerifyEmailResponseDto, VerifyEmailDataDto } from '../dtos/verify-email.response.dto';
-import { LoginResponseDto, LoginDataDto } from '../dtos/login.response.dto';
-import { VerifyOtpResponseDto, VerifyOtpDataDto } from '../dtos/verify-otp.response.dto';
+import { RegisterMemberDataDto } from '../dtos/register-member.response.dto';
+import { VerifyEmailDataDto } from '../dtos/verify-email.response.dto';
+import { LoginDataDto } from '../dtos/login.response.dto';
+import { VerifyOtpDataDto } from '../dtos/verify-otp.response.dto';
 
 // Commands
 import { RegisterMemberCommand } from '../../application/commands/register-member/register-member.command';
@@ -79,7 +76,7 @@ export class AuthController {
   @ApiBody({ type: RegisterMemberRequestDto })
   @ApiAcceptedResponse({
     description: 'OTP sent — account pending email verification.',
-    type: RegisterMemberResponseDto,
+    type: RegisterMemberDataDto,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -105,7 +102,7 @@ export class AuthController {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
     description: 'INTERNAL_ERROR — unexpected server-side failure.',
   })
-  async register(@Body() dto: RegisterMemberRequestDto): Promise<RegisterMemberResponseDto> {
+  async register(@Body() dto: RegisterMemberRequestDto): Promise<RegisterMemberDataDto> {
     this.logger.log(`Received registration request for DNI=${dto.dni} and email=${dto.email}`);
     this.logger.log(`POST /v1/auth/register — dni=${dto.dni}, email=${dto.email}`);
 
@@ -113,13 +110,11 @@ export class AuthController {
 
     const result = await this.registerMemberHandler.execute(command);
 
-    const data: RegisterMemberDataDto = {
+    return {
       email: result.email,
       message:
         'A verification code has been sent to your email. Please enter it to activate your account.',
     };
-
-    return { status: 'success', data };
   }
 
   // ─── AC-001 Step 2: POST /v1/auth/verify-email ────────────────────────────
@@ -134,7 +129,7 @@ export class AuthController {
   @ApiBody({ type: VerifyEmailRequestDto })
   @ApiCreatedResponse({
     description: 'Account activated — member profile created.',
-    type: VerifyEmailResponseDto,
+    type: VerifyEmailDataDto,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -156,25 +151,19 @@ export class AuthController {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
     description: 'INTERNAL_ERROR — DynamoDB write failed (Cognito user rolled back).',
   })
-  async verifyEmail(@Body() dto: VerifyEmailRequestDto): Promise<VerifyEmailResponseDto> {
+  async verifyEmail(@Body() dto: VerifyEmailRequestDto): Promise<VerifyEmailDataDto> {
     this.logger.log(`POST /v1/auth/verify-email — email=${dto.email}`);
 
     const command = new VerifyEmailCommand(dto.email, dto.code);
     const result = await this.verifyEmailHandler.execute(command);
 
-    const data: VerifyEmailDataDto = {
+    return {
       member_id: result.memberId,
       full_name: result.fullName,
       email: result.email,
       membership_type: result.membershipType,
       account_status: result.accountStatus,
       created_at: result.createdAt,
-    };
-
-    return {
-      status: 'success',
-      data,
-      message: 'Account successfully activated. You can now sign in.',
     };
   }
 
@@ -202,16 +191,13 @@ export class AuthController {
   })
   async resendCode(
     @Body() dto: ResendCodeRequestDto,
-  ): Promise<{ status: string; data: { message: string } }> {
+  ): Promise<{ message: string }> {
     this.logger.log(`POST /v1/auth/resend-code — email=${dto.email}`);
 
     const command = new ResendCodeCommand(dto.email);
     await this.resendCodeHandler.execute(command);
 
-    return {
-      status: 'success',
-      data: { message: 'A new verification code has been sent to your email.' },
-    };
+    return { message: 'A new verification code has been sent to your email.' };
   }
 
   // ─── AC-002 Step 1: POST /v1/auth/login ───────────────────────────────────
@@ -227,7 +213,7 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Credentials valid — EMAIL_OTP challenge issued.',
-    type: LoginResponseDto,
+    type: LoginDataDto,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -245,20 +231,18 @@ export class AuthController {
     status: HttpStatus.TOO_MANY_REQUESTS,
     description: 'TOO_MANY_ATTEMPTS — Cognito rate limiting.',
   })
-  async login(@Body() dto: LoginRequestDto): Promise<LoginResponseDto> {
+  async login(@Body() dto: LoginRequestDto): Promise<LoginDataDto> {
     // Password is intentionally not logged
     this.logger.log(`POST /v1/auth/login — email=${dto.email}`);
 
     const command = new LoginCommand(dto.email, dto.password);
     const result = await this.loginHandler.execute(command);
 
-    const data: LoginDataDto = {
+    return {
       challengeName: result.challengeName,
       session: result.session,
       message: 'A verification code has been sent to your email.',
     };
-
-    return { status: 'success', data };
   }
 
   // ─── AC-002 Step 2: POST /v1/auth/verify-otp ──────────────────────────────
@@ -274,7 +258,7 @@ export class AuthController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Authentication complete — tokens returned.',
-    type: VerifyOtpResponseDto,
+    type: VerifyOtpDataDto,
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
@@ -288,21 +272,19 @@ export class AuthController {
     status: HttpStatus.TOO_MANY_REQUESTS,
     description: 'TOO_MANY_ATTEMPTS — too many incorrect OTP attempts.',
   })
-  async verifyOtp(@Body() dto: VerifyOtpRequestDto): Promise<VerifyOtpResponseDto> {
+  async verifyOtp(@Body() dto: VerifyOtpRequestDto): Promise<VerifyOtpDataDto> {
     this.logger.log(`POST /v1/auth/verify-otp — email=${dto.email}`);
 
     const command = new VerifyOtpCommand(dto.email, dto.session, dto.otp);
     const result = await this.verifyOtpHandler.execute(command);
 
     // Tokens are intentionally not logged
-    const data: VerifyOtpDataDto = {
+    return {
       accessToken: result.accessToken,
       idToken: result.idToken,
       refreshToken: result.refreshToken,
       expiresIn: result.expiresIn,
       tokenType: result.tokenType,
     };
-
-    return { status: 'success', data };
   }
 }
