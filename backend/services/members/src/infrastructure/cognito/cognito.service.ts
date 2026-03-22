@@ -221,7 +221,7 @@ export class CognitoService {
     const command = new AdminInitiateAuthCommand({
       UserPoolId: this.userPoolId,
       ClientId: this.clientId,
-      AuthFlow: 'USER_PASSWORD_AUTH',
+      AuthFlow: 'ADMIN_USER_PASSWORD_AUTH',
       AuthParameters: {
         USERNAME: email,
         PASSWORD: password,
