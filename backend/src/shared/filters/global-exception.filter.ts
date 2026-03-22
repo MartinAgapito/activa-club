@@ -77,7 +77,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
 
       // In local dev expose the real error — in production keep it generic
-      if (process.env.ENV === 'local') {
+      if (process.env.ENV === 'local' || process.env.ENV === 'dev') {
         message =
           exception instanceof Error
             ? `[${exception.name}] ${exception.message}`
