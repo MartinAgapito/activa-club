@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { MembersModule } from '../members.module';
 import { GlobalExceptionFilter } from './shared/filters/global-exception.filter';
+import { TransformInterceptor } from './shared/interceptors/transform.interceptor';
 
 /**
  * Local development entry point.
@@ -37,6 +38,7 @@ async function bootstrap(): Promise<void> {
   );
 
   app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalInterceptors(new TransformInterceptor());
 
   const config = new DocumentBuilder()
     .setTitle('ActivaClub Members API')
