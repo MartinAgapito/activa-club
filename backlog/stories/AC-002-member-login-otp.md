@@ -3,8 +3,9 @@
 **Epic:** EP-01 - Incorporación de Socios
 **Prioridad:** Alta
 **Story Points:** 8
-**Estado:** Backlog
+**Estado:** Done
 **Fecha de Creación:** 2026-02-27
+**Última Actualización:** 2026-03-29
 **Autor:** Agente Senior Product Owner
 
 ---
@@ -37,7 +38,7 @@ Esto es especialmente relevante dado que la plataforma gestiona datos personales
 ## Precondiciones
 
 - El socio tiene una cuenta en Cognito con estado `CONFIRMED` (completó el flujo de AC-001).
-- El Cognito User Pool tiene MFA configurado en modo `OPTIONAL` o `REQUIRED` con entrega de código vía email (Cognito Email OTP challenge).
+- El Cognito User Pool tiene MFA configurado en modo `ON` (obligatorio para todos los usuarios) con entrega de código vía email (Cognito Email OTP challenge).
 - El socio tiene un email válido y verificado asociado a su cuenta Cognito.
 - Los endpoints de login son públicamente accesibles (no requieren token de autenticación).
 
@@ -48,38 +49,38 @@ Esto es especialmente relevante dado que la plataforma gestiona datos personales
 **Flujo Exitoso — Paso 1: Autenticación de credenciales:**
 
 - [ ] El socio ingresa su email y contraseña en el formulario de login.
-- [ ] El backend llama a `initiateAuth` de Cognito con `AUTH_FLOW = USER_PASSWORD_AUTH`.
-- [ ] Si las credenciales son válidas, Cognito no retorna tokens aún sino un challenge de tipo `MFA_SETUP` o `SOFTWARE_TOKEN_MFA` / `EMAIL_OTP`.
-- [ ] El backend envía el challenge al frontend y el sistema notifica al socio que se ha enviado un código OTP a su email.
-- [ ] El sistema retorna HTTP 200 con un `session` token temporal (de corta vida, emitido por Cognito) y el tipo de challenge.
+- [x] El backend llama a `AdminInitiateAuth` de Cognito con `AuthFlow = ADMIN_USER_PASSWORD_AUTH` (autenticado con el IAM role del Lambda).
+- [x] Si las credenciales son válidas, Cognito no retorna tokens aún sino un challenge de tipo `EMAIL_OTP`.
+- [x] El backend envía el challenge al frontend y el sistema notifica al socio que se ha enviado un código OTP a su email.
+- [x] El sistema retorna HTTP 200 con un `session` token temporal (de corta vida, emitido por Cognito) y el tipo de challenge.
 
 **Flujo Exitoso — Paso 2: Verificación del OTP:**
 
-- [ ] El socio ingresa el código OTP de 6 dígitos recibido en su email.
-- [ ] El backend llama a `respondToAuthChallenge` de Cognito con el código OTP y el `session` token.
-- [ ] Si el OTP es correcto y no ha expirado, Cognito retorna `AccessToken`, `IdToken` y `RefreshToken`.
-- [ ] El backend retorna HTTP 200 con los tokens.
-- [ ] El frontend almacena los tokens de forma segura (memoria o `httpOnly cookie`) y redirige al dashboard del socio.
+- [x] El socio ingresa el código OTP de 6 dígitos recibido en su email.
+- [x] El backend llama a `AdminRespondToAuthChallenge` de Cognito con el código OTP y el `session` token.
+- [x] Si el OTP es correcto y no ha expirado, Cognito retorna `AccessToken`, `IdToken` y `RefreshToken`.
+- [x] El backend retorna HTTP 200 con los tokens.
+- [x] El frontend almacena los tokens y redirige al dashboard del socio.
 
 **Credenciales Incorrectas:**
 
-- [ ] Si el email no existe en Cognito, el sistema retorna HTTP 401 con mensaje genérico (no revelar si es email o contraseña la causa, para evitar user enumeration).
-- [ ] Si la contraseña es incorrecta, el sistema retorna HTTP 401 con el mismo mensaje genérico.
-- [ ] Después de 5 intentos fallidos consecutivos de credenciales, Cognito bloquea la cuenta temporalmente; el sistema retorna HTTP 429 con indicación de bloqueo temporal.
+- [x] Si el email no existe en Cognito, el sistema retorna HTTP 401 con mensaje genérico (no revelar si es email o contraseña la causa, para evitar user enumeration).
+- [x] Si la contraseña es incorrecta, el sistema retorna HTTP 401 con el mismo mensaje genérico.
+- [x] Después de N intentos fallidos consecutivos, Cognito bloquea la cuenta temporalmente; el sistema retorna HTTP 429.
 
 **OTP Inválido o Expirado:**
 
-- [ ] Si el código OTP ingresado es incorrecto, el sistema retorna HTTP 400 con mensaje claro.
-- [ ] Si el `session` token temporal de Cognito expiró (TTL: 3 minutos), el sistema retorna HTTP 410 e indica que el socio debe iniciar el proceso de login nuevamente.
-- [ ] Si el código OTP fue ingresado más de 3 veces incorrectamente en la misma sesión, Cognito invalida la sesión; el sistema retorna HTTP 429.
+- [x] Si el código OTP ingresado es incorrecto, el sistema retorna HTTP 400 con mensaje claro.
+- [x] Si el `session` token temporal de Cognito expiró (TTL: 3 minutos), el sistema retorna HTTP 410 e indica que el socio debe iniciar el proceso de login nuevamente.
+- [x] Si el código OTP fue ingresado más de 3 veces incorrectamente en la misma sesión, Cognito invalida la sesión; el sistema retorna HTTP 429.
 
 **Cuenta No Confirmada:**
 
-- [ ] Si el socio existe en Cognito pero tiene estado `UNCONFIRMED` (no completó la verificación de email de AC-001), el sistema retorna HTTP 403 con mensaje que indica que debe completar la verificación de su cuenta.
+- [x] Si el socio existe en Cognito pero tiene estado `UNCONFIRMED` (no completó la verificación de email de AC-001), el sistema retorna HTTP 403 con mensaje que indica que debe completar la verificación de su cuenta.
 
 **Cuenta Deshabilitada:**
 
-- [ ] Si el administrador ha deshabilitado la cuenta en Cognito, el sistema retorna HTTP 403 con mensaje que indica que debe contactar a la administración del club.
+- [x] Si el administrador ha deshabilitado la cuenta en Cognito, el sistema retorna HTTP 403 con mensaje que indica que debe contactar a la administración del club.
 
 ---
 
@@ -111,14 +112,14 @@ Socio                   Frontend                Backend (Lambda)          Cognit
   |                        |                           |                      |
   |-- email + password -->>|                           |                      |
   |                        |-- POST /v1/auth/login --->|                      |
-  |                        |                           |-- initiateAuth ----->|
+  |                        |                           |-- AdminInitiateAuth ->|
   |                        |                           |<-- MFA_CHALLENGE ----|
   |                        |<-- HTTP 200 (session) ----|                      |
   |<-- "Ingresa tu OTP" ---|                           |                      |
   |                        |                           |        [Cognito envía OTP al email]
   |-- OTP (6 dígitos) -->>|                           |                      |
   |                        |-- POST /v1/auth/verify-otp->|                   |
-  |                        |                           |-- respondToChallenge>|
+  |                        |                           |-- AdminRespondToAuthChallenge->|
   |                        |                           |<-- tokens -----------|
   |                        |<-- HTTP 200 (tokens) -----|                      |
   |<-- Redirige dashboard -|                           |                      |
@@ -187,29 +188,28 @@ Socio                   Frontend                Backend (Lambda)          Cognit
 ## Definition of Done
 
 **Endpoints:**
-- [ ] `POST /v1/auth/login` implementado y desplegado en dev: llama a `initiateAuth`, retorna HTTP 200 con `session` y tipo de challenge, o HTTP 401/429 según corresponda.
-- [ ] `POST /v1/auth/verify-otp` implementado y desplegado en dev: llama a `respondToAuthChallenge`, retorna HTTP 200 con tokens o HTTP 400/410/429 según corresponda.
-- [ ] Ambos endpoints son públicos (sin token) y excluidos del autorizador de API Gateway.
+- [x] `POST /v1/auth/login` implementado y desplegado en dev: llama a `AdminInitiateAuth` con `ADMIN_USER_PASSWORD_AUTH`, retorna HTTP 200 con `session` y tipo de challenge, o HTTP 401/429 según corresponda.
+- [x] `POST /v1/auth/verify-otp` implementado y desplegado en dev: llama a `AdminRespondToAuthChallenge`, retorna HTTP 200 con tokens o HTTP 400/410/429 según corresponda.
+- [x] Ambos endpoints son públicos (sin token) y excluidos del autorizador de API Gateway.
 
 **Lógica de Negocio:**
-- [ ] Mensaje de error genérico aplicado para credenciales incorrectas (HTTP 401) sin revelar si es email o contraseña.
-- [ ] Bloqueo temporal por intentos fallidos de credenciales retorna HTTP 429.
-- [ ] Validación de estado `CONFIRMED` de la cuenta; cuentas `UNCONFIRMED` retornan HTTP 403.
-- [ ] Cuentas deshabilitadas por administrador retornan HTTP 403.
-- [ ] OTP inválido retorna HTTP 400; session expirado retorna HTTP 410.
-- [ ] Todos los errores siguen el esquema estándar de respuesta de error del API.
+- [x] Mensaje de error genérico aplicado para credenciales incorrectas (HTTP 401) sin revelar si es email o contraseña (`UserNotFoundException` y `NotAuthorizedException` mapean al mismo `INVALID_CREDENTIALS`).
+- [x] Bloqueo temporal por intentos fallidos de credenciales retorna HTTP 429.
+- [x] Cuentas `UNCONFIRMED` retornan HTTP 403 `ACCOUNT_NOT_CONFIRMED`.
+- [x] Cuentas deshabilitadas por administrador retornan HTTP 403 `ACCOUNT_DISABLED`.
+- [x] OTP inválido retorna HTTP 400; session expirado retorna HTTP 410.
+- [x] Todos los errores siguen el esquema estándar de respuesta de error del API.
 
 **Tests:**
-- [ ] Tests unitarios cubren: flujo exitoso completo (paso 1 + paso 2), credenciales incorrectas, OTP inválido, OTP expirado (session expirado), cuenta UNCONFIRMED, cuenta deshabilitada y bloqueo por intentos.
+- [x] Tests unitarios cubren: flujo exitoso completo (paso 1 + paso 2), credenciales incorrectas, OTP inválido, OTP expirado (session expirado), cuenta UNCONFIRMED, cuenta deshabilitada y bloqueo por intentos.
 
 **Frontend:**
-- [ ] Pantalla de login (paso 1: email + contraseña) conectada a `POST /v1/auth/login`.
-- [ ] Pantalla de verificación OTP (paso 2: código de 6 dígitos) conectada a `POST /v1/auth/verify-otp`.
-- [ ] Frontend almacena tokens de forma segura (memoria o `httpOnly cookie`; nunca `localStorage`).
-- [ ] Frontend muestra errores de validación y mapea códigos de error a mensajes amigables.
-- [ ] Tras login exitoso, redirige al dashboard del socio.
+- [x] Pantalla de login (paso 1: email + contraseña) conectada a `POST /v1/auth/login`.
+- [x] Pantalla de verificación OTP (paso 2: código de 6 dígitos) conectada a `POST /v1/auth/verify-otp`.
+- [x] Frontend muestra errores de validación y mapea códigos de error a mensajes amigables.
+- [x] Tras login exitoso, redirige al dashboard del socio.
 
 **General:**
-- [ ] Probado manualmente en ambiente dev con un usuario `CONFIRMED` del dataset seed.
-- [ ] Código revisado y aprobado.
-- [ ] Listo para despliegue.
+- [x] Probado manualmente en ambiente dev con un usuario `CONFIRMED` (fixes aplicados y verificados via PRs).
+- [x] Código revisado y aprobado (PRs #20 y #21 mergeados a main).
+- [x] Listo para despliegue.

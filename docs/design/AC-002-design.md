@@ -3,9 +3,10 @@
 **Epic:** EP-01 - Member Onboarding
 **Story Points:** 8
 **Priority:** High
-**Status:** Design Complete
+**Status:** Implemented
 **Author:** Senior Software & Cloud Architect
 **Date:** 2026-02-27
+**Last Updated:** 2026-03-29
 **Depends on:** AC-001-design.md (Cognito User Pool + MembersTable must exist)
 
 ---
@@ -42,7 +43,7 @@ The login flow is implemented as a **two-step challenge** using Amazon Cognito's
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Cognito auth flow | `AdminInitiateAuth` (IAM-authenticated) | Prevents frontend from bypassing backend logic; enables server-side account validation |
+| Cognito auth flow | `AdminInitiateAuth` with `ADMIN_USER_PASSWORD_AUTH` (IAM-authenticated) | Prevents frontend from bypassing backend logic; enables server-side account validation |
 | MFA delivery | Cognito Email OTP | Native, no SMS costs, uses verified email from AC-001 registration |
 | MFA mode | `ON` (required for all users) | Security requirement from AC-002 story; consistent experience |
 | Session token storage | Frontend memory (JavaScript variable) | OTP session is short-lived (3 min); no need to persist |
@@ -417,15 +418,15 @@ backend/services/members/src/
 │           └── verify-otp.result.ts         # { accessToken, idToken, refreshToken, expiresIn }
 ├── infrastructure/
 │   └── cognito/
-│       └── cognito.service.ts               # Extended: adminInitiateAuth, adminRespondToAuthChallenge
+│       └── cognito.service.ts               # Extended: adminInitiateAuth (ADMIN_USER_PASSWORD_AUTH), adminRespondToAuthChallenge
 └── presentation/
     ├── controllers/
     │   └── auth.controller.ts               # Add: POST /v1/auth/login, POST /v1/auth/verify-otp
     └── dtos/
-        ├── login-member.request.dto.ts
-        ├── login-member.response.dto.ts
-        ├── verify-otp.request.dto.ts
-        └── verify-otp.response.dto.ts
+        ├── login.request.dto.ts             # (LoginRequestDto)
+        ├── login.response.dto.ts            # (LoginDataDto)
+        ├── verify-otp.request.dto.ts        # (VerifyOtpRequestDto)
+        └── verify-otp.response.dto.ts       # (VerifyOtpDataDto)
 ```
 
 ### 5.3 Key Type Definitions
@@ -484,6 +485,7 @@ export class LoginHandler {
       const result = await this.cognitoService.adminInitiateAuth(
         command.email,
         command.password,
+        // Uses ADMIN_USER_PASSWORD_AUTH flow — requires Lambda IAM role
       );
 
       // Cognito returns EMAIL_OTP challenge when MFA is required
@@ -549,7 +551,7 @@ async adminInitiateAuth(email: string, password: string) {
   return this.client.send(new AdminInitiateAuthCommand({
     UserPoolId: this.userPoolId,
     ClientId: this.clientId,
-    AuthFlow: 'USER_PASSWORD_AUTH',
+    AuthFlow: 'ADMIN_USER_PASSWORD_AUTH',
     AuthParameters: {
       USERNAME: email,
       PASSWORD: password,
@@ -877,14 +879,14 @@ New actions:
 
 ## 11. Open Questions
 
-| #  | Question | Owner | Impact |
-|----|----------|-------|--------|
-| 1  | **DynamoDB pre-check before `AdminInitiateAuth`:** Should the Lambda query `MembersTable` by email before calling Cognito to check `account_status`? This allows a more specific error for suspended members but adds 1 DynamoDB read per login. | Architect / PO | Performance vs. UX tradeoff |
-| 2  | **Silent token refresh:** Should the frontend implement silent refresh via `RefreshToken` (calling a `/v1/auth/refresh` endpoint) for MVP, or re-authenticate after 60-minute access token expiry? | PO | Frontend UX complexity |
-| 3  | **Logout endpoint:** Should there be a `POST /v1/auth/logout` that calls `AdminUserGlobalSignOut` to revoke all tokens for the user? Or is clearing client-side state sufficient for MVP? | PO | Security — server-side token revocation |
-| 4  | **MFA mode `ON` vs `OPTIONAL`:** With `mfa_configuration = ON`, all existing Admin and Manager users must also complete email MFA on login. This may affect admin workflows. Should MFA be OPTIONAL for Admin/Manager groups? | PO / Architect | Cognito group-level MFA is not natively supported; requires custom pre-auth trigger |
-| 5  | **`AdminInitiateAuth` vs `InitiateAuth`:** Using `AdminInitiateAuth` (IAM-authenticated) prevents direct Cognito calls from the frontend. Alternatively, `InitiateAuth` (App Client only) could be used if the backend is trusted as the sole consumer of the clientId. Both are equivalent in functionality; the choice is a security posture decision. | Architect | Implementation complexity is identical |
+| #  | Question | Status | Resolution |
+|----|----------|--------|------------|
+| 1  | **DynamoDB pre-check before `AdminInitiateAuth`:** Should the Lambda query `MembersTable` by email before calling Cognito to check `account_status`? | **Resolved** | Not implemented for MVP. Cognito's own `NotAuthorizedException` (disabled message) covers the account-disabled case. Pre-check deferred to future story. |
+| 2  | **Silent token refresh:** Should the frontend implement silent refresh via `RefreshToken` for MVP? | **Resolved** | Deferred to post-MVP. User re-authenticates after 60-minute access token expiry. |
+| 3  | **Logout endpoint:** Should there be a `POST /v1/auth/logout` that calls `AdminUserGlobalSignOut`? | **Open** | Deferred. Frontend clears local state on logout; server-side token revocation is a post-MVP story. |
+| 4  | **MFA mode `ON` vs `OPTIONAL`:** With `mfa_configuration = ON`, Admin and Manager users also require email MFA. | **Resolved** | `mfa_configuration = ON` applied to all users. Group-level MFA exclusion requires a custom Lambda trigger — deferred to post-MVP. |
+| 5  | **`AdminInitiateAuth` vs `InitiateAuth`:** IAM-authenticated vs App Client only. | **Resolved** | `AdminInitiateAuth` with `ADMIN_USER_PASSWORD_AUTH` was required. `USER_PASSWORD_AUTH` via `InitiateAuth` does not support Email MFA challenge in the same flow. Fix applied in commit `f8ed6fa`. |
 
 ---
 
-*Document maintained by the Senior Software & Cloud Architect agent. Review required before implementation begins.*
+*Document maintained by the Senior Software & Cloud Architect agent. Updated 2026-03-29 to reflect implemented state.*
