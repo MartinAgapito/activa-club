@@ -189,9 +189,7 @@ export class AuthController {
     status: HttpStatus.TOO_MANY_REQUESTS,
     description: 'TOO_MANY_ATTEMPTS — Cognito rate limit on resend.',
   })
-  async resendCode(
-    @Body() dto: ResendCodeRequestDto,
-  ): Promise<{ message: string }> {
+  async resendCode(@Body() dto: ResendCodeRequestDto): Promise<{ message: string }> {
     this.logger.log(`POST /v1/auth/resend-code — email=${dto.email}`);
 
     const command = new ResendCodeCommand(dto.email);

@@ -60,9 +60,9 @@ describe('ResendCodeHandler (AC-001 Rev2)', () => {
         cognitoError('LimitExceededException'),
       );
 
-      await expect(
-        handler.execute(new ResendCodeCommand('test@email.com')),
-      ).rejects.toThrow(TooManyAttemptsException);
+      await expect(handler.execute(new ResendCodeCommand('test@email.com'))).rejects.toThrow(
+        TooManyAttemptsException,
+      );
     });
 
     it('throws TooManyAttemptsException on TooManyRequestsException', async () => {
@@ -70,9 +70,9 @@ describe('ResendCodeHandler (AC-001 Rev2)', () => {
         cognitoError('TooManyRequestsException'),
       );
 
-      await expect(
-        handler.execute(new ResendCodeCommand('test@email.com')),
-      ).rejects.toThrow(TooManyAttemptsException);
+      await expect(handler.execute(new ResendCodeCommand('test@email.com'))).rejects.toThrow(
+        TooManyAttemptsException,
+      );
     });
 
     it('throws UserNotFoundException on UserNotFoundException', async () => {
@@ -80,9 +80,9 @@ describe('ResendCodeHandler (AC-001 Rev2)', () => {
         cognitoError('UserNotFoundException'),
       );
 
-      await expect(
-        handler.execute(new ResendCodeCommand('test@email.com')),
-      ).rejects.toThrow(UserNotFoundException);
+      await expect(handler.execute(new ResendCodeCommand('test@email.com'))).rejects.toThrow(
+        UserNotFoundException,
+      );
     });
 
     it('propagates unknown errors without mapping', async () => {
@@ -90,9 +90,9 @@ describe('ResendCodeHandler (AC-001 Rev2)', () => {
       unknownError.name = 'SomeOtherCognitoException';
       mockCognitoService.resendConfirmationCode.mockRejectedValue(unknownError);
 
-      await expect(
-        handler.execute(new ResendCodeCommand('test@email.com')),
-      ).rejects.toThrow(unknownError);
+      await expect(handler.execute(new ResendCodeCommand('test@email.com'))).rejects.toThrow(
+        unknownError,
+      );
     });
   });
 });
