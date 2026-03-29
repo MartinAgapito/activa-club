@@ -56,36 +56,67 @@ Every service follows the same internal layering:
 
 ## Local Development
 
+Two entry points exist depending on the use case:
+
+| Mode | Command | Port | Entry point | Module |
+|------|---------|------|-------------|--------|
+| **Members standalone** (recommended) | `nest start members --watch` | 3001 | `services/members/src/main.ts` | `MembersModule` |
+| **Combined app** | `npm run start:dev` | 3000 | `src/main.ts` | `AppModule` |
+
 ```bash
-# Install dependencies for a specific service
-cd services/members && npm install
+# Install all dependencies (from backend/ root)
+npm install
 
-# Run a service locally (serverless-offline or NestJS HTTP adapter)
-npm run start:dev
+# Run members service standalone (uses services/members/.env)
+nest start members --watch
+# API:     http://localhost:3001/v1
+# Swagger: http://localhost:3001/api/docs
 
-# Run unit tests
-npm run test
+# Run members service with debugger (attach VS Code to port 9229)
+nest start members --debug --watch
 
-# Run integration tests (requires localstack or real AWS dev env)
-npm run test:integration
+# Run all unit tests
+npm test
+
+# Run tests for a specific service
+npm test -- --testPathPattern="services/members"
+
+# Run with coverage
+npm run test:cov -- --testPathPattern="services/members"
 ```
 
 ## Lambda Entry Point Convention
 
 Each service exposes a `handler` export from `src/infrastructure/handlers/lambda.handler.ts`
-using `@vendia/serverless-express` or NestJS's native Lambda adapter.
+using `@vendia/serverless-express`. The handler caches the bootstrapped app across warm invocations.
+
+## Implementation Status
+
+| Service        | Status       | Stories        |
+|----------------|--------------|----------------|
+| members        | Implemented  | AC-001, AC-002 |
+| reservations   | Scaffolded   | —              |
+| payments       | Scaffolded   | —              |
+| promotions     | Scaffolded   | —              |
+| guests         | Scaffolded   | —              |
+| areas          | Scaffolded   | —              |
+| admin          | Scaffolded   | —              |
 
 ## Environment Variables
 
-All environment-specific values are injected by Lambda environment configuration defined in Terraform.
-Never hard-code credentials. Use SSM Parameter Store for secrets.
+Each service has its own `.env` at `services/<name>/.env` for local development.
+In production, all values are injected by Terraform via Lambda environment configuration.
+Secrets (Stripe) are fetched at runtime from AWS SSM Parameter Store.
 
-| Variable              | Description                                 |
-|-----------------------|---------------------------------------------|
-| `DYNAMODB_REGION`     | AWS region for DynamoDB                     |
-| `COGNITO_USER_POOL_ID`| Cognito User Pool ID                        |
-| `COGNITO_CLIENT_ID`   | Cognito App Client ID                       |
-| `STRIPE_SECRET_KEY`   | Stripe secret key (from SSM)                |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (from SSM)  |
-| `SNS_PROMOTIONS_TOPIC_ARN` | SNS topic ARN for promotions          |
-| `ENV`                 | Deployment environment (dev/stage/prod)     |
+| Variable                  | Used by            | Description                          |
+|---------------------------|---------------------|--------------------------------------|
+| `PORT`                    | All (local)         | Local HTTP server port               |
+| `ENV`                     | All                 | `local` / `dev` / `production`       |
+| `DYNAMODB_REGION`         | All                 | AWS region for DynamoDB              |
+| `MEMBERS_TABLE_NAME`      | members             | DynamoDB table for member profiles   |
+| `SEED_MEMBERS_TABLE_NAME` | members             | Pre-seeded DNI data (read-only)      |
+| `COGNITO_USER_POOL_ID`    | members             | Cognito User Pool ID                 |
+| `COGNITO_CLIENT_ID`       | members             | Cognito App Client ID                |
+| `STRIPE_SECRET_KEY`       | payments (SSM)      | Stripe secret key                    |
+| `STRIPE_WEBHOOK_SECRET`   | payments (SSM)      | Stripe webhook signing secret        |
+| `SNS_PROMOTIONS_TOPIC_ARN`| promotions          | SNS topic ARN for promotions         |
