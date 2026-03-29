@@ -141,7 +141,7 @@ Calls Cognito `ResendConfirmationCode` to send a new OTP when the original expir
 
 ### Step 1 — POST /v1/auth/login → HTTP 200
 
-Calls Cognito `AdminInitiateAuth` (USER_PASSWORD_AUTH). With Email MFA ON, Cognito
+Calls Cognito `AdminInitiateAuth` (ADMIN_USER_PASSWORD_AUTH). With Email MFA ON, Cognito
 sends a 6-digit OTP to the verified email and returns an `EMAIL_OTP` challenge.
 
 #### Request
@@ -259,14 +259,16 @@ Copy `.env.example` to `.env` for local development.
 # From backend/ root
 npm install
 
-# Copy env template
-cp services/members/.env.example services/members/.env
-# Edit .env with your values
+# Verify services/members/.env exists with correct values (PORT, COGNITO_*, DYNAMODB_*)
+# See Environment Variables table above
 
 # Start local dev server (NestJS HTTP)
 nest start members --watch
 # API:     http://localhost:3001/v1
 # Swagger: http://localhost:3001/api/docs
+
+# Start with debugger attached (port 9229)
+nest start members --debug --watch
 ```
 
 ---
