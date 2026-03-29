@@ -3,10 +3,10 @@
 **Epic:** EP-01 - Member Onboarding
 **Story Points:** 13
 **Priority:** High
-**Status:** Design Updated (Rev 2 — Email OTP Verification + Seed Script)
+**Status:** Implemented (Rev 2 — Email OTP Verification + Seed Script)
 **Author:** Senior Software & Cloud Architect
 **Date:** 2026-02-20
-**Last Updated:** 2026-02-27
+**Last Updated:** 2026-03-29
 **Changelog:** Rev 2 — Changed from `AdminCreateUser` to native `SignUp` + `ConfirmSignUp` flow to support Cognito email OTP verification. Added `/v1/auth/verify-email` and `/v1/auth/resend-code` endpoints. Seed script requirements formalized.
 
 ---
@@ -80,7 +80,7 @@ AWS Lambda: activa-club-members-dev
         |
         |-- Query -->  DynamoDB: SeedMembersTable  (read-only, DNI lookup)
         |-- Query -->  DynamoDB: MembersTable       (duplicate DNI/email check)
-        |-- AdminCreateUser / AdminAddUserToGroup --> Amazon Cognito User Pool
+        |-- SignUp / ConfirmSignUp / AdminAddUserToGroup --> Amazon Cognito User Pool
         |-- PutItem --> DynamoDB: MembersTable      (persist member profile)
 ```
 
@@ -97,17 +97,19 @@ This table is populated once via a migration script (`scripts/seed-legacy-member
 | Property       | Value                         |
 |----------------|-------------------------------|
 | Table Name     | `SeedMembersTable`            |
-| Partition Key  | `pk` (String) — value: `DNI#<dni_number>` |
+| Partition Key  | `DNI` (String) — value: raw DNI number (e.g., `20345678`) |
 | Sort Key       | None                          |
 | Billing Mode   | PAY_PER_REQUEST (on-demand)   |
 | Encryption     | AWS-managed (SSE)             |
+
+> **Note:** The Terraform hash key attribute is `DNI` (uppercase). Values are stored as plain DNI numbers without any prefix. GetItem key: `{ DNI: "20345678" }`.
 
 **Attributes:**
 
 | Attribute        | Type   | Required | Description                                        |
 |------------------|--------|----------|----------------------------------------------------|
-| `pk`             | String | Yes      | Partition key. Format: `DNI#<dni_number>`          |
-| `dni`            | String | Yes      | National ID number (plain value, e.g., `20345678`) |
+| `DNI`            | String | Yes      | Partition key. Raw DNI number (e.g., `20345678`). No prefix. |
+| `dni`            | String | Yes      | National ID number (redundant denormalized copy, plain value) |
 | `full_name`      | String | Yes      | Full legal name imported from legacy system        |
 | `membership_type`| String | Yes      | Enum: `VIP`, `Gold`, `Silver`                      |
 | `account_status` | String | Yes      | Enum: `active`, `inactive`                         |
@@ -150,7 +152,7 @@ This is the primary operational table for member data, written by the `activa-cl
 | `email`            | String | Yes      | Email provided at registration. Unique per member.               |
 | `membership_type`  | String | Yes      | Enum: `VIP`, `Gold`, `Silver`. Inherited from `SeedMembersTable`.|
 | `account_status`   | String | Yes      | Enum: `active`, `inactive`, `suspended`. Default: `active`.     |
-| `cognito_user_id`  | String | Yes      | Cognito `sub` (UUID) returned by `AdminCreateUser`               |
+| `cognito_user_id`  | String | Yes      | Cognito `sub` (UUID) returned by `SignUp` → `AdminGetUser`       |
 | `created_at`       | String | Yes      | ISO-8601 UTC timestamp of registration                           |
 | `updated_at`       | String | Yes      | ISO-8601 UTC timestamp of last update                            |
 | `membership_expiry`| String | No       | ISO-8601 date — set when first payment is processed (AC-004)     |
