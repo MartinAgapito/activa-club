@@ -56,9 +56,7 @@ describe('VerifyOtpHandler (AC-002 Step 2)', () => {
   describe('execute — happy path', () => {
     it('returns a VerifyOtpResult with all tokens from Cognito', async () => {
       const cognitoResponse = makeSuccessResponse();
-      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(
-        cognitoResponse as never,
-      );
+      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(cognitoResponse as never);
 
       const result = await handler.execute(VALID_COMMAND);
 

@@ -72,9 +72,7 @@ export class CodeExpiredException extends Error {
   readonly code = 'CODE_EXPIRED';
 
   constructor() {
-    super(
-      'The verification code has expired. Please request a new code and try again.',
-    );
+    super('The verification code has expired. Please request a new code and try again.');
     this.name = 'CodeExpiredException';
   }
 }
@@ -83,10 +81,7 @@ export class TooManyAttemptsException extends Error {
   readonly code = 'TOO_MANY_ATTEMPTS';
 
   constructor(message?: string) {
-    super(
-      message ??
-        'Too many attempts. Please wait a few minutes before trying again.',
-    );
+    super(message ?? 'Too many attempts. Please wait a few minutes before trying again.');
     this.name = 'TooManyAttemptsException';
   }
 }

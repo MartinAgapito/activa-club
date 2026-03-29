@@ -29,7 +29,9 @@ export class VerifyOtpHandler {
   constructor(private readonly cognitoService: CognitoService) {}
 
   async execute(command: VerifyOtpCommand): Promise<VerifyOtpResult> {
-    this.logger.log(`VerifyOtpHandler: responding to EMAIL_OTP challenge for email=${command.email}`);
+    this.logger.log(
+      `VerifyOtpHandler: responding to EMAIL_OTP challenge for email=${command.email}`,
+    );
 
     let cognitoResponse: Awaited<ReturnType<CognitoService['adminRespondToAuthChallenge']>>;
 
