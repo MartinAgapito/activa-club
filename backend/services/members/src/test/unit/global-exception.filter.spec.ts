@@ -111,17 +111,14 @@ describe('GlobalExceptionFilter', () => {
       [new UserNotFoundException(), 404, 'USER_NOT_FOUND'],
     ];
 
-    it.each(cases)(
-      'maps %s to HTTP %i with code %s',
-      (exception, expectedStatus, expectedCode) => {
-        const { httpStatus, body } = runFilter(exception);
+    it.each(cases)('maps %s to HTTP %i with code %s', (exception, expectedStatus, expectedCode) => {
+      const { httpStatus, body } = runFilter(exception);
 
-        expect(httpStatus).toBe(expectedStatus);
-        expect(body.status).toBe('error');
-        expect(body.error.code).toBe(expectedCode);
-        expect(body.error.details).toEqual([]);
-      },
-    );
+      expect(httpStatus).toBe(expectedStatus);
+      expect(body.status).toBe('error');
+      expect(body.error.code).toBe(expectedCode);
+      expect(body.error.details).toEqual([]);
+    });
   });
 
   // ── Domain exceptions — AC-002 ──────────────────────────────────────────────
@@ -136,17 +133,14 @@ describe('GlobalExceptionFilter', () => {
       [new UnexpectedAuthChallengeException(), 500, 'INTERNAL_ERROR'],
     ];
 
-    it.each(cases)(
-      'maps %s to HTTP %i with code %s',
-      (exception, expectedStatus, expectedCode) => {
-        const { httpStatus, body } = runFilter(exception);
+    it.each(cases)('maps %s to HTTP %i with code %s', (exception, expectedStatus, expectedCode) => {
+      const { httpStatus, body } = runFilter(exception);
 
-        expect(httpStatus).toBe(expectedStatus);
-        expect(body.status).toBe('error');
-        expect(body.error.code).toBe(expectedCode);
-        expect(body.error.details).toEqual([]);
-      },
-    );
+      expect(httpStatus).toBe(expectedStatus);
+      expect(body.status).toBe('error');
+      expect(body.error.code).toBe(expectedCode);
+      expect(body.error.details).toEqual([]);
+    });
   });
 
   // ── Unexpected errors ───────────────────────────────────────────────────────
