@@ -61,9 +61,7 @@ export class LoginHandler {
       throw new UnexpectedAuthChallengeException('SESSION_MISSING');
     }
 
-    this.logger.log(
-      `LoginHandler: EMAIL_OTP challenge issued for email=${command.email}`,
-    );
+    this.logger.log(`LoginHandler: EMAIL_OTP challenge issued for email=${command.email}`);
 
     return new LoginResult({
       challengeName: cognitoResponse.ChallengeName,

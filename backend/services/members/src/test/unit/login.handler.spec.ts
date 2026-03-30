@@ -60,9 +60,7 @@ describe('LoginHandler (AC-002 Step 1)', () => {
     });
 
     it('calls adminInitiateAuth with USER_PASSWORD_AUTH flow and correct credentials', async () => {
-      mockCognitoService.adminInitiateAuth.mockResolvedValue(
-        makeEmailOtpResponse() as never,
-      );
+      mockCognitoService.adminInitiateAuth.mockResolvedValue(makeEmailOtpResponse() as never);
 
       await handler.execute(VALID_COMMAND);
 
@@ -134,7 +132,10 @@ describe('LoginHandler (AC-002 Step 1)', () => {
     it('maps both NotAuthorizedException and UserNotFoundException to the same InvalidCredentialsException — no enumeration', async () => {
       // This test verifies that both exceptions produce identical exception types
       // (user enumeration prevention as specified in AC-002)
-      const notAuthorizedError = cognitoError('NotAuthorizedException', 'Incorrect username or password.');
+      const notAuthorizedError = cognitoError(
+        'NotAuthorizedException',
+        'Incorrect username or password.',
+      );
       const userNotFoundError = cognitoError('UserNotFoundException', 'User does not exist.');
 
       mockCognitoService.adminInitiateAuth.mockRejectedValueOnce(notAuthorizedError);

@@ -1,4 +1,9 @@
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoMemberRepository } from '../../infrastructure/repositories/dynamo-member.repository';
 import { MemberEntity } from '../../domain/entities/member.entity';

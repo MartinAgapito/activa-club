@@ -51,10 +51,7 @@ interface ErrorResponse {
 /**
  * Maps domain exception class names to HTTP status codes and error codes.
  */
-const DOMAIN_EXCEPTION_MAP: Record<
-  string,
-  { httpStatus: HttpStatus; code: string }
-> = {
+const DOMAIN_EXCEPTION_MAP: Record<string, { httpStatus: HttpStatus; code: string }> = {
   // AC-001 — Registration
   DniNotFoundException: { httpStatus: HttpStatus.NOT_FOUND, code: 'DNI_NOT_FOUND' },
   AccountInactiveException: { httpStatus: HttpStatus.FORBIDDEN, code: 'ACCOUNT_INACTIVE' },
@@ -143,9 +140,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         }
       }
 
-      this.logger.warn(
-        `HttpException: status=${status}, code=${code}, path=${request.url}`,
-      );
+      this.logger.warn(`HttpException: status=${status}, code=${code}, path=${request.url}`);
 
       return {
         httpStatus: status,
@@ -177,7 +172,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         exception.stack,
       );
     } else {
-      this.logger.error(`UnhandledException (non-Error): ${String(exception)}, path=${request.url}`);
+      this.logger.error(
+        `UnhandledException (non-Error): ${String(exception)}, path=${request.url}`,
+      );
     }
 
     return {

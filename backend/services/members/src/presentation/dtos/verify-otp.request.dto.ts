@@ -12,14 +12,11 @@ export class VerifyOtpRequestDto {
   })
   @IsEmail({}, { message: 'email must be a valid email address' })
   @IsNotEmpty({ message: 'email is required' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.toLowerCase().trim() : value,
-  )
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
   email: string;
 
   @ApiProperty({
-    description:
-      'Opaque session token returned by POST /v1/auth/login. Valid for 3 minutes.',
+    description: 'Opaque session token returned by POST /v1/auth/login. Valid for 3 minutes.',
     example: 'AYABeH...',
   })
   @IsString()
@@ -27,8 +24,7 @@ export class VerifyOtpRequestDto {
   session: string;
 
   @ApiProperty({
-    description:
-      'The 6-digit numeric OTP sent by Cognito to the member\'s email.',
+    description: "The 6-digit numeric OTP sent by Cognito to the member's email.",
     example: '482917',
     minLength: 6,
     maxLength: 6,
