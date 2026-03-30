@@ -1,9 +1,7 @@
 import { VerifyEmailHandler } from '../../application/commands/verify-email/verify-email.handler';
 import { VerifyEmailCommand } from '../../application/commands/verify-email/verify-email.command';
 import { VerifyEmailResult } from '../../application/commands/verify-email/verify-email.result';
-import {
-  MemberRepositoryInterface,
-} from '../../domain/repositories/member.repository.interface';
+import { MemberRepositoryInterface } from '../../domain/repositories/member.repository.interface';
 import {
   SeedMemberRepositoryInterface,
   SeedMemberRecord,
@@ -152,17 +150,13 @@ describe('VerifyEmailHandler (AC-001 Rev2 — Step 2)', () => {
 
   describe('execute — ConfirmSignUp Cognito errors', () => {
     it('throws InvalidCodeException on CodeMismatchException', async () => {
-      mockCognitoService.confirmSignUp.mockRejectedValue(
-        cognitoError('CodeMismatchException'),
-      );
+      mockCognitoService.confirmSignUp.mockRejectedValue(cognitoError('CodeMismatchException'));
 
       await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(InvalidCodeException);
     });
 
     it('throws CodeExpiredException on ExpiredCodeException', async () => {
-      mockCognitoService.confirmSignUp.mockRejectedValue(
-        cognitoError('ExpiredCodeException'),
-      );
+      mockCognitoService.confirmSignUp.mockRejectedValue(cognitoError('ExpiredCodeException'));
 
       await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(CodeExpiredException);
     });
@@ -176,25 +170,19 @@ describe('VerifyEmailHandler (AC-001 Rev2 — Step 2)', () => {
     });
 
     it('throws TooManyAttemptsException on TooManyRequestsException', async () => {
-      mockCognitoService.confirmSignUp.mockRejectedValue(
-        cognitoError('TooManyRequestsException'),
-      );
+      mockCognitoService.confirmSignUp.mockRejectedValue(cognitoError('TooManyRequestsException'));
 
       await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(TooManyAttemptsException);
     });
 
     it('throws UserNotFoundException on UserNotFoundException', async () => {
-      mockCognitoService.confirmSignUp.mockRejectedValue(
-        cognitoError('UserNotFoundException'),
-      );
+      mockCognitoService.confirmSignUp.mockRejectedValue(cognitoError('UserNotFoundException'));
 
       await expect(handler.execute(VALID_COMMAND)).rejects.toThrow(UserNotFoundException);
     });
 
     it('does not call adminGetUser or save when confirmSignUp fails', async () => {
-      mockCognitoService.confirmSignUp.mockRejectedValue(
-        cognitoError('CodeMismatchException'),
-      );
+      mockCognitoService.confirmSignUp.mockRejectedValue(cognitoError('CodeMismatchException'));
 
       await handler.execute(VALID_COMMAND).catch(() => {});
 

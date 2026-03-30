@@ -15,7 +15,8 @@ let cachedHandler: Handler;
 async function bootstrap(): Promise<Handler> {
   const app = await NestFactory.create(MembersModule, {
     // Suppress NestJS startup logs in production; rely on Lambda Powertools
-    logger: process.env.ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn', 'debug'],
+    logger:
+      process.env.ENV === 'production' ? ['error', 'warn'] : ['log', 'error', 'warn', 'debug'],
   });
 
   // ── Global prefix ──────────────────────────────────────────────────────────
@@ -24,9 +25,9 @@ async function bootstrap(): Promise<Handler> {
   // ── Global validation pipe ─────────────────────────────────────────────────
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,           // Strip unknown properties
+      whitelist: true, // Strip unknown properties
       forbidNonWhitelisted: true, // Reject unknown properties with 400
-      transform: true,           // Enable @Transform decorators
+      transform: true, // Enable @Transform decorators
       transformOptions: {
         enableImplicitConversion: false, // Explicit types only
       },
@@ -61,11 +62,7 @@ async function bootstrap(): Promise<Handler> {
  * On cold start: bootstraps the NestJS application and caches the handler.
  * On warm invocations: reuses the cached handler to avoid re-initialisation.
  */
-export const handler: Handler = async (
-  event: unknown,
-  context: Context,
-  callback: Callback,
-) => {
+export const handler: Handler = async (event: unknown, context: Context, callback: Callback) => {
   if (!cachedHandler) {
     cachedHandler = await bootstrap();
   }

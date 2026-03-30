@@ -12,8 +12,6 @@ export class ResendCodeRequestDto {
   })
   @IsEmail({}, { message: 'email must be a valid email address' })
   @IsNotEmpty({ message: 'email is required' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.toLowerCase().trim() : value,
-  )
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
   email: string;
 }
