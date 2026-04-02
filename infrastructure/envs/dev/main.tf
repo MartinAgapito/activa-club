@@ -267,6 +267,7 @@ module "api_gateway" {
   cors_origins = [
     "http://localhost:5173", # Vite dev server
     "http://localhost:3000", # Alternative local port
+    "https://${module.frontend.cloudfront_domain_name}",
   ]
 
   routes = [
@@ -308,6 +309,24 @@ module "api_gateway" {
       auth_required        = false
     },
   ]
+
+  tags = {
+    Project = var.project
+  }
+}
+
+# ============================================================
+# Frontend — S3 + CloudFront
+#
+# Hosts the built React SPA. CloudFront serves assets globally
+# and rewrites 403/404 to /index.html for React Router support.
+# The CI/CD pipeline uploads dist/ here after each frontend build.
+# ============================================================
+module "frontend" {
+  source = "../../modules/s3-cloudfront"
+
+  bucket_name  = "${var.project}-frontend-${var.env}"
+  environment  = var.env
 
   tags = {
     Project = var.project
