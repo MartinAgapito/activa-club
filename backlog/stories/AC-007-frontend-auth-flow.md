@@ -1,0 +1,107 @@
+# AC-007: Frontend — Flujo Completo de Autenticación
+
+**Epic:** EP-01 - Incorporación de Socios
+**Prioridad:** Alta
+**Story Points:** 5
+**Estado:** Done
+**Fecha:** 2026-03-29
+**Autor:** Agente Senior Product Owner
+
+---
+
+## Historia de Usuario
+
+Como socio,
+Quiero una interfaz web intuitiva para registrarme, verificar mi email e iniciar sesión con doble factor,
+Para acceder al sistema desde cualquier dispositivo de forma segura y sin fricciones.
+
+---
+
+## Valor de Negocio
+
+La interfaz de autenticación es el primer punto de contacto del socio con la plataforma.
+Una experiencia fluida, con mensajes de error claros en español y diseño responsive,
+reduce el abandono en el proceso de onboarding y transmite confianza en el sistema.
+
+---
+
+## Personas Involucradas
+
+| Persona              | Rol    | Interacción                                                              |
+|----------------------|--------|--------------------------------------------------------------------------|
+| Socio Potencial      | Member | Utiliza las pantallas de registro y verificación de email                |
+| Socio Registrado     | Member | Utiliza las pantallas de login y verificación OTP                        |
+
+---
+
+## Precondiciones
+
+- AC-002 a AC-006 completados: todos los endpoints del flujo de autenticación están disponibles y desplegados en dev.
+- El ambiente de AWS dev es accesible desde el frontend local.
+
+---
+
+## Criterios de Aceptación
+
+- [x] `RegisterPage` conectada a `POST /v1/auth/register` con formulario que incluye DNI, email y contraseña.
+- [x] `VerifyEmailPage` conectada a `POST /v1/auth/verify-email` y a `POST /v1/auth/resend-code`; incluye opción "Reenviar código" visible para el socio.
+- [x] `LoginPage` conectada a `POST /v1/auth/login` con formulario de email y contraseña.
+- [x] `VerifyOtpPage` conectada a `POST /v1/auth/verify-otp` con campo de código OTP de 6 dígitos.
+- [x] Todos los formularios tienen validación en tiempo real implementada con React Hook Form + Zod.
+- [x] Los errores del API son mapeados a mensajes amigables en español (no se exponen códigos técnicos al usuario).
+- [x] Tras login exitoso, los tokens se almacenan correctamente y el socio es redirigido al dashboard.
+- [x] El diseño es responsive (Tailwind + Shadcn/ui) y funciona en dispositivos móviles y de escritorio.
+- [x] El flujo completo (registro → verificación email → login → verificación OTP → dashboard) funciona end-to-end contra el ambiente dev de AWS.
+
+---
+
+## Fuera de Alcance
+
+- Pantalla de recuperación de contraseña — diferida a historia futura.
+- Login con redes sociales — no forma parte del MVP.
+- Pantalla de perfil del socio — cubierta en historia de gestión de perfil.
+
+---
+
+## Reglas de Negocio
+
+- **Sin llamadas directas a Cognito desde el frontend:** Todas las operaciones de autenticación se realizan a través de los endpoints REST del backend.
+- **Almacenamiento seguro de tokens:** Los tokens no deben almacenarse en `localStorage`; se usa memoria (Zustand store) o `httpOnly cookie`.
+- **Mensajes en español:** Todos los mensajes visibles para el usuario deben estar en español, independientemente del código de error del API.
+
+---
+
+## Dependencias
+
+| Historia / Artefacto | Motivo                                                                            |
+|----------------------|-----------------------------------------------------------------------------------|
+| AC-002               | `RegisterPage` consume este endpoint.                                             |
+| AC-003               | `VerifyEmailPage` consume este endpoint.                                          |
+| AC-004               | `VerifyEmailPage` consume este endpoint para el reenvío de código.                |
+| AC-005               | `LoginPage` consume este endpoint.                                                |
+| AC-006               | `VerifyOtpPage` consume este endpoint.                                            |
+
+---
+
+## Definition of Done
+
+- [x] `RegisterPage` implementada y conectada al API.
+- [x] `VerifyEmailPage` implementada y conectada al API, con opción de reenvío de código.
+- [x] `LoginPage` implementada y conectada al API.
+- [x] `VerifyOtpPage` implementada y conectada al API.
+- [x] Validación en tiempo real con React Hook Form + Zod en todos los formularios.
+- [x] Errores del API mapeados a mensajes amigables en español.
+- [x] Flujo completo end-to-end probado manualmente contra ambiente dev de AWS.
+- [x] Diseño responsive verificado en móvil y escritorio.
+- [x] Código revisado y aprobado (PR mergeado a main).
+
+---
+
+## Notas Técnicas
+
+- **Stack:** React + TypeScript + Vite.
+- **State management:** Zustand.
+- **HTTP client:** React Query + axios.
+- **UI:** Tailwind CSS + Shadcn/ui.
+- **Validación de formularios:** React Hook Form + Zod.
+- **Design Docs:** `docs/design/AC-001-design.md`, `docs/design/AC-002-design.md`
