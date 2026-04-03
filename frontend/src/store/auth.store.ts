@@ -101,10 +101,11 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'activa-club-auth',
+      // Tokens and auth state are intentionally excluded — JWTs must not persist
+      // in localStorage (AC-006/AC-007). On page refresh the user re-authenticates.
+      // Only the user profile is kept for display purposes (e.g. welcome messages).
       partialize: (state) => ({
         user: state.user,
-        idToken: state.idToken,
-        isAuthenticated: state.isAuthenticated,
       }),
     }
   )
