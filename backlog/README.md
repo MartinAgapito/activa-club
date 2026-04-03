@@ -67,3 +67,5 @@ Link to: docs/design/AC-XXX-design.md
 | AC-005 | Login de socio — validación de credenciales                                | EP-01 | Alta      | 3      | Done    |
 | AC-006 | Login de socio — verificación OTP y emisión de tokens JWT                  | EP-01 | Alta      | 3      | Done    |
 | AC-007 | Frontend — flujo completo de autenticación                                 | EP-01 | Alta      | 5      | Done    |
+| AC-008 | Logout del socio — cierre de sesión con revocación de tokens               | EP-01 | Alta      | 3      | Backlog |
+| AC-009 | Redirección post-login según rol                                           | EP-01 | Alta      | 2      | Backlog |

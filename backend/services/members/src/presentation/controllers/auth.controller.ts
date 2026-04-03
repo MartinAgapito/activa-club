@@ -1,4 +1,13 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  Headers,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -6,6 +15,7 @@ import {
   ApiResponse,
   ApiAcceptedResponse,
   ApiCreatedResponse,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 
 // Request DTOs
@@ -20,6 +30,7 @@ import { RegisterMemberDataDto } from '../dtos/register-member.response.dto';
 import { VerifyEmailDataDto } from '../dtos/verify-email.response.dto';
 import { LoginDataDto } from '../dtos/login.response.dto';
 import { VerifyOtpDataDto } from '../dtos/verify-otp.response.dto';
+import { LogoutResponseDto } from '../dtos/logout.response.dto';
 
 // Commands
 import { RegisterMemberCommand } from '../../application/commands/register-member/register-member.command';
@@ -27,6 +38,7 @@ import { VerifyEmailCommand } from '../../application/commands/verify-email/veri
 import { ResendCodeCommand } from '../../application/commands/resend-code/resend-code.command';
 import { LoginCommand } from '../../application/commands/login/login.command';
 import { VerifyOtpCommand } from '../../application/commands/verify-otp/verify-otp.command';
+import { LogoutCommand } from '../../application/commands/logout/logout.command';
 
 // Handlers
 import { RegisterMemberHandler } from '../../application/commands/register-member/register-member.handler';
@@ -34,9 +46,10 @@ import { VerifyEmailHandler } from '../../application/commands/verify-email/veri
 import { ResendCodeHandler } from '../../application/commands/resend-code/resend-code.handler';
 import { LoginHandler } from '../../application/commands/login/login.handler';
 import { VerifyOtpHandler } from '../../application/commands/verify-otp/verify-otp.handler';
+import { LogoutHandler } from '../../application/commands/logout/logout.handler';
 
 /**
- * Auth controller — all public auth endpoints.
+ * Auth controller — authentication endpoints.
  *
  * Routes:
  *   POST /v1/auth/register      — AC-001 Step 1: DNI validation + Cognito SignUp (→ 202)
@@ -44,8 +57,10 @@ import { VerifyOtpHandler } from '../../application/commands/verify-otp/verify-o
  *   POST /v1/auth/resend-code   — AC-001 Support: resend OTP to email (→ 200)
  *   POST /v1/auth/login         — AC-002 Step 1: credential validation → EMAIL_OTP challenge (→ 200)
  *   POST /v1/auth/verify-otp    — AC-002 Step 2: OTP challenge response → JWT tokens (→ 200)
+ *   POST /v1/auth/logout        — AC-008: global sign-out (→ 200) [requires Bearer token]
  *
- * All routes are public — no JWT authorizer is required.
+ * Public routes (register, verify-email, resend-code, login, verify-otp) require no auth.
+ * Protected routes (logout) require a valid Bearer token in the Authorization header.
  * No business logic lives in this controller; it only translates
  * HTTP input to commands and shapes the response.
  *
@@ -62,6 +77,7 @@ export class AuthController {
     private readonly resendCodeHandler: ResendCodeHandler,
     private readonly loginHandler: LoginHandler,
     private readonly verifyOtpHandler: VerifyOtpHandler,
+    private readonly logoutHandler: LogoutHandler,
   ) {}
 
   // ─── AC-001 Step 1: POST /v1/auth/register ────────────────────────────────
@@ -284,5 +300,48 @@ export class AuthController {
       expiresIn: result.expiresIn,
       tokenType: result.tokenType,
     };
+  }
+
+  // ─── AC-008: POST /v1/auth/logout ─────────────────────────────────────────
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('cognito-jwt')
+  @ApiOperation({
+    summary: 'Logout — global sign-out',
+    description:
+      'Invalidates all active Cognito sessions for the authenticated member using AdminUserGlobalSignOut. ' +
+      'Requires a valid Bearer token in the Authorization header. ' +
+      'After logout, all previously issued tokens (AccessToken, IdToken, RefreshToken) are revoked.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Session closed successfully.',
+    type: LogoutResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'INVALID_TOKEN — the token is missing, malformed, or already revoked.',
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'LOGOUT_FAILED — unexpected Cognito error during sign-out.',
+  })
+  async logout(
+    @Headers('authorization') authorizationHeader: string,
+  ): Promise<LogoutResponseDto> {
+    this.logger.log('POST /v1/auth/logout');
+
+    if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Missing or malformed Authorization header');
+    }
+
+    // Extract the raw token — never log it
+    const accessToken = authorizationHeader.slice('Bearer '.length).trim();
+
+    const command = new LogoutCommand(accessToken);
+    const result = await this.logoutHandler.execute(command);
+
+    return { message: result.message };
   }
 }
