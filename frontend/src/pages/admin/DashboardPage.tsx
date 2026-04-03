@@ -32,28 +32,28 @@ const recentActivity = [
   {
     id: '1',
     type: 'reservation',
-    description: 'New reservation: Tennis Court A by John Doe',
+    description: 'Nueva reserva: Cancha de Tenis A por Juan Pérez',
     time: '5 minutes ago',
     status: 'Confirmed',
   },
   {
     id: '2',
     type: 'member',
-    description: 'New member registered: Jane Smith',
+    description: 'Nuevo socio registrado: María García',
     time: '23 minutes ago',
     status: 'Active',
   },
   {
     id: '3',
     type: 'reservation',
-    description: 'Reservation cancelled: Swimming Pool by Bob Johnson',
+    description: 'Reserva cancelada: Piscina por Roberto López',
     time: '1 hour ago',
     status: 'Cancelled',
   },
   {
     id: '4',
     type: 'promotion',
-    description: 'Promotion activated: Summer 20% off',
+    description: 'Promoción activada: Verano 20% de descuento',
     time: '2 hours ago',
     status: 'Active',
   },
@@ -66,50 +66,57 @@ const statusVariantMap: Record<string, 'default' | 'secondary' | 'destructive' |
   Cancelled: 'destructive',
 }
 
+const statusLabelMap: Record<string, string> = {
+  Confirmed: 'Confirmado',
+  Active: 'Activo',
+  Pending: 'Pendiente',
+  Cancelled: 'Cancelado',
+}
+
 export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Administration Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Panel de administración</h1>
           <p className="text-muted-foreground">
-            Overview of club operations and key metrics.
+            Resumen de operaciones del club y métricas clave.
           </p>
         </div>
         <Button>
           <Users className="mr-2 h-4 w-4" />
-          Add Member
+          Agregar socio
         </Button>
       </div>
 
       {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Members"
+          title="Total de socios"
           value="1,248"
-          change="+12 this month"
+          change="+12 este mes"
           positive
           icon={<Users className="h-5 w-5" />}
         />
         <StatCard
-          title="Active Reservations"
+          title="Reservas activas"
           value="87"
-          change="+5% from last week"
+          change="+5% respecto a la semana pasada"
           positive
           icon={<CalendarDays className="h-5 w-5" />}
         />
         <StatCard
-          title="Active Promotions"
+          title="Promociones activas"
           value="4"
-          change="2 expiring this week"
+          change="2 vencen esta semana"
           positive={false}
           icon={<Tag className="h-5 w-5" />}
         />
         <StatCard
-          title="Monthly Revenue"
+          title="Ingresos del mes"
           value="$24,380"
-          change="+8.2% from last month"
+          change="+8.2% respecto al mes pasado"
           positive
           icon={<TrendingUp className="h-5 w-5" />}
         />
@@ -118,8 +125,8 @@ export default function AdminDashboardPage() {
       {/* Recent Activity */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-          <CardDescription>Latest events across the platform</CardDescription>
+          <CardTitle>Actividad reciente</CardTitle>
+          <CardDescription>Últimos eventos en la plataforma</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -133,7 +140,7 @@ export default function AdminDashboardPage() {
                   <p className="text-xs text-muted-foreground">{activity.time}</p>
                 </div>
                 <Badge variant={statusVariantMap[activity.status] ?? 'outline'}>
-                  {activity.status}
+                  {statusLabelMap[activity.status] ?? activity.status}
                 </Badge>
               </div>
             ))}

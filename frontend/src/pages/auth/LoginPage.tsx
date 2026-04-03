@@ -60,24 +60,24 @@ export default function LoginPage() {
         state: { email: data.email, session, challengeName },
       })
     } catch (error) {
-      let message = 'An error occurred while signing in. Please try again.'
+      let message = 'Ocurrió un error al iniciar sesión. Intentá de nuevo.'
 
       if (axios.isAxiosError(error)) {
         const body = error.response?.data as AuthApiError | undefined
         if (body?.error?.message) {
           message = body.error.message
         } else if (error.response?.status === 401) {
-          message = 'Incorrect email or password.'
+          message = 'Email o contraseña incorrectos.'
         } else if (error.response?.status === 403) {
-          message = 'Your account is not confirmed or has been disabled.'
+          message = 'Tu cuenta no está confirmada o fue deshabilitada.'
         } else if (error.response?.status === 429) {
-          message = 'Too many attempts. Please wait a moment and try again.'
+          message = 'Demasiados intentos. Esperá un momento e intentá de nuevo.'
         }
       }
 
       toast({
         variant: 'destructive',
-        title: 'Sign in failed',
+        title: 'Error al iniciar sesión',
         description: message,
       })
     }
@@ -95,10 +95,10 @@ export default function LoginPage() {
             <Card className="border-slate-200 shadow-sm bg-white">
               <CardHeader className="space-y-1 pb-4">
                 <CardTitle className="text-2xl font-bold text-slate-900">
-                  Sign in
+                  Iniciar sesión
                 </CardTitle>
                 <CardDescription className="text-slate-500">
-                  Enter your credentials to access your account
+                  Ingresá tus credenciales para acceder a tu cuenta
                 </CardDescription>
               </CardHeader>
 
@@ -111,18 +111,18 @@ export default function LoginPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email address</FormLabel>
+                          <FormLabel>Correo electrónico</FormLabel>
                           <FormControl>
                             <Input
                               type="email"
-                              placeholder="you@example.com"
+                              placeholder="vos@ejemplo.com"
                               autoComplete="email"
                               className="border-slate-200 placeholder:text-slate-400"
                               {...field}
                             />
                           </FormControl>
                           <FormDescription>
-                            We will send you a verification code to this address
+                            Te enviaremos un código de verificación a esta dirección
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -135,7 +135,7 @@ export default function LoginPage() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Password</FormLabel>
+                          <FormLabel>Contraseña</FormLabel>
                           <FormControl>
                             <Input
                               type="password"
@@ -146,7 +146,7 @@ export default function LoginPage() {
                             />
                           </FormControl>
                           <FormDescription>
-                            Minimum 8 characters
+                            Mínimo 8 caracteres
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -161,22 +161,22 @@ export default function LoginPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Signing in...
+                          Iniciando sesión...
                         </>
                       ) : (
-                        'Continue'
+                        'Continuar'
                       )}
                     </Button>
                   </form>
                 </Form>
 
                 <p className="mt-6 text-center text-sm text-slate-500">
-                  Don&apos;t have an account?{' '}
+                  ¿No tenés cuenta?{' '}
                   <Link
                     to="/auth/register"
                     className="font-medium text-slate-900 underline underline-offset-4 hover:text-slate-700"
                   >
-                    Sign up
+                    Registrate
                   </Link>
                 </p>
               </CardContent>
