@@ -11,13 +11,23 @@ Utility scripts for data seeding, imports, and administrative tasks.
 | `seed-dev-users.ts`         | Create Cognito test users for local development             |
 | `export-members.ts`         | Export member list to JSON for reporting                    |
 
-## Running Scripts
+## Prerequisites
 
-Scripts use `ts-node` and assume AWS credentials are configured.
+Before running any script from your local machine:
+
+1. **Node.js** — version 18 or higher (`node -v` to check)
+2. **AWS credentials** — configured via `aws configure` or a named profile (`~/.aws/credentials`)
+3. **Dependencies installed:**
 
 ```bash
 cd scripts
 npm install
+```
+
+## Running Scripts
+
+```bash
+cd scripts
 npx ts-node seed-legacy-members.ts --env dev --file ./data/legacy-members.json
 ```
 
@@ -30,9 +40,10 @@ flow validates every DNI against this table before creating a Cognito user.
 ### Behaviour
 
 1. Loads and validates every record in the JSON file.
-2. Writes each valid record with `ConditionExpression: attribute_not_exists(DNI)` — existing records are never overwritten.
-3. Prints progress per record and a final summary (inserted / skipped / errors).
-4. Exits with code `1` if any validation or write error occurred.
+2. Writes each valid record with `PutItem` (upsert — existing records are overwritten with the new data).
+3. Skips invalid records with a warning; does not interrupt the rest of the import.
+4. Prints progress per record and a final summary (inserted / skipped / errors).
+5. Exits with code `1` if any validation or write error occurred.
 
 ### JSON Format
 
@@ -58,7 +69,7 @@ flow validates every DNI against this table before creating a Cognito user.
 | `membershipTier`| yes      | `VIP` \| `Gold` \| `Silver` | case-insensitive           |
 | `email`         | no       | string                  | stored in lowercase            |
 | `phone`         | no       | string                  |                                |
-| `accountStatus` | no       | `active` \| `inactive`  | defaults to `active`           |
+| `accountStatus` | yes      | `active` \| `inactive`  | invalid value → record skipped |
 
 ### Options
 

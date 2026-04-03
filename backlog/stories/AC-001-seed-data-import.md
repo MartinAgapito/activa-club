@@ -3,7 +3,7 @@
 **Epic:** EP-01 - Incorporación de Socios
 **Prioridad:** Alta
 **Story Points:** 3
-**Estado:** Backlog
+**Estado:** Implementado
 **Autor:** Agente Senior Product Owner
 
 ---
@@ -29,13 +29,13 @@ preservando la integridad de los registros históricos del club.
 
 | Persona       | Rol   | Interacción                                                      |
 |---------------|-------|------------------------------------------------------------------|
-| Administrador | Admin | Ejecuta el script con el archivo CSV/JSON del sistema on-premise |
+| Administrador | Admin | Ejecuta el script con el archivo JSON del sistema on-premise |
 
 ---
 
 ## Precondiciones
 
-- Acceso al archivo CSV/JSON exportado del sistema legado.
+- Acceso al archivo JSON exportado del sistema legado.
 - Tabla `SeedMembersTable` ya aprovisionada en DynamoDB (Terraform aplicado).
 - Credenciales AWS configuradas en el ambiente de ejecución del script.
 
@@ -43,12 +43,12 @@ preservando la integridad de los registros históricos del club.
 
 ## Criterios de Aceptación
 
-- [ ] Script `scripts/seed-legacy-members.ts` ejecutable desde CLI con un argumento de ruta al archivo de entrada.
-- [ ] Lee un archivo CSV/JSON con los campos: `dni`, `full_name`, `membership_type`, `account_status`.
-- [ ] Inserta cada registro en `SeedMembersTable` con PK = `DNI` (string, valor plano, sin prefijo).
-- [ ] Registros con `account_status` con valor inválido son omitidos y se registra un log de advertencia indicando el DNI afectado.
-- [ ] Al finalizar la ejecución, imprime un resumen con tres contadores: insertados / omitidos / errores.
-- [ ] La ejecución es idempotente: correr el script más de una vez con el mismo archivo no genera registros duplicados (upsert mediante `PutItem` con sobreescritura).
+- [x] Script `scripts/seed-legacy-members.ts` ejecutable desde CLI con un argumento de ruta al archivo de entrada.
+- [x] Lee un archivo JSON con los campos: `dni`, `firstName`, `lastName`, `membershipTier`, `accountStatus` (opcionales: `email`, `phone`).
+- [x] Inserta cada registro en `SeedMembersTable` con PK = `DNI` (string, valor plano, sin prefijo).
+- [x] Registros con `account_status` con valor inválido son omitidos y se registra un log de advertencia indicando el DNI afectado.
+- [x] Al finalizar la ejecución, imprime un resumen con tres contadores: insertados / omitidos / errores.
+- [x] La ejecución es idempotente: correr el script más de una vez con el mismo archivo no genera registros duplicados (upsert mediante `PutItem` con sobreescritura).
 
 ---
 
@@ -80,11 +80,11 @@ preservando la integridad de los registros históricos del club.
 
 ## Definition of Done
 
-- [ ] Script `scripts/seed-legacy-members.ts` ejecutado exitosamente en ambiente dev con un dataset de prueba.
-- [ ] Tabla `SeedMembersTable` poblada y verificada mediante consulta directa en DynamoDB.
-- [ ] Resumen de ejecución (insertados / omitidos / errores) documentado en el reporte de prueba.
-- [ ] Idempotencia verificada: segunda ejecución con el mismo archivo no genera duplicados.
-- [ ] Código del script revisado y aprobado.
+- [x] Script `scripts/seed-legacy-members.ts` ejecutado exitosamente en ambiente dev con un dataset de prueba.
+- [x] Tabla `SeedMembersTable` poblada y verificada mediante consulta directa en DynamoDB.
+- [x] Resumen de ejecución (insertados / omitidos / errores) documentado en el reporte de prueba.
+- [x] Idempotencia verificada: segunda ejecución con el mismo archivo no genera duplicados.
+- [x] Código del script revisado y aprobado.
 
 ---
 

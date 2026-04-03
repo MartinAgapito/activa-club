@@ -1,8 +1,9 @@
 %% ActivaClub - System Architecture Diagrams
 %% Maintained by: Senior Software & Cloud Architect
-%% Last updated: 2026-02-27
+%% Last updated: 2026-04-03
 %% Rev 2: Updated Auth Flow (Diagram 2) — SignUp + ConfirmSignUp + Email OTP
 %%         Added Login + OTP MFA Flow (Diagram 5)
+%% Rev 3: Added CustomEmailSender Lambda + KMS + SES email flow (AC-001/AC-002)
 
 %% ============================================================
 %% DIAGRAM 1: High-Level System Overview (C4 Container Level)
@@ -56,6 +57,14 @@ graph TB
         AT["AreasTable"]
     end
 
+    subgraph Email["Email Pipeline"]
+        CES["CustomEmailSender Lambda"]
+        KMS["AWS KMS (decryption)"]
+        SES["Amazon SES"]
+        CES --> KMS
+        CES --> SES
+    end
+
     subgraph External["External Services"]
         Stripe["Stripe (Payments)"]
         SNS["Amazon SNS (Notifications)"]
@@ -91,11 +100,14 @@ graph TB
     LAD --> GT
     LAD --> AT
 
+    UP -.->|CustomEmailSender trigger| CES
+
     Stripe -.->|Webhook POST /v1/payments/webhook| APIGW
 
 %% ============================================================
 %% DIAGRAM 2: Registration + Email Verification Flow (AC-001)
 %% Rev 2: Uses SignUp + ConfirmSignUp (native Cognito OTP)
+%% Rev 3: Email delivery via CustomEmailSender Lambda + KMS + SES
 %% ============================================================
 
 sequenceDiagram
@@ -105,6 +117,9 @@ sequenceDiagram
     participant SeedDB as DynamoDB (SeedMembersTable)
     participant MembersDB as DynamoDB (MembersTable)
     participant Cognito
+    participant CES as CustomEmailSender Lambda
+    participant KMS as AWS KMS
+    participant SES as Amazon SES
 
     Note over User,Cognito: ── STEP 1: Registration (POST /v1/auth/register) ──
 
@@ -122,7 +137,11 @@ sequenceDiagram
         MembersLambda-->>Frontend: 409 DNI_ALREADY_REGISTERED / EMAIL_ALREADY_IN_USE
     end
     MembersLambda->>Cognito: SignUp { email, password, custom:dni } — user UNCONFIRMED
-    Cognito->>User: Email with 6-digit OTP code (TTL 24h)
+    Cognito->>CES: Trigger CustomEmailSender { code (KMS-encrypted), email }
+    CES->>KMS: Decrypt code (AWS Encryption SDK envelope format)
+    KMS-->>CES: Plaintext 6-digit OTP
+    CES->>SES: SendEmail { to: email, body: OTP code }
+    SES->>User: Email with 6-digit OTP code (TTL 24h)
     MembersLambda-->>Frontend: HTTP 202 — Code sent to email
 
     Note over User,Cognito: ── STEP 2: Email Verification (POST /v1/auth/verify-email) ──
@@ -189,6 +208,7 @@ sequenceDiagram
 %% ============================================================
 %% DIAGRAM 5: Login + OTP MFA Flow (AC-002)
 %% Uses AdminInitiateAuth + AdminRespondToAuthChallenge (EMAIL_OTP)
+%% Rev 3: Email delivery via CustomEmailSender Lambda + KMS + SES
 %% ============================================================
 
 sequenceDiagram
@@ -196,6 +216,9 @@ sequenceDiagram
     participant Frontend
     participant MembersLambda
     participant Cognito
+    participant CES as CustomEmailSender Lambda
+    participant KMS as AWS KMS
+    participant SES as Amazon SES
 
     Note over User,Cognito: ── STEP 1: Credential Validation (POST /v1/auth/login) ──
 
@@ -210,7 +233,11 @@ sequenceDiagram
         Cognito-->>MembersLambda: UserNotConfirmedException
         MembersLambda-->>Frontend: 403 ACCOUNT_NOT_CONFIRMED
     end
-    Cognito->>User: Sends EMAIL_OTP code to verified email (TTL 3 min)
+    Cognito->>CES: Trigger CustomEmailSender { code (KMS-encrypted), email }
+    CES->>KMS: Decrypt code (AWS Encryption SDK envelope format)
+    KMS-->>CES: Plaintext 6-digit OTP
+    CES->>SES: SendEmail { to: email, body: OTP code }
+    SES->>User: EMAIL_OTP code (TTL 3 min)
     Cognito-->>MembersLambda: { ChallengeName: EMAIL_OTP, Session: <token> }
     MembersLambda-->>Frontend: HTTP 200 { challengeName, session }
 
