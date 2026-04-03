@@ -23,6 +23,8 @@ import {
   InvalidOtpException,
   SessionExpiredException,
   UnexpectedAuthChallengeException,
+  InvalidTokenException,
+  LogoutFailedException,
 } from '../../domain/exceptions/member.exceptions';
 
 /**
@@ -87,6 +89,13 @@ const DOMAIN_EXCEPTION_MAP: Record<string, { httpStatus: HttpStatus; code: strin
   UnexpectedAuthChallengeException: {
     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
     code: 'INTERNAL_ERROR',
+  },
+
+  // AC-008 — Logout
+  InvalidTokenException: { httpStatus: HttpStatus.UNAUTHORIZED, code: 'INVALID_TOKEN' },
+  LogoutFailedException: {
+    httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+    code: 'LOGOUT_FAILED',
   },
 };
 

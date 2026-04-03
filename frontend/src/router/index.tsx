@@ -42,7 +42,12 @@ function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/auth/login?reason=forbidden" replace />
+    // Redirect to the dashboard that matches the user's actual role instead of showing a login page
+    const fallback =
+      user.role === 'Admin' || user.role === 'Manager'
+        ? '/admin/dashboard'
+        : '/member/dashboard'
+    return <Navigate to={fallback} replace />
   }
 
   return <Outlet />

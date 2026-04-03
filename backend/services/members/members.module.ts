@@ -10,6 +10,7 @@ import { VerifyEmailHandler } from './src/application/commands/verify-email/veri
 import { ResendCodeHandler } from './src/application/commands/resend-code/resend-code.handler';
 import { LoginHandler } from './src/application/commands/login/login.handler';
 import { VerifyOtpHandler } from './src/application/commands/verify-otp/verify-otp.handler';
+import { LogoutHandler } from './src/application/commands/logout/logout.handler';
 
 // Infrastructure
 import { DynamoMemberRepository } from './src/infrastructure/repositories/dynamo-member.repository';
@@ -69,6 +70,9 @@ import { SEED_MEMBER_REPOSITORY } from './src/domain/repositories/seed-member.re
     // ── AC-002 use cases ───────────────────────────────────────────────────
     LoginHandler,
     VerifyOtpHandler,
+
+    // ── AC-008 use cases ───────────────────────────────────────────────────
+    LogoutHandler,
   ],
 })
 export class MembersModule {}
