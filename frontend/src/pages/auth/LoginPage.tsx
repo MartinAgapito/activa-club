@@ -62,7 +62,9 @@ export default function LoginPage() {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const body = error.response?.data as AuthApiError | undefined
-        const code = body?.error?.code
+        // The shared Lambda filter returns error as a string; the members filter
+        // returns it as an object with a code property. Handle both shapes.
+        const code = body?.error?.code ?? body?.error
 
         // Account exists but email not verified → send user to verify-email page
         // so they can resend the verification link from there
