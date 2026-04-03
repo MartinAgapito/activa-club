@@ -179,3 +179,32 @@ export class UnexpectedAuthChallengeException extends Error {
     this.name = 'UnexpectedAuthChallengeException';
   }
 }
+
+// ─── AC-008: Logout Exceptions ───────────────────────────────────────────────
+
+/**
+ * InvalidTokenException — HTTP 401.
+ * The access token is malformed, refers to a non-existent user, or is
+ * already revoked so Cognito cannot sign the user out.
+ */
+export class InvalidTokenException extends Error {
+  readonly code = 'INVALID_TOKEN';
+
+  constructor() {
+    super('The provided token is invalid or has already been revoked.');
+    this.name = 'InvalidTokenException';
+  }
+}
+
+/**
+ * LogoutFailedException — HTTP 500.
+ * An unexpected Cognito error occurred while signing the user out globally.
+ */
+export class LogoutFailedException extends Error {
+  readonly code = 'LOGOUT_FAILED';
+
+  constructor() {
+    super('An unexpected error occurred while signing out. Please try again.');
+    this.name = 'LogoutFailedException';
+  }
+}
