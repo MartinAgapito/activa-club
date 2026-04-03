@@ -61,9 +61,9 @@ Link to: docs/design/AC-XXX-design.md
 | ID     | Título                                                  | Epic  | Prioridad | Puntos | Estado  |
 |--------|---------------------------------------------------------|-------|-----------|--------|---------|
 | AC-001 | Importación de datos seed desde sistema legado          | EP-01 | Alta      | 3      | Backlog |
-| AC-002 | Registro de socio — validación DNI y creación de cuenta | EP-01 | Alta      | 5      | Done    |
-| AC-003 | Registro de socio — verificación de email y perfil      | EP-01 | Alta      | 5      | Done    |
-| AC-004 | Reenvío de código de verificación de email              | EP-01 | Media     | 2      | Done    |
-| AC-005 | Login de socio — validación de credenciales             | EP-01 | Alta      | 3      | Done    |
-| AC-006 | Login de socio — verificación OTP y emisión de tokens   | EP-01 | Alta      | 3      | Done    |
-| AC-007 | Frontend — flujo completo de autenticación              | EP-01 | Alta      | 5      | Done    |
+| AC-002 | Registro de socio — validación DNI y creación de cuenta                    | EP-01 | Alta      | 5      | Done    |
+| AC-003 | Registro de socio — verificación de email por link y creación de perfil    | EP-01 | Alta      | 5      | Done    |
+| AC-004 | Reenvío de link de verificación de email                                   | EP-01 | Media     | 2      | Done    |
+| AC-005 | Login de socio — validación de credenciales                                | EP-01 | Alta      | 3      | Done    |
+| AC-006 | Login de socio — verificación OTP y emisión de tokens JWT                  | EP-01 | Alta      | 3      | Done    |
+| AC-007 | Frontend — flujo completo de autenticación                                 | EP-01 | Alta      | 5      | Done    |
