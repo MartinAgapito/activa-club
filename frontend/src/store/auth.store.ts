@@ -25,7 +25,17 @@ interface AuthState {
 
   // Actions
   login: (user: CognitoUser) => void
-  logout: () => void
+  /**
+   * AC-008: Logout action.
+   * Calls POST /v1/auth/logout to invalidate all Cognito sessions,
+   * then clears the local store.
+   *
+   * Behavior:
+   *   - Success (200): clears the store and redirects to /auth/login.
+   *   - 401 (token expired/revoked): clears the store and redirects to /auth/login.
+   *   - Network error: surfaces the error and does NOT clear the store.
+   */
+  logout: () => Promise<void>
   clearAuth: () => void
   setLoading: (loading: boolean) => void
   updateUser: (partial: Partial<CognitoUser>) => void
@@ -53,13 +63,45 @@ export const useAuthStore = create<AuthState>()(
           isLoading: false,
         }),
 
-      logout: () =>
-        set({
-          user: null,
-          idToken: null,
-          isAuthenticated: false,
-          isLoading: false,
-        }),
+      logout: async () => {
+        const { idToken } = useAuthStore.getState()
+
+        // If there is no token the session is already gone — just clear local state.
+        if (!idToken) {
+          set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
+          window.location.href = '/auth/login'
+          return
+        }
+
+        set({ isLoading: true })
+
+        try {
+          // Lazy import avoids a circular dependency:
+          // auth.store → auth.api → client → useAuthStore → auth.store
+          const { authApi } = await import('@/api/auth.api')
+          await authApi.logout(idToken)
+          // Success — clear the store and redirect to login
+          set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
+          window.location.href = '/auth/login'
+        } catch (error: unknown) {
+          const axiosError = error as {
+            response?: { status?: number }
+            message?: string
+          }
+          const status = axiosError?.response?.status
+
+          if (status === 401) {
+            // Token already expired or revoked — treat as logged out
+            set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
+            window.location.href = '/auth/login'
+            return
+          }
+
+          // Network error or unexpected server error — do NOT clear the store
+          set({ isLoading: false })
+          throw error
+        }
+      },
 
       clearAuth: () =>
         set({
@@ -79,12 +121,21 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (idToken: string) => {
         const claims = decodeJwtPayload(idToken)
 
+        // Resolve role from cognito:groups with precedence: Admin > Manager > Member
+        const groups = (claims['cognito:groups'] as string[] | undefined) ?? []
+        let role: UserRole = 'Member'
+        if (groups.includes('Admin')) {
+          role = 'Admin'
+        } else if (groups.includes('Manager')) {
+          role = 'Manager'
+        }
+
         const cognitoUser: CognitoUser = {
           userId: (claims['sub'] as string) ?? '',
           username:
             (claims['cognito:username'] as string) ?? (claims['email'] as string) ?? '',
           email: (claims['email'] as string) ?? '',
-          role: ((claims['custom:role'] as UserRole) ?? 'Member') as UserRole,
+          role,
           signInDetails: {
             loginId: (claims['email'] as string) ?? '',
             authFlowType: 'CUSTOM_AUTH',

@@ -9,6 +9,7 @@ import {
   AdminDeleteUserCommand,
   AdminInitiateAuthCommand,
   AdminRespondToAuthChallengeCommand,
+  AdminUserGlobalSignOutCommand,
   AttributeType,
   AdminInitiateAuthCommandOutput,
   AdminRespondToAuthChallengeCommandOutput,
@@ -267,5 +268,29 @@ export class CognitoService {
     const response = await this.client.send(command);
     this.logger.log(`adminRespondToAuthChallenge: authentication successful for email=${email}`);
     return response;
+  }
+
+  // ─── AC-008: Logout ──────────────────────────────────────────────────────────
+
+  /**
+   * Signs the user out of all Cognito sessions globally.
+   * Invalidates all existing tokens (AccessToken, IdToken, RefreshToken) issued
+   * for the user. Subsequent API calls with those tokens will be rejected by
+   * Cognito authorizers.
+   *
+   * Requires Lambda IAM role with cognito-idp:AdminUserGlobalSignOut permission.
+   *
+   * @param username - Cognito username (typically the user's email address).
+   */
+  async adminUserGlobalSignOut(username: string): Promise<void> {
+    this.logger.debug(`adminUserGlobalSignOut: revoking all sessions for username=${username}`);
+
+    const command = new AdminUserGlobalSignOutCommand({
+      UserPoolId: this.userPoolId,
+      Username: username,
+    });
+
+    await this.client.send(command);
+    this.logger.log(`adminUserGlobalSignOut: all sessions revoked for username=${username}`);
   }
 }
