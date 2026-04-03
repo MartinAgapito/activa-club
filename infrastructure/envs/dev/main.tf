@@ -147,6 +147,11 @@ module "cognito" {
   # v3 → v4: recreate to add SES email_configuration for Email MFA support.
   force_recreate_token = "v4"
 
+  # CustomEmailSender trigger (AC-003).
+  # Cognito encrypts the OTP code with this KMS key and passes it to the Lambda.
+  custom_email_sender_lambda_arn  = aws_lambda_function.email_sender.arn
+  custom_email_sender_kms_key_arn = aws_kms_key.cognito_email.arn
+
   tags = {
     Project = var.project
   }
@@ -314,6 +319,124 @@ module "api_gateway" {
   tags = {
     Project = var.project
   }
+}
+
+# ============================================================
+# KMS — Cognito CustomEmailSender encryption key
+#
+# Cognito encrypts the confirmation code with this key before
+# invoking the CustomEmailSender Lambda. The Lambda needs
+# kms:Decrypt to read it.
+# ============================================================
+resource "aws_kms_key" "cognito_email" {
+  description             = "${var.project}-cognito-email-${var.env}"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  tags = {
+    Project     = var.project
+    Environment = var.env
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_kms_alias" "cognito_email" {
+  name          = "alias/${var.project}-cognito-email-${var.env}"
+  target_key_id = aws_kms_key.cognito_email.key_id
+}
+
+# ============================================================
+# IAM — Email Sender Lambda execution role
+# ============================================================
+resource "aws_iam_role" "email_sender_lambda" {
+  name = "${var.project}-email-sender-${var.env}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Project     = var.project
+    Environment = var.env
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "email_sender_basic" {
+  role       = aws_iam_role.email_sender_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "email_sender_kms_ses" {
+  name = "${var.project}-email-sender-kms-ses-${var.env}"
+  role = aws_iam_role.email_sender_lambda.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "AllowKMSDecrypt"
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = aws_kms_key.cognito_email.arn
+      },
+      {
+        Sid      = "AllowSESSend"
+        Effect   = "Allow"
+        Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# ============================================================
+# Lambda — activa-club-email-sender
+#
+# Invoked by Cognito as CustomEmailSender trigger.
+# Decrypts the code via KMS and sends HTML emails via SES.
+# Uses the same S3 artifact as the members Lambda.
+# ============================================================
+resource "aws_lambda_function" "email_sender" {
+  function_name = "${var.project}-email-sender-${var.env}"
+  role          = aws_iam_role.email_sender_lambda.arn
+  handler       = "dist/src/email-sender.handler"
+  runtime       = "nodejs20.x"
+  memory_size   = 256
+  timeout       = 30
+
+  s3_bucket = aws_s3_bucket.lambda_artifacts.bucket
+  s3_key    = "members/members.zip"
+
+  environment {
+    variables = {
+      AWS_REGION_NAME = var.aws_region
+      KMS_KEY_ARN     = aws_kms_key.cognito_email.arn
+      SES_FROM_EMAIL  = aws_ses_email_identity.cognito_sender.email
+      FRONTEND_URL    = "https://${module.frontend.cloudfront_domain_name}"
+      NO_COLOR        = "1"
+    }
+  }
+
+  tags = {
+    Project     = var.project
+    Environment = var.env
+    ManagedBy   = "terraform"
+  }
+}
+
+# Allow Cognito to invoke the email sender Lambda
+resource "aws_lambda_permission" "cognito_email_sender" {
+  statement_id  = "AllowCognitoInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.email_sender.function_name
+  principal     = "cognito-idp.amazonaws.com"
+  source_arn    = module.cognito.user_pool_arn
 }
 
 # ============================================================
