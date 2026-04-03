@@ -60,26 +60,40 @@ export default function LoginPage() {
         state: { email: data.email, session, challengeName },
       })
     } catch (error) {
-      let message = 'Ocurrió un error al iniciar sesión. Intentá de nuevo.'
-
       if (axios.isAxiosError(error)) {
         const body = error.response?.data as AuthApiError | undefined
+        const code = body?.error?.code
+
+        // Account exists but email not verified → send user to verify-email page
+        // so they can resend the verification link from there
+        if (code === 'ACCOUNT_NOT_CONFIRMED') {
+          navigate(`/auth/verify-email?email=${encodeURIComponent(data.email)}`)
+          return
+        }
+
+        let message = 'Ocurrió un error al iniciar sesión. Intentá de nuevo.'
         if (body?.error?.message) {
           message = body.error.message
         } else if (error.response?.status === 401) {
           message = 'Email o contraseña incorrectos.'
         } else if (error.response?.status === 403) {
-          message = 'Tu cuenta no está confirmada o fue deshabilitada.'
+          message = 'Tu cuenta fue deshabilitada. Contactá al administrador del club.'
         } else if (error.response?.status === 429) {
           message = 'Demasiados intentos. Esperá un momento e intentá de nuevo.'
         }
-      }
 
-      toast({
-        variant: 'destructive',
-        title: 'Error al iniciar sesión',
-        description: message,
-      })
+        toast({
+          variant: 'destructive',
+          title: 'Error al iniciar sesión',
+          description: message,
+        })
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error al iniciar sesión',
+          description: 'Ocurrió un error al iniciar sesión. Intentá de nuevo.',
+        })
+      }
     }
   }
 
