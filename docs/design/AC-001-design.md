@@ -51,7 +51,7 @@ When a prospective member registers, the system must execute a **two-step flow**
 > **Rev 2 Design Decision — `SignUp` vs `AdminCreateUser`:**
 > The original AC-001 design used `AdminCreateUser` + `AdminSetUserPassword` with `AllowAdminCreateUserOnly = true`. This approach does **not** natively support email OTP verification (it sends a temporary password instead). To fulfill AC-002's requirement of Cognito Email MFA (which requires a confirmed email), the registration flow has been updated to use `SignUp` + `ConfirmSignUp`. `AllowAdminCreateUserOnly` is set to `false`, but the backend Lambda acts as the sole gatekeeper — the frontend never calls Cognito APIs directly for registration.
 
-**Prerequisite:** The `seed-legacy-members.ts` script must have been executed to populate `SeedMembersTable` from the club's on-premise CSV export before any registration attempt.
+**Prerequisite:** The `seed-legacy-members.ts` script must have been executed to populate `SeedMembersTable` from the club's on-premise JSON data export before any registration attempt.
 
 This story is a prerequisite for AC-002 (Login), AC-003 (Profile), and AC-004 (Membership Payment).
 
