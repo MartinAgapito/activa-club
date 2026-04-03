@@ -1,4 +1,4 @@
-# AC-004: Reenvío de Código de Verificación de Email
+# AC-004: Reenvío de Link de Verificación de Email
 
 **Epic:** EP-01 - Incorporación de Socios
 **Prioridad:** Media
@@ -12,15 +12,15 @@
 ## Historia de Usuario
 
 Como socio potencial,
-Quiero solicitar el reenvío del código OTP si no lo recibí o expiró,
+Quiero solicitar el reenvío del link de verificación si no lo recibí o expiró,
 Para poder completar la verificación de mi cuenta sin tener que registrarme nuevamente.
 
 ---
 
 ## Valor de Negocio
 
-El reenvío del código evita que el socio quede bloqueado en el proceso de registro
-por problemas de entrega de email o por expiración del código.
+El reenvío del link evita que el socio quede bloqueado en el proceso de registro
+por problemas de entrega de email o por expiración del token.
 Sin este mecanismo, el socio debería registrarse nuevamente, generando inconsistencias
 en Cognito y degradando la experiencia de usuario.
 
@@ -28,9 +28,9 @@ en Cognito y degradando la experiencia de usuario.
 
 ## Personas Involucradas
 
-| Persona              | Rol    | Interacción                                                  |
-|----------------------|--------|--------------------------------------------------------------|
-| Socio Potencial      | Member | Solicita el reenvío del OTP desde la pantalla de verificación |
+| Persona              | Rol    | Interacción                                                    |
+|----------------------|--------|----------------------------------------------------------------|
+| Socio Potencial      | Member | Solicita el reenvío del link desde la pantalla de verificación |
 
 ---
 
@@ -39,6 +39,7 @@ en Cognito y degradando la experiencia de usuario.
 - AC-002 completado: el socio completó el formulario de registro.
 - El usuario existe en Cognito con estado `UNCONFIRMED`.
 - El endpoint es público — no requiere token de autenticación.
+- El Lambda Trigger `CustomEmailSender` está configurado para que el nuevo email de reenvío también use la plantilla HTML profesional.
 
 ---
 
@@ -46,7 +47,8 @@ en Cognito y degradando la experiencia de usuario.
 
 - [x] Email no encontrado en Cognito → HTTP 404.
 - [x] Límite de reenvíos excedido (definido por Cognito) → HTTP 429.
-- [x] Flujo exitoso: backend llama a `ResendConfirmationCode` de Cognito → Cognito envía un nuevo OTP al email → HTTP 200.
+- [x] Flujo exitoso: backend llama a `ResendConfirmationCode` de Cognito → Cognito envía un nuevo link de verificación al email (con plantilla HTML profesional) → HTTP 200.
+- [x] El nuevo link enviado sigue el mismo formato que el link original: `?email=...&token=...`.
 - [x] Todos los errores siguen el esquema estándar `{ status, error: { code, message } }`.
 
 ---
@@ -62,6 +64,7 @@ en Cognito y degradando la experiencia de usuario.
 
 - **Solo para cuentas UNCONFIRMED:** El reenvío solo aplica a usuarios que aún no completaron la verificación de email.
 - **Límite de Cognito:** Cognito aplica un límite nativo de reenvíos; al superarlo retorna error y el sistema mapea a HTTP 429.
+- **Link, no OTP:** El reenvío envía un nuevo link de verificación; no se envía un código OTP de 6 dígitos. La plantilla HTML del nuevo email es la misma que la del email original (via `CustomEmailSender`).
 
 ---
 
@@ -70,7 +73,7 @@ en Cognito y degradando la experiencia de usuario.
 | Historia / Artefacto | Motivo                                                                   |
 |----------------------|--------------------------------------------------------------------------|
 | AC-002               | El usuario debe existir en Cognito con estado `UNCONFIRMED`.             |
-| AC-003               | Este endpoint es el paso previo cuando el OTP expira antes de verificar. |
+| AC-003               | Este endpoint es el paso previo cuando el token expira antes de verificar. |
 
 ---
 
@@ -79,6 +82,7 @@ en Cognito y degradando la experiencia de usuario.
 - [x] Endpoint `POST /v1/auth/resend-code` implementado y desplegado en dev.
 - [x] Endpoint es público (sin token) y excluido del autorizador de API Gateway.
 - [x] Llamada a `ResendConfirmationCode` de Cognito implementada correctamente.
+- [x] El nuevo email enviado usa la plantilla HTML profesional via `CustomEmailSender`.
 - [x] Manejo de email no encontrado (HTTP 404) y límite excedido (HTTP 429).
 - [x] Todos los errores siguen el esquema estándar de respuesta de error del API.
 - [x] Tests unitarios cubren: flujo exitoso, email no encontrado y límite de reenvíos excedido.
@@ -91,3 +95,4 @@ en Cognito y degradando la experiencia de usuario.
 
 - **Design Doc:** `docs/design/AC-001-design.md`
 - **Endpoint:** `POST /v1/auth/resend-code` — público, sin token.
+- **Lambda Trigger:** El `CustomEmailSender` se invoca también en el reenvío; no requiere lógica adicional en este endpoint.

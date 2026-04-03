@@ -20,8 +20,9 @@ Para acceder al sistema desde cualquier dispositivo de forma segura y sin fricci
 ## Valor de Negocio
 
 La interfaz de autenticación es el primer punto de contacto del socio con la plataforma.
-Una experiencia fluida, con mensajes de error claros en español y diseño responsive,
-reduce el abandono en el proceso de onboarding y transmite confianza en el sistema.
+Una experiencia fluida, con mensajes de error claros en español, campos de contraseña con visibilidad
+controlada y diseño responsive, reduce el abandono en el proceso de onboarding y transmite confianza
+en el sistema.
 
 ---
 
@@ -44,14 +45,15 @@ reduce el abandono en el proceso de onboarding y transmite confianza en el siste
 ## Criterios de Aceptación
 
 - [x] `RegisterPage` conectada a `POST /v1/auth/register` con formulario que incluye DNI, email y contraseña.
-- [x] `VerifyEmailPage` conectada a `POST /v1/auth/verify-email` y a `POST /v1/auth/resend-code`; incluye opción "Reenviar código" visible para el socio.
+- [x] `VerifyEmailPage` conectada a `POST /v1/auth/verify-email`; al cargar la página extrae `email` y `token` de los query params del link recibido por email y dispara la confirmación automáticamente. Incluye opción "Reenviar link" conectada a `POST /v1/auth/resend-code`.
 - [x] `LoginPage` conectada a `POST /v1/auth/login` con formulario de email y contraseña.
 - [x] `VerifyOtpPage` conectada a `POST /v1/auth/verify-otp` con campo de código OTP de 6 dígitos.
 - [x] Todos los formularios tienen validación en tiempo real implementada con React Hook Form + Zod.
 - [x] Los errores del API son mapeados a mensajes amigables en español (no se exponen códigos técnicos al usuario).
 - [x] Tras login exitoso, los tokens se almacenan correctamente y el socio es redirigido al dashboard.
 - [x] El diseño es responsive (Tailwind + Shadcn/ui) y funciona en dispositivos móviles y de escritorio.
-- [x] El flujo completo (registro → verificación email → login → verificación OTP → dashboard) funciona end-to-end contra el ambiente dev de AWS.
+- [x] El flujo completo (registro → clic en link de verificación → login → verificación OTP → dashboard) funciona end-to-end contra el ambiente dev de AWS.
+- [x] Todos los campos de tipo contraseña (registro y login) incluyen el componente reutilizable `PasswordInput`: un ícono de ojo (Eye/EyeOff de `lucide-react`) posicionado a la derecha del campo; al hacer clic muestra la contraseña en texto plano, al volver a hacer clic la oculta. El componente es reutilizable y se aplica a todos los campos `type="password"` del flujo de autenticación.
 
 ---
 
@@ -68,6 +70,8 @@ reduce el abandono en el proceso de onboarding y transmite confianza en el siste
 - **Sin llamadas directas a Cognito desde el frontend:** Todas las operaciones de autenticación se realizan a través de los endpoints REST del backend.
 - **Almacenamiento seguro de tokens:** Los tokens no deben almacenarse en `localStorage`; se usa memoria (Zustand store) o `httpOnly cookie`.
 - **Mensajes en español:** Todos los mensajes visibles para el usuario deben estar en español, independientemente del código de error del API.
+- **Componente PasswordInput reutilizable:** El toggle de visibilidad de contraseña debe implementarse como un componente único (`PasswordInput`) y no como lógica duplicada en cada formulario. Usa los íconos `Eye` y `EyeOff` de `lucide-react`.
+- **Verificación por link:** La `VerifyEmailPage` no muestra un formulario de ingreso de código; en cambio, procesa automáticamente los query params del link al cargar, confirmando la cuenta sin intervención manual del socio.
 
 ---
 
@@ -76,8 +80,8 @@ reduce el abandono en el proceso de onboarding y transmite confianza en el siste
 | Historia / Artefacto | Motivo                                                                            |
 |----------------------|-----------------------------------------------------------------------------------|
 | AC-002               | `RegisterPage` consume este endpoint.                                             |
-| AC-003               | `VerifyEmailPage` consume este endpoint.                                          |
-| AC-004               | `VerifyEmailPage` consume este endpoint para el reenvío de código.                |
+| AC-003               | `VerifyEmailPage` consume este endpoint; procesa el link con `email` y `token`.   |
+| AC-004               | `VerifyEmailPage` consume este endpoint para el reenvío del link.                 |
 | AC-005               | `LoginPage` consume este endpoint.                                                |
 | AC-006               | `VerifyOtpPage` consume este endpoint.                                            |
 
@@ -86,9 +90,10 @@ reduce el abandono en el proceso de onboarding y transmite confianza en el siste
 ## Definition of Done
 
 - [x] `RegisterPage` implementada y conectada al API.
-- [x] `VerifyEmailPage` implementada y conectada al API, con opción de reenvío de código.
+- [x] `VerifyEmailPage` implementada: procesa query params del link automáticamente y ofrece reenvío.
 - [x] `LoginPage` implementada y conectada al API.
 - [x] `VerifyOtpPage` implementada y conectada al API.
+- [x] Componente `PasswordInput` implementado con toggle Eye/EyeOff (lucide-react) y aplicado en todos los campos de contraseña.
 - [x] Validación en tiempo real con React Hook Form + Zod en todos los formularios.
 - [x] Errores del API mapeados a mensajes amigables en español.
 - [x] Flujo completo end-to-end probado manualmente contra ambiente dev de AWS.
@@ -104,4 +109,5 @@ reduce el abandono en el proceso de onboarding y transmite confianza en el siste
 - **HTTP client:** React Query + axios.
 - **UI:** Tailwind CSS + Shadcn/ui.
 - **Validación de formularios:** React Hook Form + Zod.
+- **Íconos:** lucide-react (`Eye`, `EyeOff`) para el componente `PasswordInput`.
 - **Design Docs:** `docs/design/AC-001-design.md`, `docs/design/AC-002-design.md`
