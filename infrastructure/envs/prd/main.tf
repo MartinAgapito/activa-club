@@ -190,7 +190,7 @@ module "members_lambda" {
   source = "../../modules/lambda"
 
   function_name = "${var.project}-members-${var.env}"
-  handler       = "dist/lambda.handler"
+  handler       = "dist/src/lambda.handler"
   runtime       = "nodejs20.x"
   memory_size   = 256
   timeout       = 30
@@ -253,8 +253,8 @@ module "api_gateway" {
   cognito_audience   = [module.cognito.app_client_id]
 
   cors_origins = [
-    "http://localhost:5173",                                    # Vite dev server (keep for staging/testing)
-    "http://localhost:3000",                                    # Alternative local port
+    "http://localhost:5173", # Vite dev server (keep for staging/testing)
+    "http://localhost:3000", # Alternative local port
     "https://${module.frontend.cloudfront_domain_name}",
   ]
 
