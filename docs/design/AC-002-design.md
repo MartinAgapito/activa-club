@@ -6,7 +6,7 @@
 **Status:** Implemented
 **Author:** Senior Software & Cloud Architect
 **Date:** 2026-02-27
-**Last Updated:** 2026-03-29
+**Last Updated:** 2026-04-03
 **Depends on:** AC-001-design.md (Cognito User Pool + MembersTable must exist)
 
 ---
@@ -849,16 +849,24 @@ Public routes:
 ```
 frontend/src/store/auth.store.ts
 
-New fields added after successful login:
-  - accessToken: string | null
-  - idToken: string | null
-  - memberId: string | null     (extracted from idToken claims)
-  - membershipTier: string | null  (extracted from idToken custom claims via pre-token Lambda)
+Fields (implemented):
+  - user: CognitoUser | null   (sub, username, email, role — decoded from idToken claims)
+  - idToken: string | null     (kept in memory only — NOT persisted to localStorage)
   - isAuthenticated: boolean
+  - isLoading: boolean
 
-New actions:
-  - setTokens(accessToken, idToken): void
-  - clearSession(): void  (on logout or token expiry)
+Actions:
+  - setTokens(idToken: string): void   (decodes JWT, builds CognitoUser, sets isAuthenticated)
+  - login(user: CognitoUser): void
+  - logout(): void
+  - clearAuth(): void
+  - setLoading(loading: boolean): void
+  - updateUser(partial: Partial<CognitoUser>): void
+
+Persistence (zustand/persist — localStorage key: "activa-club-auth"):
+  - Persisted: user profile only (for display — e.g. welcome messages on refresh)
+  - NOT persisted: idToken, isAuthenticated (JWT must not survive page reload per AC-006/AC-007)
+  - On page refresh: isAuthenticated resets to false; user re-authenticates
 ```
 
 ---
