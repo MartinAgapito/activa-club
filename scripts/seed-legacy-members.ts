@@ -1,12 +1,12 @@
 /**
  * seed-legacy-members.ts
  *
- * Imports pre-existing member records from a JSON file into SeedMembersTable.
- * This table is used by the registration flow (AC-001) to:
+ * Imports pre-existing member records from a JSON or CSV file into SeedMembersTable.
+ * This table is used by the registration flow to:
  *   1. Validate that the DNI belongs to an existing club member.
  *   2. Enforce account_status (active/inactive) before creating a Cognito user.
  *   3. Provide full_name and membership_type for the DynamoDB profile created
- *      at verify-email time (Step 2 of AC-001).
+ *      at verify-email time.
  *
  * Usage:
  *   npx ts-node seed-legacy-members.ts --env dev --file ./data/legacy-members.json
@@ -20,16 +20,16 @@
  *       "firstName":     "Juan",          // required
  *       "lastName":      "Pérez",         // required
  *       "membershipTier":"Gold",          // required — VIP | Gold | Silver
+ *       "accountStatus": "active",        // required — active | inactive
  *       "email":         "j@email.com",  // optional
- *       "phone":         "+541112345678", // optional
- *       "accountStatus": "active"         // optional — active | inactive (default: active)
+ *       "phone":         "+541112345678"  // optional
  *     }
  *   ]
  *
  * Behaviour:
- *   - Skips duplicates: ConditionExpression ensures an existing DNI is never overwritten.
- *   - Prints progress for each record and a final summary.
- *   - Exits with code 1 if any record produced a validation or write error.
+ *   - Upsert: PutItem without condition — existing DNI records are overwritten.
+ *   - Skips records with invalid fields and logs a warning for each.
+ *   - Prints progress for each record and a final summary (inserted / skipped / errors).
  *   - --dry-run validates every record and prints what would be written, without touching DynamoDB.
  */
 
@@ -40,33 +40,33 @@ import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type MembershipTier  = 'VIP' | 'Gold' | 'Silver';
-type AccountStatus   = 'active' | 'inactive';
+type MembershipTier = 'VIP' | 'Gold' | 'Silver';
+type AccountStatus  = 'active' | 'inactive';
 
 interface RawRecord {
-  dni?:           unknown;
-  firstName?:     unknown;
-  lastName?:      unknown;
-  membershipTier?:unknown;
-  email?:         unknown;
-  phone?:         unknown;
-  accountStatus?: unknown;
+  dni?:            unknown;
+  firstName?:      unknown;
+  lastName?:       unknown;
+  membershipTier?: unknown;
+  accountStatus?:  unknown;
+  email?:          unknown;
+  phone?:          unknown;
 }
 
 interface ValidRecord {
-  index:         number;
-  dni:           string;
-  fullName:      string;
-  membershipType:MembershipTier;
-  accountStatus: AccountStatus;
-  email?:        string;
-  phone?:        string;
-  importedAt:    string;
+  index:          number;
+  dni:            string;
+  fullName:       string;
+  membershipType: MembershipTier;
+  accountStatus:  AccountStatus;
+  email?:         string;
+  phone?:         string;
+  importedAt:     string;
 }
 
 interface RecordError {
   index:  number;
-  raw:    RawRecord;
+  dni:    string;
   reason: string;
 }
 
@@ -80,21 +80,21 @@ function parseArgs(argv: string[]): {
   dryRun: boolean;
 } {
   const args = argv.slice(2);
-  let env: string | null = null;
-  let table: string | null = null;
-  let file = '';
-  let region = 'us-east-1';
+  let env:     string | null = null;
+  let table:   string | null = null;
+  let file     = '';
+  let region   = 'us-east-1';
   let profile: string | null = null;
-  let dryRun = false;
+  let dryRun   = false;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
-      case '--env':    env     = args[++i]; break;
-      case '--table':  table   = args[++i]; break;
-      case '--file':   file    = args[++i]; break;
-      case '--region': region  = args[++i]; break;
-      case '--profile':profile = args[++i]; break;
-      case '--dry-run':dryRun  = true;      break;
+      case '--env':     env     = args[++i]; break;
+      case '--table':   table   = args[++i]; break;
+      case '--file':    file    = args[++i]; break;
+      case '--region':  region  = args[++i]; break;
+      case '--profile': profile = args[++i]; break;
+      case '--dry-run': dryRun  = true;      break;
     }
   }
 
@@ -122,8 +122,8 @@ function parseArgs(argv: string[]): {
 function printUsage(): void {
   console.log(`
 Usage:
-  npx ts-node seed-legacy-members.ts --env <dev|production> --file <json-path> [options]
-  npx ts-node seed-legacy-members.ts --table <tableName>    --file <json-path> [options]
+  npx ts-node seed-legacy-members.ts --env <dev|production> --file <path> [options]
+  npx ts-node seed-legacy-members.ts --table <tableName>    --file <path> [options]
 
 Options:
   --env <env>      Derives table name as SeedMembersTable-<env>
@@ -146,10 +146,12 @@ function normaliseTier(raw: unknown): MembershipTier | null {
   return TIER_MAP[raw.trim().toLowerCase()] ?? null;
 }
 
-function normaliseStatus(raw: unknown): AccountStatus {
-  return typeof raw === 'string' && raw.trim().toLowerCase() === 'inactive'
-    ? 'inactive'
-    : 'active';
+function normaliseStatus(raw: unknown): AccountStatus | null {
+  if (typeof raw !== 'string') return null;
+  const v = raw.trim().toLowerCase();
+  if (v === 'active')   return 'active';
+  if (v === 'inactive') return 'inactive';
+  return null;
 }
 
 function validateRecord(
@@ -157,36 +159,44 @@ function validateRecord(
   index: number,
   importedAt: string,
 ): ValidRecord | RecordError {
-  const dni = typeof raw.dni === 'string' ? raw.dni.trim() : '';
-  if (!/^\d{7,8}$/.test(dni)) {
-    return { index, raw, reason: `"dni" must be 7–8 numeric digits, got "${raw.dni ?? ''}"` };
+  const dniRaw = typeof raw.dni === 'string' ? raw.dni.trim() : String(raw.dni ?? '').trim();
+
+  if (!/^\d{7,8}$/.test(dniRaw)) {
+    return { index, dni: dniRaw || '?', reason: `"dni" must be 7–8 numeric digits, got "${raw.dni ?? ''}"` };
   }
 
   const firstName = typeof raw.firstName === 'string' ? raw.firstName.trim() : '';
   if (!firstName) {
-    return { index, raw, reason: '"firstName" is required' };
+    return { index, dni: dniRaw, reason: '"firstName" is required' };
   }
 
   const lastName = typeof raw.lastName === 'string' ? raw.lastName.trim() : '';
   if (!lastName) {
-    return { index, raw, reason: '"lastName" is required' };
+    return { index, dni: dniRaw, reason: '"lastName" is required' };
   }
 
   const membershipType = normaliseTier(raw.membershipTier);
   if (!membershipType) {
     return {
-      index,
-      raw,
+      index, dni: dniRaw,
       reason: `"membershipTier" must be VIP | Gold | Silver, got "${raw.membershipTier ?? ''}"`,
+    };
+  }
+
+  const accountStatus = normaliseStatus(raw.accountStatus);
+  if (accountStatus === null) {
+    return {
+      index, dni: dniRaw,
+      reason: `"accountStatus" must be active | inactive, got "${raw.accountStatus ?? ''}"`,
     };
   }
 
   const record: ValidRecord = {
     index,
-    dni,
-    fullName: `${firstName} ${lastName}`,
+    dni:            dniRaw,
+    fullName:       `${firstName} ${lastName}`,
     membershipType,
-    accountStatus: normaliseStatus(raw.accountStatus),
+    accountStatus,
     importedAt,
   };
 
@@ -200,34 +210,41 @@ function validateRecord(
   return record;
 }
 
-// ─── JSON loader ──────────────────────────────────────────────────────────────
+// ─── File loaders ─────────────────────────────────────────────────────────────
 
-function loadJson(filePath: string): { records: ValidRecord[]; errors: RecordError[] } {
+function readFile(filePath: string): string {
   const absPath = path.resolve(filePath);
-
   if (!fs.existsSync(absPath)) {
     console.error(`Error: file not found: ${absPath}`);
     process.exit(1);
   }
+  return fs.readFileSync(absPath, 'utf-8');
+}
 
+function parseJson(content: string): RawRecord[] {
   let raw: unknown;
   try {
-    raw = JSON.parse(fs.readFileSync(absPath, 'utf-8'));
+    raw = JSON.parse(content);
   } catch {
-    console.error(`Error: could not parse JSON from ${absPath}`);
+    console.error('Error: could not parse JSON file.');
     process.exit(1);
   }
-
   if (!Array.isArray(raw)) {
     console.error('Error: JSON file must contain an array of objects at the root level.');
     process.exit(1);
   }
+  return raw as RawRecord[];
+}
+
+function loadFile(filePath: string): { records: ValidRecord[]; errors: RecordError[] } {
+  const content    = readFile(filePath);
+  const rawRecords = parseJson(content);
 
   const importedAt = new Date().toISOString();
   const records: ValidRecord[] = [];
-  const errors: RecordError[] = [];
+  const errors: RecordError[]  = [];
 
-  (raw as RawRecord[]).forEach((item, i) => {
+  rawRecords.forEach((item, i) => {
     const result = validateRecord(item, i + 1, importedAt);
     if ('reason' in result) {
       errors.push(result);
@@ -245,31 +262,22 @@ async function putItem(
   docClient: DynamoDBDocumentClient,
   tableName: string,
   record: ValidRecord,
-): Promise<'inserted' | 'skipped'> {
-  try {
-    await docClient.send(
-      new PutCommand({
-        TableName: tableName,
-        Item: {
-          DNI:             record.dni,
-          full_name:       record.fullName,
-          membership_type: record.membershipType,
-          account_status:  record.accountStatus,
-          ...(record.email && { email: record.email }),
-          ...(record.phone && { phone: record.phone }),
-          imported_at:     record.importedAt,
-        },
-        // Never overwrite an existing record
-        ConditionExpression: 'attribute_not_exists(DNI)',
-      }),
-    );
-    return 'inserted';
-  } catch (err: unknown) {
-    if (err instanceof Error && err.name === 'ConditionalCheckFailedException') {
-      return 'skipped';
-    }
-    throw err;
-  }
+): Promise<void> {
+  await docClient.send(
+    new PutCommand({
+      TableName: tableName,
+      Item: {
+        DNI:             record.dni,
+        full_name:       record.fullName,
+        membership_type: record.membershipType,
+        account_status:  record.accountStatus,
+        ...(record.email && { email: record.email }),
+        ...(record.phone && { phone: record.phone }),
+        imported_at:     record.importedAt,
+      },
+      // No ConditionExpression — upsert: overwrites existing record for the same DNI.
+    }),
+  );
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -290,20 +298,20 @@ async function main(): Promise<void> {
   console.log('');
 
   // ── Load and validate ──
-  console.log('Loading JSON...');
-  const { records, errors: validationErrors } = loadJson(file);
+  console.log('Loading file...');
+  const { records, errors: validationErrors } = loadFile(file);
 
   if (validationErrors.length > 0) {
-    console.log(`\n⚠  Validation errors (${validationErrors.length} records will be skipped):\n`);
+    console.log(`\n⚠  Skipped records (${validationErrors.length} invalid):\n`);
     for (const e of validationErrors) {
-      console.log(`  [${e.index}] ${e.reason}`);
+      console.warn(`  [${e.index}] DNI=${e.dni} — ${e.reason}`);
     }
     console.log('');
   }
 
   console.log(`  Total loaded : ${records.length + validationErrors.length}`);
   console.log(`  Valid        : ${records.length}`);
-  console.log(`  Invalid      : ${validationErrors.length}`);
+  console.log(`  Skipped      : ${validationErrors.length}`);
   console.log('');
 
   if (records.length === 0) {
@@ -319,13 +327,11 @@ async function main(): Promise<void> {
         `  [${String(r.index).padStart(3)}] DNI=${r.dni} | ${r.fullName} | ${r.membershipType} | ${r.accountStatus}`,
       );
     }
-    console.log(`\nDry-run complete. ${records.length} records would be attempted.`);
+    console.log(`\nDry-run complete. ${records.length} records would be written.`);
     process.exit(0);
   }
 
   // ── Live write ──
-  // Setting AWS_PROFILE lets the SDK default credential chain pick up the named profile
-  // without requiring @aws-sdk/credential-providers as an extra dependency.
   if (profile) {
     process.env['AWS_PROFILE'] = profile;
   }
@@ -337,22 +343,16 @@ async function main(): Promise<void> {
   console.log('Writing to DynamoDB...\n');
 
   let inserted    = 0;
-  let skipped     = 0;
   let writeErrors = 0;
 
   for (const record of records) {
-    const counter = `[${String(inserted + skipped + writeErrors + 1).padStart(3)}/${String(records.length).padStart(3)}]`;
+    const counter = `[${String(inserted + writeErrors + 1).padStart(3)}/${String(records.length).padStart(3)}]`;
     process.stdout.write(`  ${counter} DNI=${record.dni} — `);
 
     try {
-      const outcome = await putItem(docClient, tableName, record);
-      if (outcome === 'inserted') {
-        inserted++;
-        console.log(`inserted  (${record.fullName} / ${record.membershipType})`);
-      } else {
-        skipped++;
-        console.log('skipped   (duplicate)');
-      }
+      await putItem(docClient, tableName, record);
+      inserted++;
+      console.log(`inserted  (${record.fullName} / ${record.membershipType} / ${record.accountStatus})`);
     } catch (err: unknown) {
       writeErrors++;
       const msg = err instanceof Error ? err.message : String(err);
@@ -365,11 +365,10 @@ async function main(): Promise<void> {
   console.log('══════════════════════════════════════════════════════');
   console.log('  SUMMARY');
   console.log('══════════════════════════════════════════════════════');
-  console.log(`  Total processed      : ${records.length + validationErrors.length}`);
-  console.log(`  Validation errors    : ${validationErrors.length}`);
-  console.log(`  Inserted             : ${inserted}`);
-  console.log(`  Skipped (duplicates) : ${skipped}`);
-  console.log(`  Write errors         : ${writeErrors}`);
+  console.log(`  Total processed   : ${records.length + validationErrors.length}`);
+  console.log(`  Skipped (invalid) : ${validationErrors.length}`);
+  console.log(`  Inserted          : ${inserted}`);
+  console.log(`  Errors            : ${writeErrors}`);
   console.log('══════════════════════════════════════════════════════');
   console.log('');
 
