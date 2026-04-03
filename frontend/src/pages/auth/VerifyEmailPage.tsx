@@ -201,6 +201,12 @@ export default function VerifyEmailPage() {
                       )}
                     </Button>
                     <p className="text-center text-sm text-slate-500">
+                      ¿Ya verificaste tu cuenta?{' '}
+                      <Link to="/auth/login" className="font-medium text-slate-900 underline underline-offset-4 hover:text-slate-700">
+                        Iniciá sesión
+                      </Link>
+                    </p>
+                    <p className="text-center text-sm text-slate-500">
                       <Link to="/auth/register" className="font-medium text-slate-900 underline underline-offset-4 hover:text-slate-700">
                         Volver al registro
                       </Link>
