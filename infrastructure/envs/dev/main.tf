@@ -202,7 +202,7 @@ module "members_lambda" {
   source = "../../modules/lambda"
 
   function_name = "${var.project}-members-${var.env}"
-  handler       = "dist/lambda.handler"
+  handler       = "dist/src/lambda.handler"
   runtime       = "nodejs20.x"
   memory_size   = 256
   timeout       = 30
