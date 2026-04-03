@@ -55,9 +55,9 @@ export class VerifyEmailHandler {
   ) {}
 
   async execute(command: VerifyEmailCommand): Promise<VerifyEmailResult> {
-    // Step 1 — Confirm the OTP via Cognito ConfirmSignUp
+    // Step 1 — Confirm the token via Cognito ConfirmSignUp
     try {
-      await this.cognitoService.confirmSignUp(command.email, command.code);
+      await this.cognitoService.confirmSignUp(command.email, command.token);
     } catch (error) {
       this.mapConfirmSignUpError(error);
       throw error;

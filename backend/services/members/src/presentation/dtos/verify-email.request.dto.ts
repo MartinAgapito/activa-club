@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, Length, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
@@ -16,14 +16,10 @@ export class VerifyEmailRequestDto {
   email: string;
 
   @ApiProperty({
-    description: "The 6-digit numeric OTP sent by Cognito to the member's email.",
-    example: '482917',
-    minLength: 6,
-    maxLength: 6,
+    description: 'Token de confirmación extraído del link de verificación enviado por email.',
+    example: 'abc123XYZ',
   })
   @IsString()
-  @IsNotEmpty({ message: 'code is required' })
-  @Length(6, 6, { message: 'code must be exactly 6 characters' })
-  @Matches(/^\d{6}$/, { message: 'code must be exactly 6 numeric digits' })
-  code: string;
+  @IsNotEmpty({ message: 'token is required' })
+  token: string;
 }
