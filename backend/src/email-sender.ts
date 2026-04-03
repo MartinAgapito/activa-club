@@ -1,8 +1,10 @@
-import { buildDecrypt } from '@aws-crypto/decrypt-node';
+import { buildDecrypt, CommitmentPolicy } from '@aws-crypto/decrypt-node';
 import { KmsKeyringNode } from '@aws-crypto/kms-keyring-node';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
-const { decrypt } = buildDecrypt();
+// Cognito uses a non-committed algorithm (ALG_AES256_GCM_IV12_TAG16_HKDF_SHA384_ECDSA_P384).
+// FORBID_ENCRYPT_ALLOW_DECRYPT lets the SDK decrypt those older messages.
+const { decrypt } = buildDecrypt(CommitmentPolicy.FORBID_ENCRYPT_ALLOW_DECRYPT);
 const ses = new SESClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
 
 interface CognitoCustomEmailEvent {
