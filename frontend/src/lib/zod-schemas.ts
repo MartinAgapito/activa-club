@@ -30,17 +30,6 @@ export const registerSchema = z
 
 export type RegisterFormValues = z.infer<typeof registerSchema>
 
-// ─── Verify email OTP schema (post-registration) ──────────────────────────────
-
-export const verifyEmailSchema = z.object({
-  code: z
-    .string()
-    .length(6, 'El código debe tener exactamente 6 dígitos')
-    .regex(/^\d+$/, 'El código solo debe contener números'),
-})
-
-export type VerifyEmailFormValues = z.infer<typeof verifyEmailSchema>
-
 // ─── Verify OTP schema (login step 2 — CUSTOM_AUTH) ──────────────────────────
 
 export const verifyOtpSchema = z.object({
