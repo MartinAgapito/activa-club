@@ -325,8 +325,8 @@ module "api_gateway" {
 module "frontend" {
   source = "../../modules/s3-cloudfront"
 
-  bucket_name  = "${var.project}-frontend-${var.env}"
-  environment  = var.env
+  bucket_name = "${var.project}-frontend-${var.env}"
+  environment = var.env
 
   tags = {
     Project = var.project
