@@ -2,10 +2,10 @@ import { CheckCircle2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 
 const benefits = [
-  'Access first-class sports facilities',
-  'Book courts and exclusive areas in seconds',
-  'Manage your membership and payments online',
-  'Receive exclusive promotions and member benefits',
+  'Accedé a instalaciones deportivas de primer nivel',
+  'Reservá canchas y áreas exclusivas en segundos',
+  'Gestioná tu membresía y pagos en línea',
+  'Recibí promociones exclusivas y beneficios para socios',
 ]
 
 /**
@@ -21,7 +21,7 @@ export function AuthBrandPanel() {
           variant="outline"
           className="w-fit text-xs font-medium tracking-widest uppercase text-slate-500 border-slate-300 bg-transparent"
         >
-          Member Access
+          Acceso de Socios
         </Badge>
 
         {/* Headline */}
@@ -30,7 +30,7 @@ export function AuthBrandPanel() {
             Activa Club
           </h1>
           <p className="text-slate-500 text-base leading-relaxed">
-            Your trusted sports club. Everything you need, from a single place.
+            Tu club deportivo de confianza. Todo lo que necesitás, desde un solo lugar.
           </p>
         </div>
 

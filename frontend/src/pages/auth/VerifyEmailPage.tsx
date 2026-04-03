@@ -39,8 +39,8 @@ export default function VerifyEmailPage() {
     if (!email) {
       toast({
         variant: 'destructive',
-        title: 'Missing email',
-        description: 'Email address is missing. Please go back to registration.',
+        title: 'Email faltante',
+        description: 'Falta el email. Volvé al registro.',
       })
       navigate('/auth/register')
       return
@@ -50,28 +50,28 @@ export default function VerifyEmailPage() {
       await authApi.verifyEmail({ email, code: data.code })
 
       toast({
-        title: 'Email verified',
-        description: 'Your account is ready. You can now sign in.',
+        title: 'Email verificado',
+        description: 'Tu cuenta está lista. Ya podés iniciar sesión.',
       })
 
       navigate('/auth/login')
     } catch (error) {
-      let message = 'An error occurred. Please try again.'
+      let message = 'Ocurrió un error. Intentá de nuevo.'
 
       if (axios.isAxiosError(error)) {
         const body = error.response?.data as AuthApiError | undefined
         if (body?.error?.message) {
           message = body.error.message
         } else if (error.response?.status === 400) {
-          message = 'The verification code is incorrect or has expired.'
+          message = 'El código de verificación es incorrecto o expiró.'
         } else if (error.response?.status === 410) {
-          message = 'The code has expired. Please request a new one.'
+          message = 'El código expiró. Solicitá uno nuevo.'
         }
       }
 
       toast({
         variant: 'destructive',
-        title: 'Verification failed',
+        title: 'Error en la verificación',
         description: message,
       })
     }
@@ -83,14 +83,14 @@ export default function VerifyEmailPage() {
     try {
       await authApi.resendCode({ email })
       toast({
-        title: 'Code resent',
-        description: 'A new verification code has been sent to your email.',
+        title: 'Código reenviado',
+        description: 'Se envió un nuevo código de verificación a tu email.',
       })
     } catch {
       toast({
         variant: 'destructive',
-        title: 'Could not resend code',
-        description: 'Please try again in a few moments.',
+        title: 'No se pudo reenviar el código',
+        description: 'Intentá de nuevo en unos momentos.',
       })
     }
   }
@@ -111,10 +111,10 @@ export default function VerifyEmailPage() {
                 </div>
                 <div className="space-y-1">
                   <CardTitle className="text-2xl font-bold text-slate-900">
-                    Verify your email
+                    Verificá tu email
                   </CardTitle>
                   <CardDescription className="text-slate-500">
-                    We sent a 6-digit code to{' '}
+                    Enviamos un código de 6 dígitos a{' '}
                     <span className="font-medium text-slate-700">{email || 'your email'}</span>
                   </CardDescription>
                 </div>
@@ -128,7 +128,7 @@ export default function VerifyEmailPage() {
                       name="code"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Verification code</FormLabel>
+                          <FormLabel>Código de verificación</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="123456"
@@ -140,7 +140,7 @@ export default function VerifyEmailPage() {
                             />
                           </FormControl>
                           <FormDescription>
-                            Check your email inbox — the code is valid for 24 hours
+                            Revisá tu bandeja de entrada — el código es válido por 24 horas
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -155,10 +155,10 @@ export default function VerifyEmailPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Verifying...
+                          Verificando...
                         </>
                       ) : (
-                        'Verify email'
+                        'Verificar email'
                       )}
                     </Button>
                   </form>
@@ -166,13 +166,13 @@ export default function VerifyEmailPage() {
 
                 <div className="mt-6 space-y-2 text-center text-sm text-slate-500">
                   <p>
-                    Didn&apos;t receive a code?{' '}
+                    ¿No recibiste el código?{' '}
                     <button
                       type="button"
                       onClick={handleResend}
                       className="font-medium text-slate-900 underline underline-offset-4 hover:text-slate-700"
                     >
-                      Resend code
+                      Reenviar código
                     </button>
                   </p>
                   <p>
@@ -180,7 +180,7 @@ export default function VerifyEmailPage() {
                       to="/auth/register"
                       className="font-medium text-slate-900 underline underline-offset-4 hover:text-slate-700"
                     >
-                      Back to registration
+                      Volver al registro
                     </Link>
                   </p>
                 </div>

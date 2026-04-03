@@ -57,37 +57,37 @@ export default function MemberDashboardPage() {
       {/* Welcome header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Welcome back, {user?.username ?? 'Member'}
+          Bienvenido, {user?.username ?? 'Member'}
         </h1>
         <p className="text-muted-foreground">
-          Here is an overview of your account and upcoming reservations.
+          Aquí tenés un resumen de tu cuenta y próximas reservas.
         </p>
       </div>
 
       {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Membership Status"
-          value="Active"
-          description="Expires December 31, 2026"
+          title="Estado de membresía"
+          value="Activo"
+          description="Vence el 31 de diciembre de 2026"
           icon={<Activity className="h-5 w-5" />}
         />
         <StatCard
-          title="Upcoming Reservations"
+          title="Próximas reservas"
           value="2"
-          description="Next: Feb 22 at 09:00"
+          description="Próxima: 22 feb a las 09:00"
           icon={<CalendarDays className="h-5 w-5" />}
         />
         <StatCard
-          title="This Month"
+          title="Este mes"
           value="5"
-          description="Total reservations made"
+          description="Total de reservas realizadas"
           icon={<Clock className="h-5 w-5" />}
         />
         <StatCard
-          title="Active Promotions"
+          title="Promociones activas"
           value="3"
-          description="Available for your membership"
+          description="Disponibles para tu membresía"
           icon={<Tag className="h-5 w-5" />}
         />
       </div>
@@ -96,21 +96,21 @@ export default function MemberDashboardPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Upcoming Reservations</CardTitle>
-            <CardDescription>Your next scheduled activities</CardDescription>
+            <CardTitle>Próximas reservas</CardTitle>
+            <CardDescription>Tus próximas actividades programadas</CardDescription>
           </div>
           <Button variant="outline" size="sm">
             <CalendarDays className="mr-2 h-4 w-4" />
-            New Reservation
+            Nueva reserva
           </Button>
         </CardHeader>
         <CardContent>
           {upcomingReservations.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <CalendarDays className="mb-3 h-10 w-10 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No upcoming reservations</p>
+              <p className="text-sm text-muted-foreground">Sin próximas reservas</p>
               <Button variant="link" size="sm" className="mt-2">
-                Make your first reservation
+                Hacé tu primera reserva
               </Button>
             </div>
           ) : (
