@@ -147,7 +147,10 @@ module "cognito" {
   # v1 → v2: recreate to include custom:dni attribute in the pool schema.
   # v2 → v3: recreate any pool created before custom:dni schema was applied.
   # v3 → v4: recreate to add SES email_configuration for Email MFA support.
-  force_recreate_token = "v4"
+  # v4 → v5: recreate so Cognito registers kms:CreateGrant on the custom KMS key
+  #           (key policy lacked CreateGrant when lambda_config was first applied,
+  #           causing Cognito to fall back to its internal key — fixes InvalidCiphertextException).
+  force_recreate_token = "v5"
 
   # CustomEmailSender trigger (AC-003).
   # Cognito encrypts the OTP code with this KMS key and passes it to the Lambda.
