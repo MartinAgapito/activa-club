@@ -1,7 +1,6 @@
 import { useCallback } from 'react'
 import {
   signIn,
-  signOut,
   getCurrentUser,
   fetchUserAttributes,
 } from 'aws-amplify/auth'
@@ -39,14 +38,10 @@ export function useAuth(): UseAuthReturn {
   )
 
   const handleSignOut = useCallback(async () => {
-    setLoading(true)
-    try {
-      await signOut()
-      logout()
-    } finally {
-      setLoading(false)
-    }
-  }, [logout, setLoading])
+    // logout() in the store now handles the backend call, loading state,
+    // store cleanup, and redirect — so we delegate entirely to it.
+    await logout()
+  }, [logout])
 
   const refreshUser = useCallback(async () => {
     try {
@@ -63,9 +58,10 @@ export function useAuth(): UseAuthReturn {
 
       login(cognitoUser)
     } catch {
-      logout()
+      // Session refresh failed — clear local auth state without calling the backend
+      useAuthStore.getState().clearAuth()
     }
-  }, [login, logout])
+  }, [login])
 
   return {
     user,
