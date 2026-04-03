@@ -218,6 +218,7 @@ module "members_lambda" {
     SEED_MEMBERS_TABLE_NAME = module.seed_members_table.table_name
     COGNITO_USER_POOL_ID    = module.cognito.user_pool_id
     COGNITO_CLIENT_ID       = module.cognito.app_client_id
+    NO_COLOR                = "1"
   }
 
   dynamodb_table_arns = [
