@@ -1,7 +1,8 @@
-import { KMSClient, DecryptCommand } from '@aws-sdk/client-kms';
+import { buildDecrypt } from '@aws-crypto/decrypt-node';
+import { KmsKeyringNode } from '@aws-crypto/kms-keyring-node';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
-const kms = new KMSClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
+const { decrypt } = buildDecrypt();
 const ses = new SESClient({ region: process.env.AWS_REGION ?? 'us-east-1' });
 
 interface CognitoCustomEmailEvent {
@@ -22,22 +23,11 @@ export const handler = async (event: CognitoCustomEmailEvent): Promise<void> => 
   const email = userAttributes.email;
   const name = userAttributes.name || email;
 
-  // Debug: log event shape to understand what Cognito is sending
-  console.log('[email-sender] triggerSource:', triggerSource);
-  console.log('[email-sender] code length:', encryptedCode?.length);
-  console.log('[email-sender] code prefix:', encryptedCode?.substring(0, 40));
-  console.log('[email-sender] full event keys:', JSON.stringify(Object.keys(event)));
-  console.log('[email-sender] request keys:', JSON.stringify(Object.keys(request)));
-
-  // Decrypt the code that Cognito encrypted with KMS.
-  // EncryptionContext is intentionally omitted: testing whether Cognito encrypts
-  // without one. If it does, providing a context would cause InvalidCiphertextException.
-  const decryptResponse = await kms.send(
-    new DecryptCommand({
-      CiphertextBlob: Buffer.from(encryptedCode, 'base64'),
-    }),
-  );
-  const decryptedCode = Buffer.from(decryptResponse.Plaintext!).toString('utf-8');
+  // Cognito encrypts the code with the AWS Encryption SDK (envelope format),
+  // not raw KMS — so we must use the Encryption SDK to decrypt.
+  const keyring = new KmsKeyringNode({ keyIds: [process.env.KMS_KEY_ARN!] });
+  const { plaintext } = await decrypt(keyring, Buffer.from(encryptedCode, 'base64'));
+  const decryptedCode = plaintext.toString('utf-8');
 
   const fromEmail = process.env.SES_FROM_EMAIL!;
   const frontendUrl = process.env.FRONTEND_URL!;
