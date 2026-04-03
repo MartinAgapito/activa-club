@@ -333,36 +333,6 @@ resource "aws_kms_key" "cognito_email" {
   deletion_window_in_days = 7
   enable_key_rotation     = true
 
-  # Cognito needs explicit permission in the key policy to encrypt codes
-  # before invoking the CustomEmailSender Lambda. Without this, Cognito
-  # silently fails to send emails.
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "EnableRootAccess"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${var.dev_account_id}:root"
-        }
-        Action   = "kms:*"
-        Resource = "*"
-      },
-      {
-        Sid    = "AllowCognitoEncrypt"
-        Effect = "Allow"
-        Principal = {
-          Service = "cognito-idp.amazonaws.com"
-        }
-        Action = [
-          "kms:GenerateDataKey",
-          "kms:Decrypt"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-
   tags = {
     Project     = var.project
     Environment = var.env
