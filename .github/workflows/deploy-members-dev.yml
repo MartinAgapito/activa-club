@@ -29,6 +29,7 @@ env:
   ARTIFACTS_BUCKET: activa-club-lambda-artifacts-dev
   LAMBDA_S3_KEY: members/members.zip
   LAMBDA_FUNCTION_NAME: activa-club-members-dev
+  EMAIL_SENDER_FUNCTION_NAME: activa-club-email-sender-dev
   AWS_REGION: us-east-1
 
 jobs:
@@ -104,4 +105,21 @@ jobs:
           else
             echo "Lambda does not exist yet — Terraform will create it on next apply."
             echo "The artifact is already uploaded to S3 and ready."
+          fi
+
+      - name: Update email-sender Lambda function code
+        run: |
+          if aws lambda get-function \
+               --function-name "${{ env.EMAIL_SENDER_FUNCTION_NAME }}" \
+               --region "${{ env.AWS_REGION }}" \
+               > /dev/null 2>&1; then
+            echo "email-sender Lambda exists — updating function code"
+            aws lambda update-function-code \
+              --function-name "${{ env.EMAIL_SENDER_FUNCTION_NAME }}" \
+              --s3-bucket     "${{ env.ARTIFACTS_BUCKET }}" \
+              --s3-key        "${{ env.LAMBDA_S3_KEY }}" \
+              --publish \
+              --region        "${{ env.AWS_REGION }}"
+          else
+            echo "email-sender Lambda does not exist yet — Terraform will create it on next apply."
           fi
