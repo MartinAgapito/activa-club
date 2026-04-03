@@ -30,7 +30,7 @@ export function Header() {
         variant="ghost"
         size="icon"
         onClick={toggleSidebar}
-        aria-label="Toggle sidebar"
+        aria-label="Alternar barra lateral"
         className="mr-4"
       >
         <Menu className="h-5 w-5" />
@@ -49,7 +49,7 @@ export function Header() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="User menu" className="rounded-full">
+            <Button variant="ghost" size="icon" aria-label="Menú de usuario" className="rounded-full">
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
                   {userInitials}
@@ -67,7 +67,7 @@ export function Header() {
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>Perfil</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -75,7 +75,7 @@ export function Header() {
               className="text-destructive focus:text-destructive"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Sign out</span>
+              <span>Cerrar sesión</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

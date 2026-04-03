@@ -13,19 +13,18 @@ export default function NotFoundPage() {
 
       <div className="space-y-2">
         <h1 className="text-6xl font-bold text-primary">404</h1>
-        <h2 className="text-2xl font-semibold">Page not found</h2>
+        <h2 className="text-2xl font-semibold">Página no encontrada</h2>
         <p className="max-w-md text-muted-foreground">
-          Sorry, we could not find the page you were looking for. It may have been moved, deleted,
-          or never existed.
+          Lo sentimos, no encontramos la página que buscás. Puede haber sido movida, eliminada o nunca haber existido.
         </p>
       </div>
 
       <div className="flex gap-3">
         <Button variant="outline" onClick={() => navigate(-1)}>
-          Go back
+          Volver
         </Button>
         <Button onClick={() => navigate('/member/dashboard')}>
-          Go to dashboard
+          Ir al panel
         </Button>
       </div>
     </div>

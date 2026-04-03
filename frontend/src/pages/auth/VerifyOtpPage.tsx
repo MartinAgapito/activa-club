@@ -48,8 +48,8 @@ export default function VerifyOtpPage() {
     if (!email || !session) {
       toast({
         variant: 'destructive',
-        title: 'Session expired',
-        description: 'Your session has expired. Please sign in again.',
+        title: 'Sesión expirada',
+        description: 'Tu sesión expiró. Iniciá sesión de nuevo.',
       })
       navigate('/auth/login')
       return
@@ -69,24 +69,24 @@ export default function VerifyOtpPage() {
 
       navigate('/member/dashboard', { replace: true })
     } catch (error) {
-      let message = 'An error occurred while verifying the code. Please try again.'
+      let message = 'Ocurrió un error al verificar el código. Intentá de nuevo.'
 
       if (axios.isAxiosError(error)) {
         const body = error.response?.data as AuthApiError | undefined
         if (body?.error?.message) {
           message = body.error.message
         } else if (error.response?.status === 400) {
-          message = 'The OTP code entered is incorrect.'
+          message = 'El código ingresado es incorrecto.'
         } else if (error.response?.status === 410) {
-          message = 'The session has expired (3 minutes). Please sign in again.'
+          message = 'La sesión expiró (3 minutos). Iniciá sesión de nuevo.'
         } else if (error.response?.status === 429) {
-          message = 'Too many incorrect attempts. Please sign in again.'
+          message = 'Demasiados intentos incorrectos. Iniciá sesión de nuevo.'
         }
       }
 
       toast({
         variant: 'destructive',
-        title: 'Verification failed',
+        title: 'Error en la verificación',
         description: message,
       })
 
@@ -116,10 +116,10 @@ export default function VerifyOtpPage() {
                 </div>
                 <div className="space-y-1">
                   <CardTitle className="text-2xl font-bold text-slate-900">
-                    Security verification
+                    Verificación de seguridad
                   </CardTitle>
                   <CardDescription className="text-slate-500">
-                    We sent an access code to{' '}
+                    Enviamos un código de acceso a{' '}
                     <span className="font-medium text-slate-700">{email || 'your email'}</span>
                   </CardDescription>
                 </div>
@@ -133,7 +133,7 @@ export default function VerifyOtpPage() {
                       name="otp"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Access code</FormLabel>
+                          <FormLabel>Código de acceso</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="123456"
@@ -145,7 +145,7 @@ export default function VerifyOtpPage() {
                             />
                           </FormControl>
                           <FormDescription>
-                            Check your email inbox — the code expires in 3 minutes
+                            Revisá tu bandeja de entrada — el código expira en 3 minutos
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -160,22 +160,22 @@ export default function VerifyOtpPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Verifying...
+                          Verificando...
                         </>
                       ) : (
-                        'Sign in'
+                        'Ingresar'
                       )}
                     </Button>
                   </form>
                 </Form>
 
                 <p className="mt-6 text-center text-sm text-slate-500">
-                  Code not received?{' '}
+                  ¿No recibiste el código?{' '}
                   <Link
                     to="/auth/login"
                     className="font-medium text-slate-900 underline underline-offset-4 hover:text-slate-700"
                   >
-                    Go back and try again
+                    Volvé e intentá de nuevo
                   </Link>
                 </p>
               </CardContent>
