@@ -1,4 +1,5 @@
-import { buildDecrypt, CommitmentPolicy } from '@aws-crypto/decrypt-node';
+import { buildDecrypt } from '@aws-crypto/decrypt-node';
+import { CommitmentPolicy } from '@aws-crypto/material-management-node';
 import { KmsKeyringNode } from '@aws-crypto/kms-keyring-node';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
