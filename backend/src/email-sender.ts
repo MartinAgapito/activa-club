@@ -22,6 +22,13 @@ export const handler = async (event: CognitoCustomEmailEvent): Promise<void> => 
   const email = userAttributes.email;
   const name = userAttributes.name || email;
 
+  // Debug: log event shape to understand what Cognito is sending
+  console.log('[email-sender] triggerSource:', triggerSource);
+  console.log('[email-sender] code length:', encryptedCode?.length);
+  console.log('[email-sender] code prefix:', encryptedCode?.substring(0, 40));
+  console.log('[email-sender] full event keys:', JSON.stringify(Object.keys(event)));
+  console.log('[email-sender] request keys:', JSON.stringify(Object.keys(request)));
+
   // Decrypt the code that Cognito encrypted with KMS.
   // EncryptionContext must match exactly what Cognito used when encrypting —
   // omitting it or using wrong values causes InvalidCiphertextException.
