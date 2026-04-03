@@ -75,3 +75,43 @@ See each sub-directory's README for setup instructions:
 ## Architecture Diagrams
 
 See [`docs/architecture/`](./docs/architecture/) for Mermaid and Draw.io diagrams.
+
+## Project Status
+
+| Story  | Title                                | Status        |
+|--------|--------------------------------------|---------------|
+| AC-001 | Member Registration via DNI Matching | Implemented   |
+| AC-001 | Seed Data Import (legacy members)    | Implemented   |
+| AC-002 | Member Login with OTP                | Implemented   |
+| AC-003 | Member Profile                       | Pending       |
+| AC-004 | Membership Payment                   | Pending       |
+
+## CI/CD
+
+| Workflow                   | Trigger                          | Description                              |
+|----------------------------|----------------------------------|------------------------------------------|
+| `ci.yml`                   | Push / PR to any branch          | Lint, type-check, unit tests             |
+| `terraform-dev.yml`        | Push to `main`                   | Terraform plan + apply on `dev`          |
+| `terraform-prd.yml`        | Push to `main` (manual approval) | Terraform plan + apply on `production`   |
+| `deploy-members-dev.yml`   | Push to `main`                   | Build + deploy members Lambda to `dev`   |
+| `deploy-members-prd.yml`   | Push to `main` (manual approval) | Build + deploy members Lambda to `prd`   |
+| `deploy-frontend-dev.yml`  | Push to `main`                   | Build + deploy React SPA to S3/CF `dev`  |
+| `deploy-frontend-prd.yml`  | Push to `main` (manual approval) | Build + deploy React SPA to S3/CF `prd`  |
+
+## Running Locally
+
+```bash
+# Backend (NestJS)
+cd backend
+npm install
+npm run start:dev
+
+# Frontend (React + Vite)
+cd frontend
+npm install
+npm run dev
+
+# Seed legacy members (dev)
+cd scripts
+npx ts-node seed-legacy-members.ts --env dev --file ./data/legacy-members.json
+```
