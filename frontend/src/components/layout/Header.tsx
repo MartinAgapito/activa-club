@@ -11,17 +11,27 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/useAuth'
 import { useUIStore } from '@/store'
+import { useToast } from '@/hooks/useToast'
 
 export function Header() {
   const { user, signOut } = useAuth()
   const { toggleSidebar } = useUIStore()
+  const { toast } = useToast()
 
   const userInitials = user
     ? `${user.username.charAt(0).toUpperCase()}`
     : 'U'
 
   const handleSignOut = async () => {
-    await signOut()
+    try {
+      await signOut()
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Error al cerrar sesión',
+        description: 'No se pudo conectar con el servidor. Intentá de nuevo.',
+      })
+    }
   }
 
   return (
@@ -72,7 +82,7 @@ export function Header() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={handleSignOut}
-              className="text-destructive focus:text-destructive"
+              className="cursor-pointer text-destructive focus:text-destructive"
             >
               <LogOut className="mr-2 h-4 w-4" />
               <span>Cerrar sesión</span>
