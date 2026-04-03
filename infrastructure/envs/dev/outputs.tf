@@ -80,3 +80,20 @@ output "api_id" {
   description = "ID of the API Gateway HTTP API. Used for Terraform cross-references."
   value       = module.api_gateway.api_id
 }
+
+# ---- Frontend (S3 + CloudFront) -----------------------------
+
+output "frontend_bucket_name" {
+  description = "S3 bucket where the React SPA assets are uploaded by CI/CD."
+  value       = module.frontend.bucket_name
+}
+
+output "cloudfront_domain_name" {
+  description = "CloudFront domain for the frontend SPA. Use as the app URL (https://<domain>)."
+  value       = module.frontend.cloudfront_domain_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID. Required by CI/CD for cache invalidation after each deploy."
+  value       = module.frontend.cloudfront_distribution_id
+}
