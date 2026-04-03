@@ -79,12 +79,21 @@ export const useAuthStore = create<AuthState>()(
       setTokens: (idToken: string) => {
         const claims = decodeJwtPayload(idToken)
 
+        // Resolve role from cognito:groups with precedence: Admin > Manager > Member
+        const groups = (claims['cognito:groups'] as string[] | undefined) ?? []
+        let role: UserRole = 'Member'
+        if (groups.includes('Admin')) {
+          role = 'Admin'
+        } else if (groups.includes('Manager')) {
+          role = 'Manager'
+        }
+
         const cognitoUser: CognitoUser = {
           userId: (claims['sub'] as string) ?? '',
           username:
             (claims['cognito:username'] as string) ?? (claims['email'] as string) ?? '',
           email: (claims['email'] as string) ?? '',
-          role: ((claims['custom:role'] as UserRole) ?? 'Member') as UserRole,
+          role,
           signInDetails: {
             loginId: (claims['email'] as string) ?? '',
             authFlowType: 'CUSTOM_AUTH',
