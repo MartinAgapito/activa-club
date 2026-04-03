@@ -18,11 +18,23 @@ export interface ErrorResponse {
 
 /** Maps a domain exception class name to its HTTP status code. */
 const DOMAIN_EXCEPTION_MAP: Record<string, number> = {
+  // AC-001 — Registration
   DniNotFoundException: HttpStatus.NOT_FOUND,
   AccountInactiveException: HttpStatus.FORBIDDEN,
   DniAlreadyRegisteredException: HttpStatus.CONFLICT,
   EmailAlreadyInUseException: HttpStatus.CONFLICT,
   PasswordPolicyViolationException: HttpStatus.UNPROCESSABLE_ENTITY,
+  InvalidCodeException: HttpStatus.BAD_REQUEST,
+  CodeExpiredException: HttpStatus.GONE,
+  UserNotFoundException: HttpStatus.NOT_FOUND,
+  // AC-002 — Login + OTP
+  InvalidCredentialsException: HttpStatus.UNAUTHORIZED,
+  AccountNotConfirmedException: HttpStatus.FORBIDDEN,
+  AccountDisabledException: HttpStatus.FORBIDDEN,
+  InvalidOtpException: HttpStatus.BAD_REQUEST,
+  SessionExpiredException: HttpStatus.GONE,
+  TooManyAttemptsException: HttpStatus.TOO_MANY_REQUESTS,
+  UnexpectedAuthChallengeException: HttpStatus.INTERNAL_SERVER_ERROR,
 };
 
 /**
