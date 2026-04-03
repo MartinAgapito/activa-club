@@ -264,7 +264,8 @@ module "members_lambda" {
 #   POST /v1/auth/login         — Login Step 1: credentials → MFA challenge
 #   POST /v1/auth/verify-otp    — Login Step 2: OTP → tokens
 #
-# Protected routes will be added per future story (AC-003+).
+# Protected routes (auth_required = true):
+#   POST /v1/auth/logout        — AC-008: revoke all Cognito sessions
 # ============================================================
 module "api_gateway" {
   source = "../../modules/api-gateway"
@@ -318,6 +319,14 @@ module "api_gateway" {
       lambda_invoke_arn    = module.members_lambda.invoke_arn
       lambda_function_name = "${var.project}-members-${var.env}"
       auth_required        = false
+    },
+    # ── AC-008: Logout ────────────────────────────────────────────
+    {
+      method               = "POST"
+      path                 = "/v1/auth/logout"
+      lambda_invoke_arn    = module.members_lambda.invoke_arn
+      lambda_function_name = "${var.project}-members-${var.env}"
+      auth_required        = true
     },
   ]
 
