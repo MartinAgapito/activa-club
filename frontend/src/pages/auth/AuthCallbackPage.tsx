@@ -28,8 +28,8 @@ export default function AuthCallbackPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4">
       <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      <p className="text-lg font-medium text-muted-foreground">Completing sign in...</p>
-      <p className="text-sm text-muted-foreground">You will be redirected shortly.</p>
+      <p className="text-lg font-medium text-muted-foreground">Completando el inicio de sesión...</p>
+      <p className="text-sm text-muted-foreground">Serás redirigido en breve.</p>
     </div>
   )
 }

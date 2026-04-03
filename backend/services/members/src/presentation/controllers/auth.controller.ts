@@ -122,9 +122,9 @@ export class AuthController {
   @Post('verify-email')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
-    summary: 'Verify email OTP (Step 2)',
+    summary: 'Verify email token (Step 2)',
     description:
-      'Confirms the Cognito account with the 6-digit OTP, assigns the user to the Member group, and creates the member profile in DynamoDB. Returns HTTP 201 — account is now active.',
+      'Confirms the Cognito account with the token extracted from the verification link, assigns the user to the Member group, and creates the member profile in DynamoDB. Returns HTTP 201 — account is now active.',
   })
   @ApiBody({ type: VerifyEmailRequestDto })
   @ApiCreatedResponse({
@@ -154,7 +154,7 @@ export class AuthController {
   async verifyEmail(@Body() dto: VerifyEmailRequestDto): Promise<VerifyEmailDataDto> {
     this.logger.log(`POST /v1/auth/verify-email — email=${dto.email}`);
 
-    const command = new VerifyEmailCommand(dto.email, dto.code);
+    const command = new VerifyEmailCommand(dto.email, dto.token);
     const result = await this.verifyEmailHandler.execute(command);
 
     return {

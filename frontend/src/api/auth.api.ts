@@ -11,7 +11,7 @@ export interface RegisterPayload {
 
 export interface VerifyEmailPayload {
   email: string
-  code: string
+  token: string
 }
 
 export interface ResendCodePayload {

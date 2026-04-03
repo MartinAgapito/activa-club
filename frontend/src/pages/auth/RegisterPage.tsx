@@ -46,31 +46,31 @@ export default function RegisterPage() {
       })
 
       toast({
-        title: 'Account created',
-        description: 'Please check your email for the verification code.',
+        title: 'Cuenta creada',
+        description: 'Revisá tu email para obtener el código de verificación.',
       })
 
       // Pass email via query param so VerifyEmailPage can pre-fill the field
       navigate(`/auth/verify-email?email=${encodeURIComponent(data.email)}`)
     } catch (error) {
-      let message = 'An error occurred during registration. Please try again.'
+      let message = 'Ocurrió un error durante el registro. Intentá de nuevo.'
 
       if (axios.isAxiosError(error)) {
         const body = error.response?.data as AuthApiError | undefined
         if (body?.error?.message) {
           message = body.error.message
         } else if (error.response?.status === 400) {
-          message = 'Invalid data. Please check all fields and try again.'
+          message = 'Datos inválidos. Revisá todos los campos e intentá de nuevo.'
         } else if (error.response?.status === 404) {
-          message = 'The DNI entered was not found in our records.'
+          message = 'El DNI ingresado no se encontró en nuestros registros.'
         } else if (error.response?.status === 409) {
-          message = 'An account with this email already exists.'
+          message = 'Ya existe una cuenta con este email.'
         }
       }
 
       toast({
         variant: 'destructive',
-        title: 'Registration failed',
+        title: 'Error en el registro',
         description: message,
       })
     }
@@ -88,10 +88,10 @@ export default function RegisterPage() {
             <Card className="border-slate-200 shadow-sm bg-white">
               <CardHeader className="space-y-1 pb-4">
                 <CardTitle className="text-2xl font-bold text-slate-900">
-                  Create your account
+                  Creá tu cuenta
                 </CardTitle>
                 <CardDescription className="text-slate-500">
-                  Fill in your details to register. Your DNI must match our records.
+                  Completá tus datos para registrarte. Tu DNI debe coincidir con nuestros registros.
                 </CardDescription>
               </CardHeader>
 
@@ -117,7 +117,7 @@ export default function RegisterPage() {
                             />
                           </FormControl>
                           <FormDescription>
-                            Use your DNI to validate your membership (7–8 digits)
+                            Usá tu DNI para validar tu membresía (7-8 dígitos)
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -130,18 +130,18 @@ export default function RegisterPage() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email address</FormLabel>
+                          <FormLabel>Correo electrónico</FormLabel>
                           <FormControl>
                             <Input
                               type="email"
-                              placeholder="you@example.com"
+                              placeholder="vos@ejemplo.com"
                               autoComplete="email"
                               className="border-slate-200 placeholder:text-slate-400"
                               {...field}
                             />
                           </FormControl>
                           <FormDescription>
-                            We will send you a verification code to this address
+                            Te enviaremos un código de verificación a esta dirección
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -154,7 +154,7 @@ export default function RegisterPage() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Password</FormLabel>
+                          <FormLabel>Contraseña</FormLabel>
                           <FormControl>
                             <Input
                               type="password"
@@ -165,7 +165,7 @@ export default function RegisterPage() {
                             />
                           </FormControl>
                           <FormDescription>
-                            Minimum 8 characters — uppercase, lowercase, number and special character
+                            Mínimo 8 caracteres — mayúscula, minúscula, número y carácter especial
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -178,7 +178,7 @@ export default function RegisterPage() {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Confirm password</FormLabel>
+                          <FormLabel>Confirmar contraseña</FormLabel>
                           <FormControl>
                             <Input
                               type="password"
@@ -189,7 +189,7 @@ export default function RegisterPage() {
                             />
                           </FormControl>
                           <FormDescription>
-                            Re-enter your password to confirm
+                            Reingresá tu contraseña para confirmar
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -204,22 +204,22 @@ export default function RegisterPage() {
                       {isSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating account...
+                          Creando cuenta...
                         </>
                       ) : (
-                        'Create account'
+                        'Crear cuenta'
                       )}
                     </Button>
                   </form>
                 </Form>
 
                 <p className="mt-6 text-center text-sm text-slate-500">
-                  Already have an account?{' '}
+                  ¿Ya tenés cuenta?{' '}
                   <Link
                     to="/auth/login"
                     className="font-medium text-slate-900 underline underline-offset-4 hover:text-slate-700"
                   >
-                    Sign in
+                    Iniciá sesión
                   </Link>
                 </p>
               </CardContent>

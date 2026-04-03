@@ -20,19 +20,19 @@ interface NavItem {
 
 const memberNavItems: NavItem[] = [
   {
-    label: 'Dashboard',
+    label: 'Panel principal',
     href: '/member/dashboard',
     icon: <LayoutDashboard className="h-5 w-5" />,
     roles: ['Member', 'Admin', 'Manager'],
   },
   {
-    label: 'Reservations',
+    label: 'Reservas',
     href: '/member/reservations',
     icon: <CalendarDays className="h-5 w-5" />,
     roles: ['Member', 'Admin', 'Manager'],
   },
   {
-    label: 'Promotions',
+    label: 'Promociones',
     href: '/member/promotions',
     icon: <Tag className="h-5 w-5" />,
     roles: ['Member', 'Admin', 'Manager'],
@@ -41,31 +41,31 @@ const memberNavItems: NavItem[] = [
 
 const adminNavItems: NavItem[] = [
   {
-    label: 'Admin Dashboard',
+    label: 'Panel de administración',
     href: '/admin/dashboard',
     icon: <LayoutDashboard className="h-5 w-5" />,
     roles: ['Admin', 'Manager'],
   },
   {
-    label: 'Members',
+    label: 'Socios',
     href: '/admin/members',
     icon: <Users className="h-5 w-5" />,
     roles: ['Admin', 'Manager'],
   },
   {
-    label: 'Reservations',
+    label: 'Reservas',
     href: '/admin/reservations',
     icon: <CalendarDays className="h-5 w-5" />,
     roles: ['Admin', 'Manager'],
   },
   {
-    label: 'Promotions',
+    label: 'Promociones',
     href: '/admin/promotions',
     icon: <Tag className="h-5 w-5" />,
     roles: ['Admin', 'Manager'],
   },
   {
-    label: 'Settings',
+    label: 'Configuración',
     href: '/admin/settings',
     icon: <Settings className="h-5 w-5" />,
     roles: ['Admin'],
@@ -114,7 +114,7 @@ export function Sidebar() {
         {visibleMemberItems.length > 0 && (
           <div className="mb-4">
             <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Member
+              Socio
             </p>
             {visibleMemberItems.map((item) => (
               <NavItemLink key={item.href} item={item} />
@@ -125,7 +125,7 @@ export function Sidebar() {
         {showAdminSection && visibleAdminItems.length > 0 && (
           <div>
             <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Administration
+              Administración
             </p>
             {visibleAdminItems.map((item) => (
               <NavItemLink key={item.href} item={item} />

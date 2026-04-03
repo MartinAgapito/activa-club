@@ -129,6 +129,20 @@ resource "aws_cognito_user_pool" "this" {
     }
   }
 
+  # CustomEmailSender trigger — optional.
+  # When lambda_arn is provided Cognito encrypts the OTP code with the KMS key
+  # and invokes the Lambda instead of sending a plain-text email directly.
+  dynamic "lambda_config" {
+    for_each = var.custom_email_sender_lambda_arn != "" ? [1] : []
+    content {
+      kms_key_id = var.custom_email_sender_kms_key_arn
+      custom_email_sender {
+        lambda_arn     = var.custom_email_sender_lambda_arn
+        lambda_version = "V1_0"
+      }
+    }
+  }
+
   tags = merge(var.tags, {
     Name        = "${var.project}-${var.env}"
     Environment = var.env
