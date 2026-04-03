@@ -30,6 +30,8 @@ provider "aws" {
   region = var.aws_region
 }
 
+data "aws_caller_identity" "current" {}
+
 # ============================================================
 # DynamoDB — MembersTable
 #
@@ -332,6 +334,41 @@ resource "aws_kms_key" "cognito_email" {
   description             = "${var.project}-cognito-email-${var.env}"
   deletion_window_in_days = 7
   enable_key_rotation     = true
+
+  # Cognito needs kms:CreateGrant + kms:DescribeKey to use this key for
+  # encrypting the CustomEmailSender code. Without CreateGrant, Cognito
+  # falls back to its own internal key and our Lambda can't decrypt.
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableIAMUserPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowCognitoToUseKey"
+        Effect = "Allow"
+        Principal = {
+          Service = "cognito-idp.amazonaws.com"
+        }
+        Action = [
+          "kms:CreateGrant",
+          "kms:DescribeKey",
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      },
+    ]
+  })
 
   tags = {
     Project     = var.project
