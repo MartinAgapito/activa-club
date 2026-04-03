@@ -40,3 +40,15 @@ variable "ses_source_arn" {
   description = "ARN of the verified SES identity that Cognito uses to send emails. Format: arn:aws:ses:<region>:<account>:identity/<email>."
   type        = string
 }
+
+variable "custom_email_sender_lambda_arn" {
+  description = "ARN of the CustomEmailSender Lambda function. When set, Cognito invokes this Lambda instead of sending emails directly."
+  type        = string
+  default     = ""
+}
+
+variable "custom_email_sender_kms_key_arn" {
+  description = "ARN of the KMS key used by Cognito to encrypt the code before passing it to the CustomEmailSender Lambda."
+  type        = string
+  default     = ""
+}
