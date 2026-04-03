@@ -40,17 +40,23 @@ apiClient.interceptors.request.use(
 )
 
 // Response interceptor: handle auth errors globally
+// Auth endpoints (/v1/auth/*) handle their own errors in the component catch blocks —
+// the interceptor must not redirect for those routes or it races with the component.
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // Clear persisted auth state and redirect to login
-      localStorage.removeItem('activa-club-auth')
-      window.location.href = '/auth/login'
-    }
+    const url = error.config?.url ?? ''
+    const isAuthEndpoint = url.startsWith('/v1/auth/')
 
-    if (error.response?.status === 403) {
-      window.location.href = '/auth/login?reason=forbidden'
+    if (!isAuthEndpoint) {
+      if (error.response?.status === 401) {
+        localStorage.removeItem('activa-club-auth')
+        window.location.href = '/auth/login'
+      }
+
+      if (error.response?.status === 403) {
+        window.location.href = '/auth/login?reason=forbidden'
+      }
     }
 
     return Promise.reject(error)
