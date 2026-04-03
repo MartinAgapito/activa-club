@@ -30,12 +30,11 @@ export const handler = async (event: CognitoCustomEmailEvent): Promise<void> => 
   console.log('[email-sender] request keys:', JSON.stringify(Object.keys(request)));
 
   // Decrypt the code that Cognito encrypted with KMS.
-  // EncryptionContext must match exactly what Cognito used when encrypting —
-  // omitting it or using wrong values causes InvalidCiphertextException.
+  // EncryptionContext is intentionally omitted: testing whether Cognito encrypts
+  // without one. If it does, providing a context would cause InvalidCiphertextException.
   const decryptResponse = await kms.send(
     new DecryptCommand({
       CiphertextBlob: Buffer.from(encryptedCode, 'base64'),
-      EncryptionContext: { SecretType: 'CODE', Origin: 'UserPool' },
     }),
   );
   const decryptedCode = Buffer.from(decryptResponse.Plaintext!).toString('utf-8');
