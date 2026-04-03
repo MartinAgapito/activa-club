@@ -22,11 +22,12 @@ export const handler = async (event: CognitoCustomEmailEvent): Promise<void> => 
   const email = userAttributes.email;
   const name = userAttributes.name || email;
 
-  // Decrypt the code that Cognito encrypted with KMS
+  // Decrypt the code that Cognito encrypted with KMS.
+  // Do not specify KeyId — the ciphertext blob already contains the key metadata.
+  // Passing KeyId causes InvalidCiphertextException if there is any mismatch.
   const decryptResponse = await kms.send(
     new DecryptCommand({
       CiphertextBlob: Buffer.from(encryptedCode, 'base64'),
-      KeyId: process.env.KMS_KEY_ARN,
     }),
   );
   const decryptedCode = Buffer.from(decryptResponse.Plaintext!).toString('utf-8');
