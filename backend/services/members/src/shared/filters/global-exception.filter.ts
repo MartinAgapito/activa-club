@@ -150,7 +150,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     // ── Domain exceptions ─────────────────────────────────────────────────────
     if (exception instanceof Error) {
-      const mapping = DOMAIN_EXCEPTION_MAP[exception.constructor.name];
+      const mapping = DOMAIN_EXCEPTION_MAP[exception.name];
 
       if (mapping) {
         this.logger.warn(
