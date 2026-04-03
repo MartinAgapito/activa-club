@@ -7,6 +7,7 @@ import axios from 'axios'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Form,
@@ -153,8 +154,7 @@ export default function LoginPage() {
                         <FormItem>
                           <FormLabel>Contraseña</FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
+                            <PasswordInput
                               placeholder="••••••••"
                               autoComplete="current-password"
                               className="border-slate-200 placeholder:text-slate-400"
