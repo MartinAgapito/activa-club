@@ -67,7 +67,13 @@ export default function VerifyOtpPage() {
       // Decode the JWT, build CognitoUser, and persist both in the store
       setTokens(idToken)
 
-      navigate('/member/dashboard', { replace: true })
+      // Redirect based on the role resolved from the token
+      const { user } = useAuthStore.getState()
+      const destination =
+        user?.role === 'Admin' || user?.role === 'Manager'
+          ? '/admin/dashboard'
+          : '/member/dashboard'
+      navigate(destination, { replace: true })
     } catch (error) {
       let message = 'Ocurrió un error al verificar el código. Intentá de nuevo.'
 
