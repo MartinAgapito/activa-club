@@ -56,6 +56,10 @@ export interface VerifyOtpData {
   refreshToken?: string
 }
 
+export interface LogoutData {
+  message: string
+}
+
 // ─── Error shape returned by the backend ─────────────────────────────────────
 
 export interface AuthApiError {
@@ -107,5 +111,18 @@ export const authApi = {
    */
   verifyOtp(payload: VerifyOtpPayload) {
     return apiClient.post<ApiResponse<VerifyOtpData>>('/v1/auth/verify-otp', payload)
+  },
+
+  /**
+   * AC-008: Global sign-out.
+   * Calls the backend to invalidate all Cognito sessions for the authenticated member.
+   * The accessToken is passed in the Authorization header by the apiClient interceptor.
+   */
+  logout(accessToken: string) {
+    return apiClient.post<ApiResponse<LogoutData>>(
+      '/v1/auth/logout',
+      {},
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
   },
 }
