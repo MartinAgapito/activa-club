@@ -60,7 +60,7 @@ mejorando la postura de seguridad y habilitando el MFA obligatorio por email OTP
 - Verificación del OTP de login — cubierta en AC-006.
 - Recuperación de contraseña (Forgot Password) — diferida a historia futura.
 - Login con redes sociales — no forma parte del MVP.
-- Opción "Recordar dispositivo" — diferida a historia de seguridad post-MVP.
+- Opción "Recordar dispositivo" — diferida a AC-010.
 
 ---
 
