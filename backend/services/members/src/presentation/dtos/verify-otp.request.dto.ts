@@ -1,9 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, Length, Matches } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, Length, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
- * Request DTO for POST /v1/auth/verify-otp — AC-002 Step 2.
+ * Request DTO for POST /v1/auth/verify-otp — AC-002 Step 2 / AC-010.
  */
 export class VerifyOtpRequestDto {
   @ApiProperty({
@@ -34,4 +34,21 @@ export class VerifyOtpRequestDto {
   @Length(6, 6, { message: 'otp must be exactly 6 characters' })
   @Matches(/^\d{6}$/, { message: 'otp must be exactly 6 numeric digits' })
   otp: string;
+
+  /**
+   * AC-010: When true, the backend will call Cognito ConfirmDevice after successful
+   * OTP verification and return a deviceKey the client can persist.
+   * On subsequent logins, including deviceKey in the login request allows skipping
+   * the OTP challenge from a recognized device.
+   */
+  @ApiPropertyOptional({
+    description:
+      'AC-010 — When true, the device is registered with Cognito after successful OTP verification. ' +
+      'The response will include a deviceKey to persist for future logins.',
+    example: false,
+    default: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'rememberDevice must be a boolean' })
+  rememberDevice?: boolean;
 }
