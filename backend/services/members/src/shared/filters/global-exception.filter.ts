@@ -25,6 +25,7 @@ import {
   UnexpectedAuthChallengeException,
   InvalidTokenException,
   LogoutFailedException,
+  DeviceConfirmationFailedException,
 } from '../../domain/exceptions/member.exceptions';
 
 /**
@@ -96,6 +97,12 @@ const DOMAIN_EXCEPTION_MAP: Record<string, { httpStatus: HttpStatus; code: strin
   LogoutFailedException: {
     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
     code: 'LOGOUT_FAILED',
+  },
+
+  // AC-010 — Remember Device
+  DeviceConfirmationFailedException: {
+    httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
+    code: 'DEVICE_CONFIRMATION_FAILED',
   },
 };
 

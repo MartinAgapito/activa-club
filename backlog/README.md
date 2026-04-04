@@ -69,3 +69,4 @@ Link to: docs/design/AC-XXX-design.md
 | AC-007 | Frontend — flujo completo de autenticación                                 | EP-01 | Alta      | 5      | Done    |
 | AC-008 | Logout del socio — cierre de sesión con revocación de tokens               | EP-01 | Alta      | 3      | Backlog |
 | AC-009 | Redirección post-login según rol                                           | EP-01 | Alta      | 2      | Backlog |
+| AC-010 | Recordar dispositivo en login — omisión de OTP en dispositivos confiables  | EP-01 | Media     | 5      | Backlog |
