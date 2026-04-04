@@ -51,10 +51,31 @@ export default function LoginPage() {
 
   const { isSubmitting } = form.formState
 
+  const DEVICE_KEY_STORAGE_KEY = 'activa-club-device-key'
+
   const onSubmit = async (data: LoginFormValues) => {
     try {
-      const response = await authApi.login({ email: data.email, password: data.password })
-      const { session, challengeName } = response.data.data
+      const storedDeviceKey = localStorage.getItem(DEVICE_KEY_STORAGE_KEY)
+
+      const response = await authApi.login({
+        email: data.email,
+        password: data.password,
+        deviceKey: storedDeviceKey ?? null,
+      })
+      const { session, challengeName, idToken } = response.data.data
+
+      // AC-010: device challenge passed — tokens returned directly, skip OTP screen
+      if ((!challengeName || challengeName === null) && idToken) {
+        const { setTokens } = useAuthStore.getState()
+        setTokens(idToken)
+        const { user } = useAuthStore.getState()
+        const destination =
+          user?.role === 'Admin' || user?.role === 'Manager'
+            ? '/admin/dashboard'
+            : '/member/dashboard'
+        navigate(destination, { replace: true })
+        return
+      }
 
       // Navigate to OTP verification step, carrying session + email
       navigate('/auth/verify-otp', {
