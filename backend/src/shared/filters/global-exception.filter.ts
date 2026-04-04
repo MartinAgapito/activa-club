@@ -38,6 +38,8 @@ const DOMAIN_EXCEPTION_MAP: Record<string, number> = {
   // AC-008 — Logout
   InvalidTokenException: HttpStatus.UNAUTHORIZED,
   LogoutFailedException: HttpStatus.INTERNAL_SERVER_ERROR,
+  // AC-010 — Remember Device
+  DeviceConfirmationFailedException: HttpStatus.INTERNAL_SERVER_ERROR,
 };
 
 /**

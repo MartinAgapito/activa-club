@@ -246,16 +246,33 @@ export class AuthController {
     description: 'TOO_MANY_ATTEMPTS — Cognito rate limiting.',
   })
   async login(@Body() dto: LoginRequestDto): Promise<LoginDataDto> {
-    // Password is intentionally not logged
+    // Password and deviceKey are intentionally not logged
     this.logger.log(`POST /v1/auth/login — email=${dto.email}`);
 
-    const command = new LoginCommand(dto.email, dto.password);
+    const command = new LoginCommand(dto.email, dto.password, dto.deviceKey);
     const result = await this.loginHandler.execute(command);
+
+    // AC-010: device bypass — tokens returned directly, no OTP step needed
+    if (result.challengeName === null) {
+      return {
+        challengeName: null,
+        session: null,
+        message: 'Device recognized. You are now signed in.',
+        accessToken: result.accessToken,
+        idToken: result.idToken,
+        refreshToken: result.refreshToken,
+        expiresIn: result.expiresIn,
+      };
+    }
 
     return {
       challengeName: result.challengeName,
       session: result.session,
       message: 'A verification code has been sent to your email.',
+      accessToken: null,
+      idToken: null,
+      refreshToken: null,
+      expiresIn: null,
     };
   }
 
@@ -289,16 +306,22 @@ export class AuthController {
   async verifyOtp(@Body() dto: VerifyOtpRequestDto): Promise<VerifyOtpDataDto> {
     this.logger.log(`POST /v1/auth/verify-otp — email=${dto.email}`);
 
-    const command = new VerifyOtpCommand(dto.email, dto.session, dto.otp);
+    const command = new VerifyOtpCommand(
+      dto.email,
+      dto.session,
+      dto.otp,
+      dto.rememberDevice ?? false,
+    );
     const result = await this.verifyOtpHandler.execute(command);
 
-    // Tokens are intentionally not logged
+    // Tokens and device keys are intentionally not logged
     return {
       accessToken: result.accessToken,
       idToken: result.idToken,
       refreshToken: result.refreshToken,
       expiresIn: result.expiresIn,
       tokenType: result.tokenType,
+      deviceKey: result.deviceKey,
     };
   }
 

@@ -180,6 +180,24 @@ export class UnexpectedAuthChallengeException extends Error {
   }
 }
 
+// ─── AC-010: Remember Device Exceptions ─────────────────────────────────────
+
+/**
+ * DeviceConfirmationFailedException — HTTP 500.
+ * Cognito ConfirmDevice call failed unexpectedly after a successful OTP challenge.
+ * The user is authenticated but the device will not be remembered.
+ */
+export class DeviceConfirmationFailedException extends Error {
+  readonly code = 'DEVICE_CONFIRMATION_FAILED';
+
+  constructor() {
+    super(
+      'Authentication succeeded but the device could not be remembered. You will be prompted for OTP on next login.',
+    );
+    this.name = 'DeviceConfirmationFailedException';
+  }
+}
+
 // ─── AC-008: Logout Exceptions ───────────────────────────────────────────────
 
 /**

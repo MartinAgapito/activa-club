@@ -57,7 +57,7 @@ endpoints protegidos de la plataforma.
 ## Fuera de Alcance
 
 - Refresh automático de tokens — diferido a historia transversal de gestión de sesión.
-- Opción "Recordar dispositivo" — diferida a historia de seguridad post-MVP.
+- Opción "Recordar dispositivo" — diferida a AC-010.
 - Revocación de tokens (logout) — diferida a historia de cierre de sesión.
 
 ---

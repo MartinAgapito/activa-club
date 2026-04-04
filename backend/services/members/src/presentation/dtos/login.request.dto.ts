@@ -1,9 +1,9 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
- * Request DTO for POST /v1/auth/login — AC-002 Step 1.
+ * Request DTO for POST /v1/auth/login — AC-002 Step 1 / AC-010.
  *
  * Password is a string with IsNotEmpty only — Cognito enforces policy.
  * Password is never logged anywhere in the application layer.
@@ -25,4 +25,21 @@ export class LoginRequestDto {
   @IsString()
   @IsNotEmpty({ message: 'password is required' })
   password: string;
+
+  /**
+   * AC-010: Cognito device key obtained from a previous verify-otp with rememberDevice=true.
+   * When provided, Cognito will attempt device-based authentication to skip the OTP challenge.
+   * If the device key is expired or unrecognized, the server returns an error — the client
+   * should retry without the deviceKey to fall back to the standard OTP flow.
+   */
+  @ApiPropertyOptional({
+    description:
+      'AC-010 — Cognito device key from a previous remember-device session. ' +
+      'When provided, Cognito may skip the OTP challenge for recognized devices.',
+    example: 'us-east-1_abc123:device-key-uuid',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString({ message: 'deviceKey must be a string' })
+  deviceKey?: string | null;
 }

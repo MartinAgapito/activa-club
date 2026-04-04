@@ -10,6 +10,7 @@ import {
   AdminInitiateAuthCommand,
   AdminRespondToAuthChallengeCommand,
   AdminUserGlobalSignOutCommand,
+  ConfirmDeviceCommand,
   AttributeType,
   AdminInitiateAuthCommandOutput,
   AdminRespondToAuthChallengeCommandOutput,
@@ -210,23 +211,36 @@ export class CognitoService {
    * When email MFA is ON, Cognito returns an EMAIL_OTP challenge.
    * The response contains ChallengeName and Session (opaque, 3-minute TTL).
    *
-   * @param email    - Member email (used as Cognito USERNAME).
-   * @param password - Member password (never logged).
+   * When deviceKey is provided (AC-010), it is included in AuthParameters so
+   * Cognito can attempt device-based authentication before issuing the OTP challenge.
+   * If the device is recognized and verified, Cognito may return tokens directly
+   * (ChallengeName = undefined) or a DEVICE_SRP_AUTH / DEVICE_PASSWORD_VERIFIER challenge.
+   *
+   * @param email     - Member email (used as Cognito USERNAME).
+   * @param password  - Member password (never logged).
+   * @param deviceKey - Optional Cognito device key from a previous remember-device session.
    */
   async adminInitiateAuth(
     email: string,
     password: string,
+    deviceKey?: string | null,
   ): Promise<AdminInitiateAuthCommandOutput> {
     this.logger.debug(`adminInitiateAuth: initiating auth for email=${email}`);
+
+    const authParameters: Record<string, string> = {
+      USERNAME: email,
+      PASSWORD: password,
+    };
+
+    if (deviceKey) {
+      authParameters['DEVICE_KEY'] = deviceKey;
+    }
 
     const command = new AdminInitiateAuthCommand({
       UserPoolId: this.userPoolId,
       ClientId: this.clientId,
       AuthFlow: 'ADMIN_USER_PASSWORD_AUTH',
-      AuthParameters: {
-        USERNAME: email,
-        PASSWORD: password,
-      },
+      AuthParameters: authParameters,
     });
 
     const response = await this.client.send(command);
@@ -267,6 +281,83 @@ export class CognitoService {
 
     const response = await this.client.send(command);
     this.logger.log(`adminRespondToAuthChallenge: authentication successful for email=${email}`);
+    return response;
+  }
+
+  // ─── AC-010: Remember Device ─────────────────────────────────────────────────
+
+  /**
+   * Confirms and registers a device after a successful authentication.
+   * Must be called with the AccessToken returned by adminRespondToAuthChallenge
+   * and the DeviceKey + SRP verifier config from NewDeviceMetadata.
+   *
+   * On success, the device is registered in Cognito and subsequent logins from
+   * this device can skip the EMAIL_OTP challenge when deviceKey is included in
+   * AdminInitiateAuth.
+   *
+   * Requires the access token issued to the authenticated user — no IAM role needed.
+   *
+   * @param accessToken      - The user's AccessToken returned after successful auth.
+   * @param deviceKey        - The device key from NewDeviceMetadata.
+   * @param passwordVerifier - Base64-encoded SRP password verifier for the device.
+   * @param salt             - Base64-encoded SRP salt for the device.
+   */
+  async confirmDevice(
+    accessToken: string,
+    deviceKey: string,
+    passwordVerifier: string,
+    salt: string,
+  ): Promise<void> {
+    this.logger.debug(`confirmDevice: registering deviceKey=${deviceKey}`);
+
+    const command = new ConfirmDeviceCommand({
+      AccessToken: accessToken,
+      DeviceKey: deviceKey,
+      DeviceSecretVerifierConfig: {
+        PasswordVerifier: passwordVerifier,
+        Salt: salt,
+      },
+    });
+
+    await this.client.send(command);
+    this.logger.log(`confirmDevice: device registered successfully deviceKey=${deviceKey}`);
+  }
+
+  /**
+   * Responds to a DEVICE_SRP_AUTH or DEVICE_PASSWORD_VERIFIER challenge.
+   * Used in the AC-010 device login bypass flow when Cognito requires device
+   * verification before issuing tokens directly.
+   *
+   * @param email           - Cognito USERNAME.
+   * @param session         - Opaque session token from adminInitiateAuth response.
+   * @param challengeName   - The device challenge name returned by Cognito.
+   * @param challengeParams - Key/value pairs required for the device challenge response.
+   */
+  async adminRespondToDeviceChallenge(
+    email: string,
+    session: string,
+    challengeName: string,
+    challengeParams: Record<string, string>,
+  ): Promise<AdminRespondToAuthChallengeCommandOutput> {
+    this.logger.debug(
+      `adminRespondToDeviceChallenge: responding to ${challengeName} for email=${email}`,
+    );
+
+    const command = new AdminRespondToAuthChallengeCommand({
+      UserPoolId: this.userPoolId,
+      ClientId: this.clientId,
+      ChallengeName: challengeName as never,
+      Session: session,
+      ChallengeResponses: {
+        USERNAME: email,
+        ...challengeParams,
+      },
+    });
+
+    const response = await this.client.send(command);
+    this.logger.debug(
+      `adminRespondToDeviceChallenge: result challenge=${response.ChallengeName ?? 'none'} for email=${email}`,
+    );
     return response;
   }
 
