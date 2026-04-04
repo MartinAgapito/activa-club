@@ -240,6 +240,7 @@ module "members_lambda" {
 
   # AdminGetUser + AdminAddUserToGroup + AdminDeleteUser (AC-001 post-confirmation)
   # AdminInitiateAuth + AdminRespondToAuthChallenge (AC-002 login)
+  # AdminUserGlobalSignOut (AC-008 logout)
   # SignUp / ConfirmSignUp / ResendConfirmationCode use App Client — no IAM needed
   cognito_actions = [
     "cognito-idp:AdminGetUser",
@@ -247,6 +248,7 @@ module "members_lambda" {
     "cognito-idp:AdminDeleteUser",
     "cognito-idp:AdminInitiateAuth",
     "cognito-idp:AdminRespondToAuthChallenge",
+    "cognito-idp:AdminUserGlobalSignOut",
   ]
 
   tags = {
