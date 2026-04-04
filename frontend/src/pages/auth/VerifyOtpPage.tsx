@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
@@ -22,6 +23,8 @@ import { verifyOtpSchema, type VerifyOtpFormValues } from '@/lib/zod-schemas'
 import { authApi, type AuthApiError } from '@/api/auth.api'
 import { useAuthStore } from '@/store'
 
+const DEVICE_KEY_STORAGE_KEY = 'activa-club-device-key'
+
 interface LocationState {
   email?: string
   session?: string
@@ -36,6 +39,8 @@ export default function VerifyOtpPage() {
 
   const state = (location.state as LocationState | null) ?? {}
   const { email = '', session = '' } = state
+
+  const [rememberDevice, setRememberDevice] = useState(false)
 
   const form = useForm<VerifyOtpFormValues>({
     resolver: zodResolver(verifyOtpSchema),
@@ -60,9 +65,15 @@ export default function VerifyOtpPage() {
         email,
         session,
         otp: data.otp,
+        rememberDevice,
       })
 
-      const { idToken } = response.data.data
+      const { idToken, deviceKey } = response.data.data
+
+      // AC-010: persist device key so future logins can skip OTP
+      if (deviceKey) {
+        localStorage.setItem(DEVICE_KEY_STORAGE_KEY, deviceKey)
+      }
 
       // Decode the JWT, build CognitoUser, and persist both in the store
       setTokens(idToken)
@@ -157,6 +168,18 @@ export default function VerifyOtpPage() {
                         </FormItem>
                       )}
                     />
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={rememberDevice}
+                        onChange={(e) => setRememberDevice(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 accent-slate-900"
+                      />
+                      <span className="text-sm text-slate-600">
+                        Recordar este dispositivo por 30 días
+                      </span>
+                    </label>
 
                     <Button
                       type="submit"
