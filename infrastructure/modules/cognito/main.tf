@@ -129,6 +129,15 @@ resource "aws_cognito_user_pool" "this" {
     }
   }
 
+  # Device tracking (AC-010 — Remember Device).
+  # challenge_required_on_new_device: users must pass MFA on each new device.
+  # device_only_remembered_on_user_prompt: devices are only tracked when the
+  # member explicitly opts in (rememberDevice = true in the verify-otp flow).
+  device_configuration {
+    challenge_required_on_new_device      = true
+    device_only_remembered_on_user_prompt = true
+  }
+
   # CustomEmailSender trigger — optional.
   # When lambda_arn is provided Cognito encrypts the OTP code with the KMS key
   # and invokes the Lambda instead of sending a plain-text email directly.
