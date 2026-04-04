@@ -21,12 +21,14 @@ export interface ResendCodePayload {
 export interface LoginPayload {
   email: string
   password: string
+  deviceKey?: string | null
 }
 
 export interface VerifyOtpPayload {
   email: string
   session: string
   otp: string
+  rememberDevice?: boolean
 }
 
 // ─── Response data types ──────────────────────────────────────────────────────
@@ -45,15 +47,22 @@ export interface ResendCodeData {
 }
 
 export interface LoginData {
-  session: string
-  challengeName: string
+  session?: string
+  challengeName: string | null
   email: string
+  // AC-010: present when device challenge passed and tokens issued directly
+  idToken?: string
+  accessToken?: string
+  refreshToken?: string
+  expiresIn?: number
 }
 
 export interface VerifyOtpData {
   idToken: string
   accessToken?: string
   refreshToken?: string
+  // AC-010: Cognito device key — store in localStorage if rememberDevice was true
+  deviceKey: string | null
 }
 
 export interface LogoutData {

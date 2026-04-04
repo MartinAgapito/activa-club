@@ -6,12 +6,14 @@ import {
   InvalidOtpException,
   SessionExpiredException,
   TooManyAttemptsException,
+  DeviceConfirmationFailedException,
 } from '../../domain/exceptions/member.exceptions';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
 const mockCognitoService = {
   adminRespondToAuthChallenge: jest.fn(),
+  confirmDevice: jest.fn(),
 } as unknown as jest.Mocked<CognitoService>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -22,7 +24,7 @@ function cognitoError(name: string, message?: string): Error {
   return error;
 }
 
-function makeSuccessResponse() {
+function makeSuccessResponse(withDeviceMetadata = false) {
   return {
     AuthenticationResult: {
       AccessToken: 'eyJraWQiOiJ-access',
@@ -30,6 +32,14 @@ function makeSuccessResponse() {
       RefreshToken: 'eyJjdHkiOiJ-refresh',
       ExpiresIn: 3600,
       TokenType: 'Bearer',
+      ...(withDeviceMetadata
+        ? {
+            NewDeviceMetadata: {
+              DeviceKey: 'us-east-1_device-key-abc',
+              DeviceGroupKey: 'us-east-1_group-key',
+            },
+          }
+        : {}),
     },
     $metadata: {},
   };
@@ -37,7 +47,7 @@ function makeSuccessResponse() {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe('VerifyOtpHandler (AC-002 Step 2)', () => {
+describe('VerifyOtpHandler (AC-002 Step 2 / AC-010)', () => {
   let handler: VerifyOtpHandler;
 
   const VALID_COMMAND = new VerifyOtpCommand(
@@ -46,14 +56,21 @@ describe('VerifyOtpHandler (AC-002 Step 2)', () => {
     '482917',
   );
 
+  const REMEMBER_DEVICE_COMMAND = new VerifyOtpCommand(
+    'martin.garcia@email.com',
+    'cognito-session-abc123',
+    '482917',
+    true,
+  );
+
   beforeEach(() => {
     jest.clearAllMocks();
     handler = new VerifyOtpHandler(mockCognitoService);
   });
 
-  // ── Happy path ──────────────────────────────────────────────────────────────
+  // ── Happy path (standard OTP, rememberDevice = false) ──────────────────────
 
-  describe('execute — happy path', () => {
+  describe('execute — standard OTP flow (rememberDevice=false)', () => {
     it('returns a VerifyOtpResult with all tokens from Cognito', async () => {
       const cognitoResponse = makeSuccessResponse();
       mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(cognitoResponse as never);
@@ -66,6 +83,28 @@ describe('VerifyOtpHandler (AC-002 Step 2)', () => {
       expect(result.refreshToken).toBe(cognitoResponse.AuthenticationResult.RefreshToken);
       expect(result.expiresIn).toBe(3600);
       expect(result.tokenType).toBe('Bearer');
+    });
+
+    it('sets deviceKey to null when rememberDevice is false', async () => {
+      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(
+        makeSuccessResponse(true) as never,
+      );
+
+      const result = await handler.execute(VALID_COMMAND);
+
+      expect(result.deviceKey).toBeNull();
+      expect(mockCognitoService.confirmDevice).not.toHaveBeenCalled();
+    });
+
+    it('sets deviceKey to null when rememberDevice is false and no NewDeviceMetadata', async () => {
+      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(
+        makeSuccessResponse(false) as never,
+      );
+
+      const result = await handler.execute(VALID_COMMAND);
+
+      expect(result.deviceKey).toBeNull();
+      expect(mockCognitoService.confirmDevice).not.toHaveBeenCalled();
     });
 
     it('calls adminRespondToAuthChallenge with correct arguments', async () => {
@@ -96,6 +135,83 @@ describe('VerifyOtpHandler (AC-002 Step 2)', () => {
       const result = await handler.execute(VALID_COMMAND);
 
       expect(result.expiresIn).toBe(3600);
+    });
+  });
+
+  // ── AC-010: rememberDevice = true, device confirmation succeeds ─────────────
+
+  describe('execute — AC-010 rememberDevice=true (success)', () => {
+    it('calls confirmDevice when rememberDevice=true and NewDeviceMetadata is present', async () => {
+      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(
+        makeSuccessResponse(true) as never,
+      );
+      mockCognitoService.confirmDevice.mockResolvedValue(undefined);
+
+      await handler.execute(REMEMBER_DEVICE_COMMAND);
+
+      expect(mockCognitoService.confirmDevice).toHaveBeenCalledTimes(1);
+      // Called with: accessToken, deviceKey, passwordVerifier (base64), salt (base64)
+      expect(mockCognitoService.confirmDevice).toHaveBeenCalledWith(
+        'eyJraWQiOiJ-access',
+        'us-east-1_device-key-abc',
+        expect.any(String), // passwordVerifier — computed from SRP
+        expect.any(String), // salt — random bytes
+      );
+    });
+
+    it('returns deviceKey in result when rememberDevice=true and ConfirmDevice succeeds', async () => {
+      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(
+        makeSuccessResponse(true) as never,
+      );
+      mockCognitoService.confirmDevice.mockResolvedValue(undefined);
+
+      const result = await handler.execute(REMEMBER_DEVICE_COMMAND);
+
+      expect(result.deviceKey).toBe('us-east-1_device-key-abc');
+    });
+
+    it('returns all tokens alongside deviceKey', async () => {
+      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(
+        makeSuccessResponse(true) as never,
+      );
+      mockCognitoService.confirmDevice.mockResolvedValue(undefined);
+
+      const result = await handler.execute(REMEMBER_DEVICE_COMMAND);
+
+      expect(result.accessToken).toBe('eyJraWQiOiJ-access');
+      expect(result.idToken).toBe('eyJraWQiOiJ-id');
+      expect(result.refreshToken).toBe('eyJjdHkiOiJ-refresh');
+      expect(result.deviceKey).toBe('us-east-1_device-key-abc');
+    });
+  });
+
+  // ── AC-010: rememberDevice = true, no NewDeviceMetadata ────────────────────
+
+  describe('execute — AC-010 rememberDevice=true but no NewDeviceMetadata', () => {
+    it('does not call confirmDevice when NewDeviceMetadata is absent', async () => {
+      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(
+        makeSuccessResponse(false) as never,
+      );
+
+      const result = await handler.execute(REMEMBER_DEVICE_COMMAND);
+
+      expect(mockCognitoService.confirmDevice).not.toHaveBeenCalled();
+      expect(result.deviceKey).toBeNull();
+    });
+  });
+
+  // ── AC-010: rememberDevice = true, ConfirmDevice fails ─────────────────────
+
+  describe('execute — AC-010 ConfirmDevice failure', () => {
+    it('throws DeviceConfirmationFailedException when confirmDevice rejects', async () => {
+      mockCognitoService.adminRespondToAuthChallenge.mockResolvedValue(
+        makeSuccessResponse(true) as never,
+      );
+      mockCognitoService.confirmDevice.mockRejectedValue(new Error('Cognito ConfirmDevice error'));
+
+      await expect(handler.execute(REMEMBER_DEVICE_COMMAND)).rejects.toThrow(
+        DeviceConfirmationFailedException,
+      );
     });
   });
 
