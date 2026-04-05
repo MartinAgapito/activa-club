@@ -20,9 +20,8 @@ Para acceder a las funcionalidades de la plataforma de forma segura.
 ## Valor de Negocio
 
 El login es el punto de entrada a toda la plataforma para los socios.
-El uso de `ADMIN_USER_PASSWORD_AUTH` desde el backend (en lugar de flujos del SDK de Cognito
-directamente desde el frontend) centraliza la autenticación en el servidor,
-mejorando la postura de seguridad y habilitando el MFA obligatorio por email OTP.
+Al centralizar la autenticación en el servidor se habilita el MFA obligatorio por email OTP
+y se mejora la postura de seguridad al no exponer flujos de autenticación en el cliente.
 
 ---
 
@@ -46,11 +45,11 @@ mejorando la postura de seguridad y habilitando el MFA obligatorio por email OTP
 ## Criterios de Aceptación
 
 - [x] Credenciales incorrectas (email o contraseña inválidos) → HTTP 401 con código `INVALID_CREDENTIALS`.
-- [x] `UserNotFoundException` y `NotAuthorizedException` de Cognito mapean al mismo código de error `INVALID_CREDENTIALS` (prevenir user enumeration: no revelar cuál campo falló).
+- [x] Errores de email incorrecto y contraseña incorrecta devuelven el mismo código `INVALID_CREDENTIALS` (prevenir user enumeration: no revelar cuál campo falló).
 - [x] Cuenta con estado `UNCONFIRMED` → HTTP 403 con código `ACCOUNT_NOT_CONFIRMED`.
 - [x] Cuenta deshabilitada por administrador → HTTP 403 con código `ACCOUNT_DISABLED`.
 - [x] Bloqueo temporal por exceso de intentos fallidos → HTTP 429.
-- [x] Flujo exitoso: backend llama a `AdminInitiateAuth` con `ADMIN_USER_PASSWORD_AUTH` → Cognito retorna challenge `EMAIL_OTP` → HTTP 200 con `{ challengeName, session }`.
+- [x] Flujo exitoso: credenciales válidas → el sistema envía un código OTP al email del socio → HTTP 200 con `{ challengeName, session }` para continuar en el paso 2.
 - [x] Todos los errores siguen el esquema estándar `{ status, error: { code, message } }`.
 
 ---
@@ -67,7 +66,7 @@ mejorando la postura de seguridad y habilitando el MFA obligatorio por email OTP
 ## Reglas de Negocio
 
 - **Mensaje de error genérico:** Nunca indicar si el error es de email o de contraseña; siempre retornar el mismo mensaje genérico `INVALID_CREDENTIALS` para prevenir user enumeration.
-- **AuthFlow exclusivo del backend:** Solo el backend Lambda llama a `AdminInitiateAuth`; el frontend nunca interactúa directamente con Cognito.
+- **Autenticación exclusiva del backend:** El frontend nunca interactúa directamente con el proveedor de identidad; toda la lógica de autenticación reside en el servidor.
 - **Cuenta CONFIRMED requerida:** Solo cuentas con estado `CONFIRMED` pueden iniciar el flujo de login.
 
 ---
@@ -85,9 +84,9 @@ mejorando la postura de seguridad y habilitando el MFA obligatorio por email OTP
 
 - [x] Endpoint `POST /v1/auth/login` implementado y desplegado en dev.
 - [x] Endpoint es público (sin token) y excluido del autorizador de API Gateway.
-- [x] `AdminInitiateAuth` con `ADMIN_USER_PASSWORD_AUTH` implementado correctamente.
-- [x] Mensaje de error genérico aplicado: `UserNotFoundException` y `NotAuthorizedException` mapean a `INVALID_CREDENTIALS` (HTTP 401).
-- [x] `UNCONFIRMED` retorna HTTP 403 `ACCOUNT_NOT_CONFIRMED`.
+- [x] Flujo de validación de credenciales implementado correctamente.
+- [x] Mensaje de error genérico aplicado: credenciales inválidas (email o contraseña) siempre retornan `INVALID_CREDENTIALS` (HTTP 401).
+- [x] Cuenta no confirmada retorna HTTP 403 `ACCOUNT_NOT_CONFIRMED`.
 - [x] Cuenta deshabilitada retorna HTTP 403 `ACCOUNT_DISABLED`.
 - [x] Bloqueo por intentos fallidos retorna HTTP 429.
 - [x] Todos los errores siguen el esquema estándar de respuesta de error del API.

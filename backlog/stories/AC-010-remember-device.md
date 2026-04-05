@@ -38,12 +38,9 @@ equilibrando seguridad y usabilidad.
 
 ## Precondiciones
 
-- AC-005 completado: el endpoint `POST /v1/auth/login` está implementado y operativo.
-- AC-006 completado: el endpoint `POST /v1/auth/verify-otp` está implementado y operativo.
-- AC-007 completado: el frontend tiene la pantalla `VerifyOtpPage` implementada.
-- El Cognito User Pool tiene `DeviceConfiguration` habilitado con:
-  - `challenge_required_on_new_device = true`
-  - `device_only_remembered_on_user_prompt = true` (el registro del dispositivo se activa solo cuando el socio lo solicita explícitamente via checkbox).
+- AC-005 y AC-006 completados: flujo de login con OTP operativo.
+- AC-007 completado: la pantalla de verificación OTP está implementada en el frontend.
+- La configuración del proveedor de identidad soporta el registro de dispositivos bajo demanda (solo cuando el socio lo solicita).
 - El socio tiene una cuenta con estado `CONFIRMED` y ha completado al menos un login exitoso con OTP previamente.
 
 ---
@@ -51,14 +48,12 @@ equilibrando seguridad y usabilidad.
 ## Criterios de Aceptación
 
 - [x] En la pantalla `VerifyOtpPage`, el socio ve un checkbox "Recordar este dispositivo por 30 días" desmarcado por defecto.
-- [x] Si el socio marca el checkbox y el OTP es válido, el backend llama a `ConfirmDevice` en Cognito para registrar el dispositivo como confiable, incluyendo el `DeviceKey` y el verifier de contraseña del dispositivo.
+- [x] Si el socio marca el checkbox y el OTP es válido, el backend registra el dispositivo como confiable.
 - [x] Si el socio no marca el checkbox, el flujo de login continúa sin registrar el dispositivo; el siguiente login desde ese dispositivo vuelve a pedir OTP.
-- [x] En un login posterior desde un dispositivo ya registrado: el backend detecta que Cognito retorna el challenge `DEVICE_SRP_AUTH` o `DEVICE_PASSWORD_VERIFIER` en lugar de `EMAIL_OTP`, y lo responde automáticamente sin involucrar al socio.
-- [x] Si el challenge de dispositivo es respondido correctamente, el backend retorna HTTP 200 con los tokens JWT directamente desde `POST /v1/auth/login`, sin pasar por `POST /v1/auth/verify-otp`.
-- [x] El `DeviceKey` recibido de Cognito tras el OTP exitoso es devuelto al frontend por el endpoint `POST /v1/auth/verify-otp` y almacenado en `localStorage` (es seguro: no contiene credenciales ni tiene valor por sí solo).
-- [x] El frontend envía el `DeviceKey` almacenado en `localStorage` como parte del body de `POST /v1/auth/login` en cada intento posterior (puede ser `null` si no existe).
-- [x] Si el dispositivo fue registrado hace más de 30 días o fue olvidado en Cognito, Cognito retorna `EMAIL_OTP` normalmente y el flujo de doble factor se reanuda sin errores.
-- [x] Si el `DeviceKey` enviado por el frontend no es reconocido por Cognito (dispositivo inválido o expirado), el backend responde el challenge de dispositivo fallido con gracia y continúa el flujo normal de OTP.
+- [x] En un login posterior desde un dispositivo ya registrado, el backend resuelve automáticamente el challenge de dispositivo sin involucrar al socio y retorna HTTP 200 con los tokens directamente desde `POST /v1/auth/login`.
+- [x] Un identificador del dispositivo es almacenado localmente en el cliente tras el primer login con OTP exitoso y enviado en cada intento de login posterior (puede ser nulo si no existe).
+- [x] Si el dispositivo fue registrado hace más de 30 días o ya no es reconocido, el flujo vuelve a pedir OTP de forma normal sin errores visibles para el socio.
+- [x] Si el identificador de dispositivo no es reconocido (dispositivo inválido o expirado), el backend continúa el flujo normal de OTP sin exponer el error al socio.
 - [x] Todos los errores relacionados con el flujo de dispositivo siguen el esquema estándar `{ status, error: { code, message } }` y son mapeados a mensajes amigables en español en el frontend.
 
 ---
@@ -76,11 +71,11 @@ equilibrando seguridad y usabilidad.
 
 - **Período de vigencia:** Un dispositivo registrado es válido por 30 días; tras ese período Cognito lo invalida automáticamente y el flujo de OTP se reanuda sin intervención del sistema.
 - **Consentimiento explícito:** El dispositivo solo se registra si el socio marca el checkbox "Recordar este dispositivo"; nunca se registra de forma automática sin consentimiento.
-- **DeviceKey en localStorage:** El `DeviceKey` de Cognito puede almacenarse en `localStorage` porque no contiene información de sesión ni credenciales; su valor sin las credenciales del usuario es nulo desde el punto de vista de seguridad.
-- **AccessToken e IdToken NO en localStorage:** Esta regla heredada de AC-006 y AC-007 se mantiene; solo el `DeviceKey` va a `localStorage`.
+- **Identificador de dispositivo en almacenamiento local:** El identificador del dispositivo puede almacenarse en `localStorage` porque no contiene información de sesión ni credenciales por sí solo.
+- **Tokens de acceso NO en localStorage:** Los tokens de acceso e identidad deben almacenarse en memoria; solo el identificador de dispositivo puede ir en `localStorage`.
 - **Transparencia ante el socio:** Si el dispositivo no es reconocido o expiró, el flujo vuelve a pedir OTP sin mensajes de error confusos; el socio simplemente ve la pantalla de verificación OTP de forma normal.
-- **Sin llamadas directas a Cognito desde el frontend:** El frontend nunca llama a Cognito directamente; toda la lógica de dispositivo (ConfirmDevice, respuesta de challenges DEVICE_SRP_AUTH/DEVICE_PASSWORD_VERIFIER) se ejecuta en el backend Lambda.
-- **Cognito DeviceConfiguration:** El User Pool debe tener `device_only_remembered_on_user_prompt = true` en el recurso Terraform `aws_cognito_user_pool`, de modo que Cognito solo recuerde el dispositivo cuando el backend llama explícitamente a `ConfirmDevice`.
+- **Sin llamadas directas al proveedor de identidad desde el frontend:** Toda la lógica de dispositivo se ejecuta en el backend.
+- **Registro bajo demanda:** El dispositivo solo se registra como confiable cuando el socio lo solicita explícitamente marcando el checkbox.
 
 ---
 
@@ -98,10 +93,10 @@ equilibrando seguridad y usabilidad.
 ## Definition of Done
 
 - [x] Endpoint backend implementado y desplegado en dev.
-- [x] Reglas de negocio validadas en el backend (ConfirmDevice, respuesta de challenges de dispositivo).
-- [x] Control de acceso por rol (RBAC) aplicado — solo socios con sesión activa pueden marcar el checkbox.
-- [x] Pantalla `VerifyOtpPage` actualizada con checkbox "Recordar este dispositivo" y lógica de envío de `DeviceKey`.
-- [x] Frontend almacena `DeviceKey` en `localStorage` y lo envía en cada intento de login.
+- [x] Registro de dispositivo y resolución automática de challenge implementados en el backend.
+- [x] Solo socios con sesión activa pueden marcar el checkbox de recordar dispositivo.
+- [x] Pantalla de verificación OTP actualizada con checkbox "Recordar este dispositivo" y lógica de envío del identificador de dispositivo.
+- [x] Frontend almacena el identificador de dispositivo localmente y lo envía en cada intento de login.
 - [x] Errores del API mapeados a mensajes amigables en español.
 - [x] Recurso Terraform `aws_cognito_user_pool` actualizado con `device_configuration`.
 - [x] Tests unitarios escritos y pasando (flujo con dispositivo recordado, flujo sin checkbox, dispositivo expirado/inválido).
