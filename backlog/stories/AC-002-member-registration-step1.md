@@ -39,7 +39,6 @@ de socios y eliminando altas no autorizadas.
 
 - `SeedMembersTable` poblada (AC-001 completado).
 - Cognito User Pool aprovisionado con verificación de email habilitada y MFA en modo ON.
-- `AllowAdminCreateUserOnly = false` (el backend usa la API pública `SignUp`).
 - El endpoint es público — no requiere token de autenticación.
 
 ---
@@ -52,9 +51,8 @@ de socios y eliminando altas no autorizadas.
 - [x] Email ya en uso en Cognito → HTTP 409.
 - [x] Campos obligatorios ausentes o mal formados → HTTP 400 con lista de campos inválidos.
 - [x] Contraseña que no cumple la política de seguridad → HTTP 422.
-- [x] Flujo exitoso: backend llama a `SignUp` de Cognito → usuario creado en estado `UNCONFIRMED` → Cognito envía OTP al email → HTTP 202.
+- [x] Flujo exitoso: datos válidos → el socio recibe un email de verificación → HTTP 202.
 - [x] Todos los errores siguen el esquema estándar `{ status, error: { code, message } }`.
-- [x] El frontend nunca llama directamente a Cognito; toda la lógica reside en el backend Lambda.
 
 ---
 
@@ -95,7 +93,6 @@ de socios y eliminando altas no autorizadas.
 - [x] Validación de `account_status = inactive` aplicada antes de cualquier escritura.
 - [x] Validación de DNI duplicado en Cognito implementada (HTTP 409).
 - [x] Validación de email duplicado implementada (HTTP 409).
-- [x] Creación de usuario Cognito disparada solo desde el backend (`SignUp` API); estado inicial `UNCONFIRMED`.
 - [x] Todos los errores siguen el esquema estándar de respuesta de error del API.
 - [x] Tests unitarios cubren: flujo exitoso, DNI no encontrado, cuenta inactiva, DNI duplicado, email duplicado, campos inválidos y contraseña inválida.
 - [x] Probado manualmente en ambiente dev.

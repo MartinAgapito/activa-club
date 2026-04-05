@@ -39,7 +39,6 @@ en Cognito y degradando la experiencia de usuario.
 - AC-002 completado: el socio completó el formulario de registro.
 - El usuario existe en Cognito con estado `UNCONFIRMED`.
 - El endpoint es público — no requiere token de autenticación.
-- El Lambda Trigger `CustomEmailSender` está configurado para que el nuevo email de reenvío también use la plantilla HTML profesional.
 
 ---
 
@@ -47,8 +46,8 @@ en Cognito y degradando la experiencia de usuario.
 
 - [x] Email no encontrado en Cognito → HTTP 404.
 - [x] Límite de reenvíos excedido (definido por Cognito) → HTTP 429.
-- [x] Flujo exitoso: backend llama a `ResendConfirmationCode` de Cognito → Cognito envía un nuevo link de verificación al email (con plantilla HTML profesional) → HTTP 200.
-- [x] El nuevo link enviado sigue el mismo formato que el link original: `?email=...&token=...`.
+- [x] Flujo exitoso: solicitud válida → el socio recibe un nuevo link de verificación por email (con plantilla HTML profesional) → HTTP 200.
+- [x] El nuevo link enviado permite completar la verificación de la misma forma que el link original.
 - [x] Todos los errores siguen el esquema estándar `{ status, error: { code, message } }`.
 
 ---
@@ -63,8 +62,8 @@ en Cognito y degradando la experiencia de usuario.
 ## Reglas de Negocio
 
 - **Solo para cuentas UNCONFIRMED:** El reenvío solo aplica a usuarios que aún no completaron la verificación de email.
-- **Límite de Cognito:** Cognito aplica un límite nativo de reenvíos; al superarlo retorna error y el sistema mapea a HTTP 429.
-- **Link, no OTP:** El reenvío envía un nuevo link de verificación; no se envía un código OTP de 6 dígitos. La plantilla HTML del nuevo email es la misma que la del email original (via `CustomEmailSender`).
+- **Límite de reenvíos:** Existe un límite nativo de reenvíos; al superarlo el sistema retorna HTTP 429.
+- **Link, no OTP:** El reenvío envía un nuevo link de verificación; no se envía un código OTP de 6 dígitos. El nuevo email usa la misma plantilla HTML profesional que el original.
 
 ---
 
@@ -81,8 +80,7 @@ en Cognito y degradando la experiencia de usuario.
 
 - [x] Endpoint `POST /v1/auth/resend-code` implementado y desplegado en dev.
 - [x] Endpoint es público (sin token) y excluido del autorizador de API Gateway.
-- [x] Llamada a `ResendConfirmationCode` de Cognito implementada correctamente.
-- [x] El nuevo email enviado usa la plantilla HTML profesional via `CustomEmailSender`.
+- [x] Reenvío del link implementado correctamente; el nuevo email usa la plantilla HTML profesional.
 - [x] Manejo de email no encontrado (HTTP 404) y límite excedido (HTTP 429).
 - [x] Todos los errores siguen el esquema estándar de respuesta de error del API.
 - [x] Tests unitarios cubren: flujo exitoso, email no encontrado y límite de reenvíos excedido.

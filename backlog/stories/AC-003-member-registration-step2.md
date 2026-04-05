@@ -41,7 +41,6 @@ de copiar y pegar un código de 6 dígitos.
 - AC-002 completado: el socio envió el formulario de registro y recibió el email de verificación.
 - El usuario existe en Cognito con estado `UNCONFIRMED`.
 - El endpoint es público — no requiere token de autenticación.
-- El Lambda Trigger `CustomEmailSender` está configurado en el Cognito User Pool para reemplazar el email por defecto con la plantilla HTML profesional.
 
 ---
 
@@ -50,12 +49,12 @@ de copiar y pegar un código de 6 dígitos.
 - [x] Token inválido (link manipulado o malformado) → HTTP 400.
 - [x] Token expirado (TTL Cognito: 24 hs) → HTTP 410.
 - [x] Más de 3 intentos fallidos consecutivos → HTTP 429; Cognito bloquea al usuario.
-- [x] Flujo exitoso: el socio hace clic en el link → el frontend extrae `email` y `token` de los query params de la URL → llama a `POST /v1/auth/verify-email` con `{ email, token }` → backend llama a `ConfirmSignUp` → Cognito marca el usuario como `CONFIRMED` → backend llama a `AdminAddUserToGroup("Member")` → backend crea el perfil en `MembersTable` → HTTP 201.
-- [x] El perfil creado en `MembersTable` incluye los campos: `dni`, `full_name`, `membership_type`, `account_status = active`, `cognito_user_id`, `email`, `created_at`.
+- [x] Flujo exitoso: el socio hace clic en el link → su cuenta queda activada y se le asigna el rol "Member" → se crea su perfil en el sistema con los datos heredados del registro seed → HTTP 201.
+- [x] El perfil creado incluye: nombre completo, tipo de membresía (heredado del registro seed), estado activo, email y fecha de creación.
 - [x] El `membership_type` se hereda del registro en `SeedMembersTable`.
 - [x] Todos los errores siguen el esquema estándar `{ status, error: { code, message } }`.
 - [x] El email enviado por Cognito usa la plantilla HTML profesional (ver criterio de plantilla más abajo).
-- [x] Plantilla HTML del email de verificación: incluye logo y nombre "Activa Club", mensaje de bienvenida personalizado con el nombre del socio, botón CTA "Verificar mi cuenta" que apunta al link de verificación, diseño responsive apto para móvil y escritorio, footer con datos del club. Implementado via Lambda Trigger `CustomEmailSender` en Cognito.
+- [x] Plantilla HTML del email de verificación: incluye logo y nombre "Activa Club", mensaje de bienvenida personalizado con el nombre del socio, botón CTA "Verificar mi cuenta" que apunta al link de verificación, diseño responsive apto para móvil y escritorio, footer con datos del club.
 
 ---
 
@@ -69,12 +68,11 @@ de copiar y pegar un código de 6 dígitos.
 
 ## Reglas de Negocio
 
-- **Grupo Cognito:** El socio debe ser asignado al grupo "Member" mediante `AdminAddUserToGroup` inmediatamente después de la confirmación.
-- **Herencia de membresía:** El `membership_type` se copia desde `SeedMembersTable` al perfil en `MembersTable`.
-- **Perfil atómico:** Si la creación del perfil en DynamoDB falla tras confirmar en Cognito, el sistema debe registrar el error para reintento manual. No se revierte el estado en Cognito.
-- **TTL del token:** El token de verificación tiene un TTL de 24 horas (configurado en Cognito).
-- **Parámetros via query string:** El frontend recibe el link con la forma `?email=...&token=...` y los envía al backend en el body de `POST /v1/auth/verify-email`.
-- **Plantilla HTML obligatoria:** El email de verificación debe usar la plantilla HTML profesional definida en el Lambda Trigger `CustomEmailSender`; no se acepta el email de texto plano por defecto de Cognito.
+- **Rol asignado post-verificación:** Al confirmar el email, el socio queda asignado al rol "Member" en el sistema de forma inmediata.
+- **Herencia de membresía:** El tipo de membresía se hereda del registro seed original del socio.
+- **Perfil atómico:** Si la creación del perfil falla tras confirmar el email, el sistema registra el error para reintento manual sin revertir la confirmación de cuenta.
+- **TTL del token:** El link de verificación tiene una validez de 24 horas. Pasado ese plazo, el socio debe solicitar un nuevo link.
+- **Plantilla HTML obligatoria:** El email de verificación debe usar una plantilla HTML profesional; no se acepta texto plano.
 
 ---
 
@@ -92,12 +90,9 @@ de copiar y pegar un código de 6 dígitos.
 
 - [x] Endpoint `POST /v1/auth/verify-email` implementado y desplegado en dev; acepta `{ email, token }`.
 - [x] Endpoint es público (sin token) y excluido del autorizador de API Gateway.
-- [x] Llamada a `ConfirmSignUp` implementada correctamente con el token recibido.
-- [x] Asignación al grupo "Member" via `AdminAddUserToGroup` implementada.
-- [x] Creación del perfil en `MembersTable` con todos los campos requeridos implementada.
+- [x] Confirmación de cuenta, asignación de rol y creación de perfil implementados y funcionando en dev.
 - [x] Manejo de token inválido (HTTP 400), expirado (HTTP 410) y exceso de intentos (HTTP 429).
-- [x] Lambda Trigger `CustomEmailSender` implementado con la plantilla HTML profesional.
-- [x] Plantilla HTML validada: responsive, botón CTA funcional, logo/nombre del club, footer.
+- [x] Email de verificación usa plantilla HTML profesional: responsive, botón CTA funcional, logo/nombre del club, footer.
 - [x] Todos los errores siguen el esquema estándar de respuesta de error del API.
 - [x] Tests unitarios cubren: flujo exitoso completo, token inválido, token expirado y bloqueo por intentos.
 - [x] Probado manualmente en ambiente dev.
