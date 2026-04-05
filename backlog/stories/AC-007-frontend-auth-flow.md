@@ -53,7 +53,7 @@ en el sistema.
 - [x] Tras login exitoso, los tokens se almacenan correctamente y el socio es redirigido al dashboard.
 - [x] El diseño es responsive (Tailwind + Shadcn/ui) y funciona en dispositivos móviles y de escritorio.
 - [x] El flujo completo (registro → clic en link de verificación → login → verificación OTP → dashboard) funciona end-to-end contra el ambiente dev de AWS.
-- [x] Todos los campos de tipo contraseña (registro y login) incluyen el componente reutilizable `PasswordInput`: un ícono de ojo (Eye/EyeOff de `lucide-react`) posicionado a la derecha del campo; al hacer clic muestra la contraseña en texto plano, al volver a hacer clic la oculta. El componente es reutilizable y se aplica a todos los campos `type="password"` del flujo de autenticación.
+- [x] Todos los campos de tipo contraseña incluyen un toggle de visibilidad (mostrar/ocultar): un ícono de ojo posicionado a la derecha del campo; al hacer clic muestra la contraseña en texto plano, al volver a hacer clic la oculta. El componente es reutilizable y se aplica a todos los campos de contraseña del flujo.
 
 ---
 
@@ -70,8 +70,8 @@ en el sistema.
 - **Sin llamadas directas a Cognito desde el frontend:** Todas las operaciones de autenticación se realizan a través de los endpoints REST del backend.
 - **Almacenamiento seguro de tokens:** Los tokens no deben almacenarse en `localStorage`; se usa memoria (Zustand store) o `httpOnly cookie`.
 - **Mensajes en español:** Todos los mensajes visibles para el usuario deben estar en español, independientemente del código de error del API.
-- **Componente PasswordInput reutilizable:** El toggle de visibilidad de contraseña debe implementarse como un componente único (`PasswordInput`) y no como lógica duplicada en cada formulario. Usa los íconos `Eye` y `EyeOff` de `lucide-react`.
-- **Verificación por link:** La `VerifyEmailPage` no muestra un formulario de ingreso de código; en cambio, procesa automáticamente los query params del link al cargar, confirmando la cuenta sin intervención manual del socio.
+- **Toggle de visibilidad de contraseña reutilizable:** El toggle debe implementarse como un componente único y no como lógica duplicada en cada formulario.
+- **Verificación por link:** La pantalla de verificación de email no muestra un formulario de ingreso de código; en cambio, procesa automáticamente el link al cargar, confirmando la cuenta sin intervención manual del socio.
 
 ---
 
