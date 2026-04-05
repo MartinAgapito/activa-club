@@ -1,54 +1,50 @@
-# Infrastructure - ActivaClub
+# Infraestructura — ActivaClub
 
-Terraform IaC for all AWS resources powering ActivaClub.
-No resource is created via the AWS Console. Everything is defined here.
+IaC Terraform para todos los recursos AWS que potencian ActivaClub.
+Ningún recurso se crea desde la consola de AWS. Todo está definido aquí.
 
-## Cost Warning
+## Advertencia de Costos
 
-The following services are within AWS Free Tier for expected thesis workloads:
-- Lambda: 1M requests/month free
-- DynamoDB: 25 GB storage, 25 WCU/RCU provisioned free
-- API Gateway HTTP API: 1M requests/month free
-- Cognito: 50,000 MAU free
-- SNS: 1M publishes/month free
+Los siguientes servicios están dentro del Free Tier de AWS para la carga de trabajo esperada de la tesis:
+- Lambda: 1M requests/mes gratis
+- DynamoDB: 25 GB de almacenamiento, 25 WCU/RCU provisionadas gratis
+- API Gateway HTTP API: 1M requests/mes gratis
+- Cognito: 50.000 MAU gratis
+- SNS: 1M publicaciones/mes gratis
 
-Services that MAY generate cost:
-- CloudFront: 1 TB/month free, but invalidations > 1000/month are charged.
-- S3: 5 GB free; images/uploads can exceed this quickly.
-- ACM (SSL Certificates): Free when used with CloudFront/ALB.
+Servicios que PUEDEN generar costo:
+- CloudFront: 1 TB/mes gratis, pero las invalidaciones > 1000/mes se cobran.
+- S3: 5 GB gratis; imágenes/uploads pueden superar este límite.
 
-## Directory Layout
+## Estructura de Directorios
 
 ```
 infrastructure/
-├── modules/                  # Reusable Terraform modules
-│   ├── dynamodb/             # DynamoDB tables + GSIs
-│   ├── lambda/               # Lambda function + IAM role
-│   ├── api-gateway/          # HTTP API + routes + integrations + authorizer
-│   ├── cognito/              # User Pool + App Client + Groups
-│   ├── sns/                  # SNS topics + subscriptions
-│   └── s3-cloudfront/        # S3 bucket + CloudFront distribution
+├── modules/                  # Módulos Terraform reutilizables
+│   ├── dynamodb/             # Tablas DynamoDB + GSIs
+│   ├── lambda/               # Función Lambda + rol IAM
+│   ├── api-gateway/          # HTTP API + rutas + integraciones + autorizador
+│   ├── cognito/              # User Pool + App Client + Grupos
+│   ├── sns/                  # Tópicos SNS + suscripciones
+│   └── s3-cloudfront/        # Bucket S3 + distribución CloudFront
 ├── envs/
-│   └── dev/                  # Dev environment overlay
-│       ├── main.tf
-│       ├── variables.tf
-│       ├── outputs.tf
-│       └── terraform.tfvars
+│   ├── dev/                  # Overlay del ambiente de desarrollo
+│   └── prd/                  # Overlay del ambiente de producción
 └── README.md
 ```
 
-## Module Overview
+## Resumen de Módulos
 
-| Module         | Resources Created                                       |
-|----------------|---------------------------------------------------------|
-| `dynamodb`     | DynamoDB table with GSIs, TTL, point-in-time recovery   |
-| `lambda`       | Lambda function, IAM role, CloudWatch log group         |
-| `api-gateway`  | HTTP API, JWT authorizer (Cognito), routes, stages      |
-| `cognito`      | User Pool, App Client, Groups (Admin/Manager/Member)    |
-| `sns`          | Promotions topic, optional email subscriptions          |
-| `s3-cloudfront`| S3 bucket (frontend SPA + assets), CloudFront distro    |
+| Módulo | Recursos Creados |
+|--------|-----------------|
+| `dynamodb` | Tabla DynamoDB con GSIs, TTL, recuperación point-in-time |
+| `lambda` | Función Lambda, rol IAM, grupo de logs CloudWatch |
+| `api-gateway` | HTTP API, autorizador JWT (Cognito), rutas, stages |
+| `cognito` | User Pool, App Client, Grupos (Admin/Manager/Member) |
+| `sns` | Tópico de promociones, suscripciones de email opcionales |
+| `s3-cloudfront` | Bucket S3 (SPA + assets), distribución CloudFront |
 
-## Usage
+## Uso
 
 ```bash
 cd infrastructure/envs/dev
@@ -57,19 +53,19 @@ terraform plan -var-file="terraform.tfvars"
 terraform apply -var-file="terraform.tfvars"
 ```
 
-## Naming Conventions
+## Convenciones de Nombres
 
-| Resource       | Pattern                                          |
-|----------------|--------------------------------------------------|
-| Lambda         | `activa-club-<service>-<env>`                    |
-| DynamoDB table | `<PascalCase>Table-<env>`                        |
-| IAM role       | `activa-club-<service>-role-<env>`               |
-| SNS topic      | `activa-club-<topic>-<env>`                      |
-| S3 bucket      | `activa-club-<purpose>-<account_id>-<env>`       |
+| Recurso | Patrón |
+|---------|--------|
+| Lambda | `activa-club-<service>-<env>` |
+| Tabla DynamoDB | `<PascalCase>Table-<env>` |
+| Rol IAM | `activa-club-<service>-role-<env>` |
+| Tópico SNS | `activa-club-<topic>-<env>` |
+| Bucket S3 | `activa-club-<purpose>-<account_id>-<env>` |
 
-## State Backend (recommended for team)
+## Backend de Estado Remoto
 
-Configure remote state in each env's `main.tf`:
+Configurar estado remoto en el `main.tf` de cada ambiente:
 ```hcl
 terraform {
   backend "s3" {
@@ -80,12 +76,12 @@ terraform {
   }
 }
 ```
-This S3 bucket is NOT provisioned by this repo. Create it manually once before first apply.
+Este bucket S3 NO es provisionado por este repositorio. Crearlo manualmente una sola vez antes del primer apply.
 
-## Least-Privilege IAM
+## IAM de Mínimo Privilegio
 
-Each Lambda has its own IAM role granting only:
-- `dynamodb:GetItem`, `PutItem`, `UpdateItem`, `DeleteItem`, `Query`, `Scan` on its own table(s)
-- `ssm:GetParameter` for secrets retrieval
+Cada Lambda tiene su propio rol IAM que otorga únicamente:
+- `dynamodb:GetItem`, `PutItem`, `UpdateItem`, `DeleteItem`, `Query`, `Scan` sobre sus propias tablas
+- `ssm:GetParameter` para obtener secretos
 - `logs:CreateLogGroup`, `logs:CreateLogStream`, `logs:PutLogEvents`
-- Service-specific: `sns:Publish` for promotions Lambda, `s3:PutObject` for admin Lambda
+- Específico por servicio: `sns:Publish` para Lambda de promotions, `s3:PutObject` para Lambda de admin

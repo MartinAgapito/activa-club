@@ -1,33 +1,32 @@
-# Terraform Module: sns
+# Módulo Terraform: sns
 
-Creates Amazon SNS topics and optional subscriptions for ActivaClub notifications.
+Crea tópicos Amazon SNS y suscripciones opcionales para las notificaciones de ActivaClub.
 
-## Inputs
+## Entradas
 
-| Variable              | Type         | Description                                       |
-|-----------------------|--------------|---------------------------------------------------|
-| `topic_name`          | string       | SNS topic name                                    |
-| `display_name`        | string       | Display name shown in email notifications         |
-| `email_subscriptions` | list(string) | Email addresses to subscribe (dev/testing only)   |
-| `tags`                | map(string)  | AWS resource tags                                 |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `topic_name` | string | Nombre del tópico SNS |
+| `display_name` | string | Nombre visible en notificaciones por email |
+| `email_subscriptions` | list(string) | Emails a suscribir (solo para dev/testing) |
+| `tags` | map(string) | Tags de recursos AWS |
 
-## Outputs
+## Salidas
 
-| Output      | Description         |
-|-------------|---------------------|
-| `topic_arn` | SNS topic ARN       |
+| Salida | Descripción |
+|--------|-------------|
+| `topic_arn` | ARN del tópico SNS |
 
-## Topics Created
+## Tópicos Creados
 
-| Topic Name                       | Purpose                                       |
-|----------------------------------|-----------------------------------------------|
-| `activa-club-promotions-<env>`   | Promotions broadcast to all members           |
-| `activa-club-notifications-<env>`| General membership / payment notifications   |
+| Nombre del Tópico | Propósito |
+|-------------------|-----------|
+| `activa-club-promotions-<env>` | Difusión de promociones a todos los socios |
+| `activa-club-notifications-<env>` | Notificaciones generales de membresía y pagos |
 
-## Filter Policies
+## Políticas de Filtro
 
-Promotion subscribers can use SNS message attribute filter policies
-to receive only promotions targeting their membership tier:
+Los suscriptores de promociones pueden usar políticas de filtro sobre atributos del mensaje SNS para recibir solo las promociones que apuntan a su plan de membresía:
 
 ```json
 {
@@ -35,7 +34,7 @@ to receive only promotions targeting their membership tier:
 }
 ```
 
-## Cost Note
+## Nota de Costos
 
-SNS is free for the first 1 million publishes per month and free for SQS/Lambda delivery.
-Email delivery costs $2 per 100,000 notifications. For thesis scale this is negligible.
+SNS es gratuito para el primer millón de publicaciones por mes y gratuito para entrega a SQS/Lambda.
+La entrega por email cuesta USD 2 por cada 100.000 notificaciones. Para el alcance de la tesis, es despreciable.

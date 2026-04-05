@@ -1,36 +1,36 @@
-# Terraform Module: lambda
+# Módulo Terraform: lambda
 
-Creates an AWS Lambda function with its execution role, CloudWatch log group, and optionally an SSM parameter policy.
+Crea una función AWS Lambda con su rol de ejecución, grupo de logs CloudWatch y, opcionalmente, una política para SSM Parameter Store.
 
-## Inputs
+## Entradas
 
-| Variable              | Type         | Description                                       |
-|-----------------------|--------------|---------------------------------------------------|
-| `function_name`       | string       | Lambda function name                              |
-| `handler`             | string       | Handler path (e.g., `dist/handler.handler`)       |
-| `runtime`             | string       | Lambda runtime (default: `nodejs20.x`)            |
-| `s3_bucket`           | string       | S3 bucket containing the deployment package       |
-| `s3_key`              | string       | S3 object key for the zip package                 |
-| `memory_size`         | number       | MB of memory (default: 256)                       |
-| `timeout`             | number       | Seconds (default: 30)                             |
-| `environment_variables` | map(string) | Lambda environment variables                     |
-| `dynamodb_table_arns` | list(string) | Tables this Lambda needs read/write access to     |
-| `sns_topic_arns`      | list(string) | SNS topics this Lambda can publish to (optional)  |
-| `ssm_parameter_paths` | list(string) | SSM paths this Lambda can read (optional)         |
-| `tags`                | map(string)  | AWS resource tags                                 |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `function_name` | string | Nombre de la función Lambda |
+| `handler` | string | Ruta del handler (ej. `dist/handler.handler`) |
+| `runtime` | string | Runtime de Lambda (default: `nodejs20.x`) |
+| `s3_bucket` | string | Bucket S3 que contiene el paquete de despliegue |
+| `s3_key` | string | Clave del objeto S3 del paquete zip |
+| `memory_size` | number | MB de memoria (default: 256) |
+| `timeout` | number | Segundos (default: 30) |
+| `environment_variables` | map(string) | Variables de entorno de la Lambda |
+| `dynamodb_table_arns` | list(string) | Tablas sobre las que la Lambda necesita acceso lectura/escritura |
+| `sns_topic_arns` | list(string) | Tópicos SNS a los que la Lambda puede publicar (opcional) |
+| `ssm_parameter_paths` | list(string) | Rutas SSM que la Lambda puede leer (opcional) |
+| `tags` | map(string) | Tags de recursos AWS |
 
-## Outputs
+## Salidas
 
-| Output           | Description              |
-|------------------|--------------------------|
-| `function_arn`   | Lambda function ARN      |
-| `function_name`  | Lambda function name     |
-| `invoke_arn`     | ARN used by API Gateway  |
+| Salida | Descripción |
+|--------|-------------|
+| `function_arn` | ARN de la función Lambda |
+| `function_name` | Nombre de la función Lambda |
+| `invoke_arn` | ARN usado por API Gateway para invocar la Lambda |
 
-## IAM Policy Strategy
+## Estrategia IAM
 
-The module generates a least-privilege inline policy granting:
-- DynamoDB actions on specified `dynamodb_table_arns` only
-- SNS `Publish` on specified `sns_topic_arns` only
-- SSM `GetParameter` on specified `ssm_parameter_paths` only
-- CloudWatch Logs write access (auto-generated log group)
+El módulo genera una política inline de mínimo privilegio que otorga:
+- Acciones DynamoDB sobre los `dynamodb_table_arns` especificados únicamente
+- `sns:Publish` sobre los `sns_topic_arns` especificados únicamente
+- `ssm:GetParameter` sobre los `ssm_parameter_paths` especificados únicamente
+- Acceso de escritura a CloudWatch Logs (grupo de logs auto-generado)

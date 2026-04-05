@@ -1,8 +1,8 @@
-# Lib: errors
+# Librería: errors
 
-Domain error classes and HTTP exception mappers for ActivaClub.
+Clases de error de dominio y mapeadores de excepciones HTTP para ActivaClub.
 
-## Error Hierarchy
+## Jerarquía de Errores
 
 ```
 ActivaClubError (base)
@@ -19,17 +19,17 @@ ActivaClubError (base)
     └── ExternalServiceError (Stripe, SNS)
 ```
 
-## HTTP Mapping
+## Mapeo HTTP
 
-`error-filter.ts` is a NestJS `ExceptionFilter` that maps domain errors to standard HTTP status codes:
+`error-filter.ts` es un `ExceptionFilter` de NestJS que mapea los errores de dominio a códigos HTTP estándar:
 
-| Domain Error                  | HTTP Status |
-|-------------------------------|-------------|
-| `MemberNotFoundError`         | 404         |
-| `MemberAlreadyExistsError`    | 409         |
-| `ReservationConflictError`    | 409         |
-| `ReservationCapacityExceeded` | 422         |
-| `GuestLimitExceededError`     | 422         |
-| `PaymentRequiredError`        | 402         |
-| Generic `DomainError`         | 400         |
-| `InfrastructureError`         | 500         |
+| Error de Dominio | HTTP |
+|------------------|------|
+| `MemberNotFoundError` | 404 |
+| `MemberAlreadyExistsError` | 409 |
+| `ReservationConflictError` | 409 |
+| `ReservationCapacityExceeded` | 422 |
+| `GuestLimitExceededError` | 422 |
+| `PaymentRequiredError` | 402 |
+| `DomainError` genérico | 400 |
+| `InfrastructureError` | 500 |

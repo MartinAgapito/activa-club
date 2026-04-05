@@ -1,24 +1,24 @@
-# Lib: logging
+# Librería: logging
 
-Structured logging utility for ActivaClub Lambda functions.
+Utilidad de logging estructurado para las funciones Lambda de ActivaClub.
 
-## Design
+## Diseño
 
-Wraps AWS Lambda PowerTools for TypeScript (`@aws-lambda-powertools/logger`) to provide:
-- Consistent JSON log format across all services
-- Automatic injection of `service`, `env`, `requestId`, and `userId` fields
-- Log level configuration via `LOG_LEVEL` environment variable
+Envuelve AWS Lambda PowerTools para TypeScript (`@aws-lambda-powertools/logger`) para proveer:
+- Formato de log JSON consistente en todos los servicios
+- Inyección automática de campos: `service`, `env`, `requestId` y `userId`
+- Configuración del nivel de log vía variable de entorno `LOG_LEVEL`
 
-## Usage
+## Uso
 
 ```typescript
 import { createLogger } from '@activa-club/logging';
 
 const logger = createLogger('members-service');
-logger.info('Member created', { memberId: '123' });
-logger.error('DynamoDB error', { error });
+logger.info('Socio creado', { memberId: '123' });
+logger.error('Error en DynamoDB', { error });
 ```
 
-## Log Levels
+## Niveles de Log
 
-`DEBUG | INFO | WARN | ERROR` — default is `INFO` in dev and `WARN` in production.
+`DEBUG | INFO | WARN | ERROR` — por defecto `INFO` en dev y `WARN` en producción.

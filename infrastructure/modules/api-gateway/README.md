@@ -1,39 +1,37 @@
-# Terraform Module: api-gateway
+# Módulo Terraform: api-gateway
 
-Creates an Amazon API Gateway HTTP API with:
-- A JWT authorizer backed by Amazon Cognito
-- Route definitions mapping HTTP method + path to Lambda integrations
-- Stage deployment (default: `$default` for HTTP APIs)
-- CloudWatch access logging
+Crea un Amazon API Gateway HTTP API con:
+- Autorizador JWT respaldado por Amazon Cognito
+- Definición de rutas que mapean método HTTP + ruta a integraciones Lambda
+- Despliegue de stage (default: `$default` para HTTP APIs)
+- Logging de acceso en CloudWatch
 
-## Inputs
+## Entradas
 
-| Variable             | Type         | Description                                       |
-|----------------------|--------------|---------------------------------------------------|
-| `api_name`           | string       | API Gateway name                                  |
-| `cognito_issuer_url` | string       | Cognito User Pool issuer URL for JWT authorizer   |
-| `cognito_audience`   | list(string) | Cognito App Client IDs                            |
-| `routes`             | list(object) | Route definitions (method, path, lambda_invoke_arn, auth_required) |
-| `cors_origins`       | list(string) | Allowed CORS origins                              |
-| `stage_name`         | string       | Stage name (default: `dev`)                       |
-| `tags`               | map(string)  | AWS resource tags                                 |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `api_name` | string | Nombre del API Gateway |
+| `cognito_issuer_url` | string | URL del emisor del Cognito User Pool para el autorizador JWT |
+| `cognito_audience` | list(string) | IDs del App Client de Cognito |
+| `routes` | list(object) | Definiciones de ruta (method, path, lambda_invoke_arn, auth_required) |
+| `cors_origins` | list(string) | Orígenes CORS permitidos |
+| `stage_name` | string | Nombre del stage (default: `dev`) |
+| `tags` | map(string) | Tags de recursos AWS |
 
-## Outputs
+## Salidas
 
-| Output        | Description                              |
-|---------------|------------------------------------------|
-| `api_id`      | API Gateway ID                           |
-| `api_endpoint`| Base URL for the API                     |
+| Salida | Descripción |
+|--------|-------------|
+| `api_id` | ID del API Gateway |
+| `api_endpoint` | URL base del API |
 
-## Route Convention
+## Convención de Rutas
 
-All routes follow the pattern: `<METHOD> /v1/<resource>`
+Todas las rutas siguen el patrón: `<MÉTODO> /v1/<recurso>`
 
-The Stripe webhook route (`POST /v1/payments/webhook`) is configured without the JWT authorizer
-to allow Stripe to call it without a Cognito token. Stripe request signature verification
-is handled inside the Lambda.
+La ruta del webhook de Stripe (`POST /v1/payments/webhook`) se configura sin el autorizador JWT para permitir que Stripe la llame sin token Cognito. La verificación de la firma del request de Stripe se realiza dentro del Lambda.
 
-## CORS Configuration
+## Configuración CORS
 
-CORS is configured at the API Gateway level for the frontend CloudFront domain.
-In dev, `http://localhost:5173` is added to allowed origins.
+CORS se configura a nivel de API Gateway para el dominio CloudFront del frontend.
+En dev, `http://localhost:5173` se agrega a los orígenes permitidos.

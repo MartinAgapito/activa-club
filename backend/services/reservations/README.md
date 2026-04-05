@@ -1,17 +1,17 @@
-# Service: reservations
+# Servicio: reservations
 
 Lambda: `activa-club-reservations-dev`
-Table: `ReservationsTable`
+Tabla: `ReservationsTable`
 
-## Responsibility
+## Responsabilidad
 
-Manages recreational area reservations:
-- Slot availability checking (capacity + schedule)
-- Reservation creation, modification, cancellation
-- Membership tier rule enforcement
-- Monthly quota tracking per member
+Gestiona las reservas de áreas recreativas:
+- Verificación de disponibilidad de turnos (capacidad + horario)
+- Creación, modificación y cancelación de reservas
+- Aplicación de reglas según plan de membresía
+- Control de cuota mensual por socio
 
-## Clean Architecture Layout
+## Estructura Clean Architecture
 
 ```
 src/
@@ -47,39 +47,38 @@ src/
         └── reservation-response.dto.ts
 ```
 
-## API Endpoints
+## Endpoints de la API
 
-| Method | Path                          | Auth          | Description                        |
-|--------|-------------------------------|---------------|------------------------------------|
-| POST   | /v1/reservations              | Member+       | Create reservation                 |
-| GET    | /v1/reservations/:id          | Member+       | Get reservation detail             |
-| GET    | /v1/reservations              | Member+       | List own reservations              |
-| DELETE | /v1/reservations/:id          | Member+       | Cancel reservation                 |
-| GET    | /v1/reservations/area/:areaId | Admin/Manager | List reservations by area          |
-| GET    | /v1/reservations/availability | Member+       | Check slot availability for area   |
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| POST | /v1/reservations | Member+ | Crear reserva |
+| GET | /v1/reservations/:id | Member+ | Detalle de reserva |
+| GET | /v1/reservations | Member+ | Listar propias reservas |
+| DELETE | /v1/reservations/:id | Member+ | Cancelar reserva |
+| GET | /v1/reservations/area/:areaId | Admin/Manager | Reservas por área |
+| GET | /v1/reservations/availability | Member+ | Disponibilidad de turnos para un área |
 
 ## DynamoDB: ReservationsTable
 
-| Attribute       | Type   | Notes                                       |
-|-----------------|--------|---------------------------------------------|
-| `PK`            | String | `RESERVATION#<reservationId>`               |
-| `SK`            | String | `MEMBER#<memberId>`                         |
-| `reservationId` | String | ULID                                        |
-| `memberId`      | String | Reference to MembersTable                   |
-| `areaId`        | String | Reference to AreasTable                     |
-| `date`          | String | ISO 8601 date                               |
-| `startTime`     | String | HH:MM                                       |
-| `endTime`       | String | HH:MM                                       |
-| `guestCount`    | Number | Number of guests registered                 |
-| `status`        | String | Confirmed / Cancelled / Pending             |
-| `createdAt`     | String | ISO 8601                                    |
-| `updatedAt`     | String | ISO 8601                                    |
+| Atributo | Tipo | Notas |
+|----------|------|-------|
+| `PK` | String | `RESERVATION#<reservationId>` |
+| `SK` | String | `MEMBER#<memberId>` |
+| `reservationId` | String | ULID |
+| `memberId` | String | Referencia a MembersTable |
+| `areaId` | String | Referencia a AreasTable |
+| `date` | String | Fecha ISO 8601 |
+| `startTime` | String | HH:MM |
+| `endTime` | String | HH:MM |
+| `guestCount` | Number | Cantidad de invitados registrados |
+| `status` | String | Confirmed / Cancelled / Pending |
+| `createdAt` | String | ISO 8601 |
 
-GSI: `GSI_Member` - PK: `memberId`, SK: `date` (list by member, filter by date)
-GSI: `GSI_Area` - PK: `areaId`, SK: `date` (availability check by area+date)
+GSI: `GSI_Member` — PK: `memberId`, SK: `date` (listar por socio, filtrar por fecha)
+GSI: `GSI_Area` — PK: `areaId`, SK: `date` (verificar disponibilidad por área y fecha)
 
-## Business Rules
+## Reglas de Negocio
 
-- A member cannot double-book the same time slot in the same area.
-- Monthly quota is enforced by querying `GSI_Member` and counting current month reservations.
-- Cancellation must occur at least N hours before the slot start (configurable per area).
+- Un socio no puede reservar el mismo turno dos veces en la misma área.
+- La cuota mensual se verifica consultando `GSI_Member` y contando las reservas del mes actual.
+- La cancelación debe realizarse al menos N horas antes del inicio del turno (configurable por área).
