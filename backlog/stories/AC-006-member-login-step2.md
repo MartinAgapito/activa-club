@@ -39,7 +39,6 @@ endpoints protegidos de la plataforma.
 - AC-005 completado: el backend retornó HTTP 200 con `{ challengeName, session }`.
 - El frontend conserva el `session` token de Cognito (válido por 3 minutos).
 - El endpoint es público — no requiere token de autenticación.
-- El Lambda Trigger `CustomEmailSender` está configurado para enviar el OTP con la plantilla HTML profesional.
 
 ---
 
@@ -48,9 +47,9 @@ endpoints protegidos de la plataforma.
 - [x] OTP inválido (código incorrecto) → HTTP 400.
 - [x] Session token expirado (TTL: 3 minutos) → HTTP 410; el socio debe reiniciar el flujo de login desde AC-005.
 - [x] Más de 3 intentos OTP incorrectos en la misma sesión → HTTP 429; la sesión queda invalidada.
-- [x] Flujo exitoso: backend llama a `AdminRespondToAuthChallenge` → Cognito retorna `AccessToken`, `IdToken` y `RefreshToken` → HTTP 200 con los tres tokens.
+- [x] Flujo exitoso: OTP válido → HTTP 200 con los tres tokens JWT (`AccessToken`, `IdToken`, `RefreshToken`).
 - [x] Todos los errores siguen el esquema estándar `{ status, error: { code, message } }`.
-- [x] El email con el OTP usa la plantilla HTML profesional: código OTP visualmente destacado (tipografía grande, box con contraste), advertencia de expiración de 3 minutos, mensaje de seguridad ("Si no solicitaste este código, ignorá este email"), diseño responsive apto para móvil y escritorio. Implementado via Lambda Trigger `CustomEmailSender` en Cognito.
+- [x] El email con el OTP usa la plantilla HTML profesional: código OTP visualmente destacado (tipografía grande, box con contraste), advertencia de expiración de 3 minutos, mensaje de seguridad ("Si no solicitaste este código, ignorá este email"), diseño responsive apto para móvil y escritorio.
 
 ---
 
@@ -64,11 +63,11 @@ endpoints protegidos de la plataforma.
 
 ## Reglas de Negocio
 
-- **TTL del session token:** El session token emitido por Cognito en el paso 1 tiene un TTL de 3 minutos. Si expira, el flujo completo debe reiniciarse desde el paso 1 (AC-005).
-- **Invalidación por intentos:** Tras 3 intentos OTP incorrectos en la misma sesión, Cognito invalida la sesión y no puede reutilizarse.
-- **Tokens seguros:** El `AccessToken` y `RefreshToken` no deben almacenarse en `localStorage` en el frontend; se recomienda memoria o `httpOnly cookie`.
-- **Plantilla HTML obligatoria:** El email con el OTP de login debe usar la plantilla HTML profesional definida en el Lambda Trigger `CustomEmailSender`; no se acepta el email de texto plano por defecto de Cognito.
-- **Código OTP destacado:** El código de 6 dígitos debe ser visualmente prominente en el email (tipografía grande, box con fondo de contraste) para facilitar la lectura en móvil.
+- **TTL del session token:** El session token del paso 1 tiene un TTL de 3 minutos. Si expira, el flujo completo debe reiniciarse desde AC-005.
+- **Invalidación por intentos:** Tras 3 intentos OTP incorrectos en la misma sesión, la sesión queda invalidada y no puede reutilizarse.
+- **Tokens seguros:** Los tokens de acceso no deben almacenarse en `localStorage`; se requiere almacenamiento en memoria o cookie segura.
+- **Plantilla HTML obligatoria:** El email con el OTP de login debe usar la plantilla HTML profesional; no se acepta texto plano.
+- **Código OTP destacado:** El código de 6 dígitos debe ser visualmente prominente en el email para facilitar la lectura en móvil.
 
 ---
 
@@ -84,10 +83,9 @@ endpoints protegidos de la plataforma.
 
 - [x] Endpoint `POST /v1/auth/verify-otp` implementado y desplegado en dev.
 - [x] Endpoint es público (sin token) y excluido del autorizador de API Gateway.
-- [x] `AdminRespondToAuthChallenge` implementado correctamente.
+- [x] Verificación del OTP implementada correctamente; emite los tres tokens JWT en la respuesta exitosa.
 - [x] Manejo de OTP inválido (HTTP 400), session expirado (HTTP 410) y exceso de intentos (HTTP 429).
-- [x] Lambda Trigger `CustomEmailSender` implementado con la plantilla HTML profesional para el email OTP.
-- [x] Plantilla HTML validada: código OTP destacado, advertencia de expiración, mensaje de seguridad, diseño responsive.
+- [x] Email OTP usa plantilla HTML profesional validada: código destacado, advertencia de expiración, mensaje de seguridad, diseño responsive.
 - [x] Todos los errores siguen el esquema estándar de respuesta de error del API.
 - [x] Tests unitarios cubren: flujo exitoso completo, OTP inválido, session expirado y bloqueo por intentos.
 - [x] Probado manualmente en ambiente dev.
