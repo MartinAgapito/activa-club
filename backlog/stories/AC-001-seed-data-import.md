@@ -3,7 +3,7 @@
 **Epic:** EP-01 - Incorporación de Socios
 **Prioridad:** Alta
 **Story Points:** 3
-**Estado:** Implementado
+**Estado:** Done
 **Autor:** Agente Senior Product Owner
 
 ---
@@ -62,10 +62,9 @@ preservando la integridad de los registros históricos del club.
 
 ## Reglas de Negocio
 
-- **PK de DynamoDB:** El campo `DNI` se almacena como string plano sin prefijo (e.g., `"12345678"` y no `"DNI#12345678"`).
-- **Idempotencia:** La re-ejecución no debe duplicar registros. Se usa `PutItem` con sobreescritura.
+- **DNI único:** El campo `DNI` es la clave de identificación; se almacena como string plano sin prefijo.
+- **Idempotencia:** La re-ejecución no debe duplicar registros; los registros existentes son sobreescritos.
 - **Omisión con log:** Los registros inválidos no interrumpen la ejecución; se omiten y se registra una advertencia.
-- **BatchWriteItem:** Se usa `BatchWriteItem` de DynamoDB para eficiencia en datasets grandes.
 
 ---
 
