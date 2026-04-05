@@ -1,26 +1,26 @@
-# Backend - ActivaClub
+# Backend — ActivaClub
 
-NestJS serverless backend.
-Each sub-directory under `services/` is an independent Lambda function deployed via Terraform.
+Backend NestJS serverless.
+Cada subdirectorio dentro de `services/` es una función Lambda independiente desplegada vía Terraform.
 
-## Architecture: Clean Architecture per Module
+## Arquitectura: Clean Architecture por Módulo
 
-Every service follows the same internal layering:
+Todos los servicios siguen el mismo esquema interno:
 
 ```
 <service>/
 ├── src/
-│   ├── application/        # Use cases (commands, queries, handlers)
+│   ├── application/        # Casos de uso (commands, queries, handlers)
 │   │   ├── commands/
 │   │   └── queries/
-│   ├── domain/             # Entities, value objects, domain events, repository interfaces
+│   ├── domain/             # Entidades, value objects, repositorios (interfaces)
 │   │   ├── entities/
 │   │   ├── value-objects/
-│   │   └── repositories/   # Interfaces only
-│   ├── infrastructure/     # DynamoDB adapters, external clients, Lambda handler entry point
-│   │   ├── repositories/   # Concrete DynamoDB implementations
-│   │   └── handlers/       # Lambda handler (main.ts wrapping NestJS app)
-│   └── presentation/       # NestJS controllers + DTOs
+│   │   └── repositories/
+│   ├── infrastructure/     # Adaptadores DynamoDB, clientes externos, Lambda handler
+│   │   ├── repositories/
+│   │   └── handlers/
+│   └── presentation/       # Controladores NestJS + DTOs
 │       ├── controllers/
 │       └── dtos/
 ├── test/
@@ -31,92 +31,92 @@ Every service follows the same internal layering:
 └── README.md
 ```
 
-## Services
+## Servicios
 
-| Service        | Lambda name (dev)                | Domain                                 |
-|----------------|----------------------------------|----------------------------------------|
-| members        | activa-club-members-dev          | Member onboarding, DNI match, profile  |
-| reservations   | activa-club-reservations-dev     | Area booking, slots, capacity          |
-| payments       | activa-club-payments-dev         | Stripe checkout, webhooks, billing     |
-| promotions     | activa-club-promotions-dev       | Promotion CRUD, SNS broadcast          |
-| guests         | activa-club-guests-dev           | Guest registration, access codes       |
-| areas          | activa-club-areas-dev            | Areas catalog and schedule config      |
-| admin          | activa-club-admin-dev            | Admin queries, analytics, user mgmt    |
+| Servicio       | Nombre Lambda (dev)              | Dominio                                    |
+|----------------|----------------------------------|--------------------------------------------|
+| members        | activa-club-members-dev          | Incorporación de socios, auth, perfil      |
+| reservations   | activa-club-reservations-dev     | Reservas de áreas, turnos, capacidad       |
+| payments       | activa-club-payments-dev         | Checkout Stripe, webhooks, facturación     |
+| promotions     | activa-club-promotions-dev       | CRUD de promociones, difusión SNS          |
+| guests         | activa-club-guests-dev           | Registro de invitados, códigos de acceso   |
+| areas          | activa-club-areas-dev            | Catálogo de áreas y configuración de horarios |
+| admin          | activa-club-admin-dev            | Consultas admin, analíticas, gestión       |
 
-## Shared Libraries (`libs/`)
+## Librerías Compartidas (`libs/`)
 
-| Library    | Purpose                                              |
-|------------|------------------------------------------------------|
-| auth       | Cognito JWT validation, RBAC guards, decorators      |
-| dto        | Shared request/response DTOs and Zod schemas         |
-| logging    | Structured logging (AWS Lambda PowerTools pattern)   |
-| utils      | Date helpers, pagination, response builders          |
-| dynamodb   | DynamoDB DocumentClient factory, base repository     |
-| errors     | Domain error classes and HTTP exception mappers      |
+| Librería   | Propósito                                                  |
+|------------|------------------------------------------------------------|
+| auth       | Validación JWT Cognito, guards RBAC, decoradores           |
+| dto        | DTOs compartidos de request/response y schemas Zod         |
+| logging    | Logging estructurado (patrón AWS Lambda PowerTools)        |
+| utils      | Helpers de fecha, paginación, constructores de respuesta   |
+| dynamodb   | Factory de DynamoDBDocumentClient, repositorio base        |
+| errors     | Clases de error de dominio y mapeadores de excepciones HTTP|
 
-## Local Development
+## Desarrollo Local
 
-Two entry points exist depending on the use case:
+Dos puntos de entrada disponibles según el caso de uso:
 
-| Mode | Command | Port | Entry point | Module |
-|------|---------|------|-------------|--------|
-| **Members standalone** (recommended) | `nest start members --watch` | 3001 | `services/members/src/main.ts` | `MembersModule` |
-| **Combined app** | `npm run start:dev` | 3000 | `src/main.ts` | `AppModule` |
+| Modo | Comando | Puerto | Entry point | Módulo |
+|------|---------|--------|-------------|--------|
+| **Members standalone** (recomendado) | `nest start members --watch` | 3001 | `services/members/src/main.ts` | `MembersModule` |
+| **App combinada** | `npm run start:dev` | 3000 | `src/main.ts` | `AppModule` |
 
 ```bash
-# Install all dependencies (from backend/ root)
+# Instalar todas las dependencias (desde backend/)
 npm install
 
-# Run members service standalone (uses services/members/.env)
+# Ejecutar el servicio members standalone
 nest start members --watch
 # API:     http://localhost:3001/v1
 # Swagger: http://localhost:3001/api/docs
 
-# Run members service with debugger (attach VS Code to port 9229)
+# Ejecutar con debugger (conectar VS Code al puerto 9229)
 nest start members --debug --watch
 
-# Run all unit tests
+# Ejecutar todos los tests unitarios
 npm test
 
-# Run tests for a specific service
+# Tests de un servicio específico
 npm test -- --testPathPattern="services/members"
 
-# Run with coverage
+# Con cobertura
 npm run test:cov -- --testPathPattern="services/members"
 ```
 
-## Lambda Entry Point Convention
+## Convención del Lambda Handler
 
-Each service exposes a `handler` export from `src/infrastructure/handlers/lambda.handler.ts`
-using `@vendia/serverless-express`. The handler caches the bootstrapped app across warm invocations.
+Cada servicio expone un export `handler` desde `src/infrastructure/handlers/lambda.handler.ts`
+usando `@vendia/serverless-express`. El handler cachea la app NestJS bootstrapeada entre invocaciones calientes.
 
-## Implementation Status
+## Estado de Implementación
 
-| Service        | Status       | Stories        |
-|----------------|--------------|----------------|
-| members        | Implemented  | AC-001, AC-002 |
-| reservations   | Scaffolded   | —              |
-| payments       | Scaffolded   | —              |
-| promotions     | Scaffolded   | —              |
-| guests         | Scaffolded   | —              |
-| areas          | Scaffolded   | —              |
-| admin          | Scaffolded   | —              |
+| Servicio       | Estado         | Historias                                |
+|----------------|----------------|------------------------------------------|
+| members        | Implementado   | AC-001 a AC-010 (EP-01 completo)         |
+| reservations   | Scaffolded     | —                                        |
+| payments       | Scaffolded     | —                                        |
+| promotions     | Scaffolded     | —                                        |
+| guests         | Scaffolded     | —                                        |
+| areas          | Scaffolded     | —                                        |
+| admin          | Scaffolded     | —                                        |
 
-## Environment Variables
+## Variables de Entorno
 
-Each service has its own `.env` at `services/<name>/.env` for local development.
-In production, all values are injected by Terraform via Lambda environment configuration.
-Secrets (Stripe) are fetched at runtime from AWS SSM Parameter Store.
+Cada servicio tiene su propio `.env` en `services/<nombre>/.env` para desarrollo local.
+En producción, todos los valores son inyectados por Terraform vía configuración de entorno de Lambda.
+Los secretos (Stripe) se obtienen en runtime desde AWS SSM Parameter Store.
 
-| Variable                  | Used by            | Description                          |
-|---------------------------|---------------------|--------------------------------------|
-| `PORT`                    | All (local)         | Local HTTP server port               |
-| `ENV`                     | All                 | `local` / `dev` / `production`       |
-| `DYNAMODB_REGION`         | All                 | AWS region for DynamoDB              |
-| `MEMBERS_TABLE_NAME`      | members             | DynamoDB table for member profiles   |
-| `SEED_MEMBERS_TABLE_NAME` | members             | Pre-seeded DNI data (read-only)      |
-| `COGNITO_USER_POOL_ID`    | members             | Cognito User Pool ID                 |
-| `COGNITO_CLIENT_ID`       | members             | Cognito App Client ID                |
-| `STRIPE_SECRET_KEY`       | payments (SSM)      | Stripe secret key                    |
-| `STRIPE_WEBHOOK_SECRET`   | payments (SSM)      | Stripe webhook signing secret        |
-| `SNS_PROMOTIONS_TOPIC_ARN`| promotions          | SNS topic ARN for promotions         |
+| Variable | Usado por | Descripción |
+|----------|-----------|-------------|
+| `PORT` | Todos (local) | Puerto del servidor HTTP local |
+| `ENV` | Todos | `local` / `dev` / `production` |
+| `DYNAMODB_REGION` | Todos | Región AWS para DynamoDB |
+| `MEMBERS_TABLE_NAME` | members | Tabla DynamoDB de perfiles |
+| `SEED_MEMBERS_TABLE_NAME` | members | Datos pre-cargados de DNI (solo lectura) |
+| `COGNITO_USER_POOL_ID` | members | ID del Cognito User Pool |
+| `COGNITO_CLIENT_ID` | members | ID del App Client de Cognito |
+| `STRIPE_SECRET_KEY` | payments (SSM) | Clave secreta de Stripe |
+| `STRIPE_WEBHOOK_SECRET` | payments (SSM) | Secreto de firma del webhook de Stripe |
+| `SNS_PROMOTIONS_TOPIC_ARN` | promotions | ARN del tópico SNS de promociones |

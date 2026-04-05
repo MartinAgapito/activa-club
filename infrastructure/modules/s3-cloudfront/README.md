@@ -1,41 +1,40 @@
-# Terraform Module: s3-cloudfront
+# Módulo Terraform: s3-cloudfront
 
-Creates an S3 bucket for static assets and a CloudFront distribution for content delivery.
+Crea un bucket S3 para assets estáticos y una distribución CloudFront para entrega de contenido.
 
-## Cost Warning
+## Advertencia de Costos
 
-CloudFront provides 1 TB of data transfer out and 10 million HTTP requests per month free.
-S3 provides 5 GB of standard storage free. Asset uploads (images, documents) can exceed this.
-Monitor S3 storage usage in CloudWatch.
+CloudFront ofrece 1 TB de transferencia de datos de salida y 10 millones de requests HTTP por mes gratis.
+S3 ofrece 5 GB de almacenamiento estándar gratis. Las subidas de imágenes y documentos pueden superar este límite.
+Monitorear el uso de almacenamiento S3 en CloudWatch.
 
-## Inputs
+## Entradas
 
-| Variable              | Type         | Description                                           |
-|-----------------------|--------------|-------------------------------------------------------|
-| `bucket_name`         | string       | S3 bucket name (must be globally unique)              |
-| `environment`         | string       | Environment tag                                       |
-| `cloudfront_price_class` | string   | CloudFront price class (default: `PriceClass_100` for US/EU) |
-| `spa_index_document`  | string       | SPA fallback document (default: `index.html`)         |
-| `tags`                | map(string)  | AWS resource tags                                     |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `bucket_name` | string | Nombre del bucket S3 (debe ser globalmente único) |
+| `environment` | string | Tag de ambiente |
+| `cloudfront_price_class` | string | Clase de precio de CloudFront (default: `PriceClass_100` para US/EU) |
+| `spa_index_document` | string | Documento fallback de la SPA (default: `index.html`) |
+| `tags` | map(string) | Tags de recursos AWS |
 
-## Outputs
+## Salidas
 
-| Output                  | Description                              |
-|-------------------------|------------------------------------------|
-| `bucket_name`           | S3 bucket name                           |
-| `bucket_arn`            | S3 bucket ARN                            |
-| `cloudfront_domain_name`| CloudFront distribution domain           |
-| `cloudfront_distribution_id` | Used for cache invalidations       |
+| Salida | Descripción |
+|--------|-------------|
+| `bucket_name` | Nombre del bucket S3 |
+| `bucket_arn` | ARN del bucket S3 |
+| `cloudfront_domain_name` | Dominio de la distribución CloudFront |
+| `cloudfront_distribution_id` | Usado para invalidaciones de caché |
 
-## SPA Routing
+## Enrutamiento SPA
 
-CloudFront custom error responses redirect 403 and 404 errors to `/index.html` with a 200 status,
-enabling React Router client-side navigation to work correctly.
+Las respuestas de error personalizadas de CloudFront redirigen los errores 403 y 404 a `/index.html` con status 200, permitiendo que la navegación del lado del cliente de React Router funcione correctamente.
 
-## Buckets Created by This Module
+## Buckets Creados por Este Módulo
 
-| Bucket Purpose        | Content                                          |
-|-----------------------|--------------------------------------------------|
-| Frontend SPA          | Built React app (index.html, JS, CSS bundles)    |
-| Area Images           | Recreational area photos uploaded by Admin       |
-| Promotion Images      | Promotion banner images                          |
+| Propósito | Contenido |
+|-----------|-----------|
+| SPA Frontend | App React compilada (index.html, bundles JS/CSS) |
+| Imágenes de Áreas | Fotos de áreas recreativas subidas por el Admin |
+| Imágenes de Promociones | Banners de promociones |

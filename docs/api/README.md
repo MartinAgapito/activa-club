@@ -1,41 +1,41 @@
-# API Documentation
+# Documentación de la API — ActivaClub
 
-OpenAPI specifications and API reference documentation for ActivaClub.
+Especificaciones OpenAPI y documentación de referencia de la API de ActivaClub.
 
-## Approach
+## Enfoque
 
-The primary API documentation lives inline in each service's NestJS controllers
-via `@nestjs/swagger` decorators. This directory holds:
-- Exported OpenAPI JSON/YAML snapshots (generated from the running service)
-- Manual API references for non-NestJS endpoints (e.g., Stripe webhook payloads)
+La documentación primaria de la API vive inline en cada controlador NestJS del servicio
+mediante decoradores `@nestjs/swagger`. Este directorio contiene:
+- Snapshots exportados de OpenAPI JSON/YAML (generados desde el servicio en ejecución)
+- Referencias manuales para endpoints no NestJS (ej. payloads de webhooks de Stripe)
 
-## Files (to be added as services are implemented)
+## Archivos (se agregan a medida que se implementan los servicios)
 
-| File                      | Description                               |
-|---------------------------|-------------------------------------------|
-| `members.openapi.yaml`    | Members service OpenAPI spec              |
-| `reservations.openapi.yaml` | Reservations service OpenAPI spec       |
-| `payments.openapi.yaml`   | Payments service OpenAPI spec             |
-| `promotions.openapi.yaml` | Promotions service OpenAPI spec           |
-| `guests.openapi.yaml`     | Guests service OpenAPI spec               |
-| `areas.openapi.yaml`      | Areas service OpenAPI spec                |
-| `admin.openapi.yaml`      | Admin service OpenAPI spec                |
+| Archivo | Descripción |
+|---------|-------------|
+| `members.openapi.yaml` | Spec OpenAPI del servicio members |
+| `reservations.openapi.yaml` | Spec OpenAPI del servicio reservations |
+| `payments.openapi.yaml` | Spec OpenAPI del servicio payments |
+| `promotions.openapi.yaml` | Spec OpenAPI del servicio promotions |
+| `guests.openapi.yaml` | Spec OpenAPI del servicio guests |
+| `areas.openapi.yaml` | Spec OpenAPI del servicio areas |
+| `admin.openapi.yaml` | Spec OpenAPI del servicio admin |
 
-## Generating the Spec
+## Generar la Spec
 
-Each NestJS service exposes a Swagger UI at `/docs` during local development.
-To export:
+Cada servicio NestJS expone una Swagger UI en `/api/docs` durante el desarrollo local.
+Para exportar:
 ```bash
-# From the service directory
+# Desde el directorio del servicio
 npm run export:openapi
 ```
-This outputs the spec to `docs/api/<service>.openapi.yaml`.
+Esto genera la spec en `docs/api/<servicio>.openapi.yaml`.
 
-## Base URL
+## URL Base
 
-| Environment | Base URL                                              |
-|-------------|-------------------------------------------------------|
-| Dev         | `https://<api-id>.execute-api.<region>.amazonaws.com` |
-| Local       | `http://localhost:3000`                               |
+| Ambiente | URL Base |
+|----------|----------|
+| Dev | `https://<api-id>.execute-api.<region>.amazonaws.com` |
+| Local | `http://localhost:3001` |
 
-All endpoints are prefixed with `/v1`.
+Todos los endpoints tienen el prefijo `/v1`.

@@ -1,17 +1,17 @@
-# Service: guests
+# Servicio: guests
 
 Lambda: `activa-club-guests-dev`
-Table: `GuestsTable`
+Tabla: `GuestsTable`
 
-## Responsibility
+## Responsabilidad
 
-Guest registration for member reservations:
-- Register guests against a specific reservation
-- Generate unique access codes (numeric + QR-friendly string)
-- Validate guest limits based on membership tier
-- Guest access code verification (at club entry point)
+Registro de invitados para reservas de socios:
+- Registrar invitados asociados a una reserva específica
+- Generar códigos de acceso únicos (numérico + string compatible con QR)
+- Validar límites de invitados según plan de membresía
+- Verificación del código de acceso del invitado en la entrada del club
 
-## Clean Architecture Layout
+## Estructura Clean Architecture
 
 ```
 src/
@@ -29,7 +29,7 @@ src/
 │   │   └── guest.entity.ts
 │   ├── value-objects/
 │   │   ├── access-code.vo.ts
-│   │   └── guest-status.vo.ts          # Registered | CheckedIn | Cancelled
+│   │   └── guest-status.vo.ts        # Registered | CheckedIn | Cancelled
 │   └── repositories/
 │       └── guest.repository.interface.ts
 ├── infrastructure/
@@ -45,36 +45,36 @@ src/
         └── guest-response.dto.ts
 ```
 
-## API Endpoints
+## Endpoints de la API
 
-| Method | Path                                     | Auth       | Description                         |
-|--------|------------------------------------------|------------|-------------------------------------|
-| POST   | /v1/reservations/:id/guests              | Member+    | Register guest for reservation      |
-| GET    | /v1/reservations/:id/guests              | Member+    | List guests for reservation         |
-| DELETE | /v1/reservations/:id/guests/:guestId     | Member+    | Remove guest                        |
-| POST   | /v1/guests/verify                        | Admin      | Verify guest access code at entry   |
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| POST | /v1/reservations/:id/guests | Member+ | Registrar invitado para una reserva |
+| GET | /v1/reservations/:id/guests | Member+ | Listar invitados de una reserva |
+| DELETE | /v1/reservations/:id/guests/:guestId | Member+ | Eliminar invitado |
+| POST | /v1/guests/verify | Admin | Verificar código de acceso en la entrada |
 
 ## DynamoDB: GuestsTable
 
-| Attribute       | Type   | Notes                                     |
-|-----------------|--------|-------------------------------------------|
-| `PK`            | String | `GUEST#<guestId>`                         |
-| `SK`            | String | `RESERVATION#<reservationId>`             |
-| `guestId`       | String | ULID                                      |
-| `reservationId` | String | Reference to ReservationsTable            |
-| `memberId`      | String | Owning member                             |
-| `firstName`     | String |                                           |
-| `lastName`      | String |                                           |
-| `dni`           | String | Guest national ID                         |
-| `accessCode`    | String | Unique 8-char alphanumeric code           |
-| `status`        | String | Registered / CheckedIn / Cancelled        |
-| `createdAt`     | String | ISO 8601                                  |
+| Atributo | Tipo | Notas |
+|----------|------|-------|
+| `PK` | String | `GUEST#<guestId>` |
+| `SK` | String | `RESERVATION#<reservationId>` |
+| `guestId` | String | ULID |
+| `reservationId` | String | Referencia a ReservationsTable |
+| `memberId` | String | Socio propietario |
+| `firstName` | String | |
+| `lastName` | String | |
+| `dni` | String | DNI del invitado |
+| `accessCode` | String | Código alfanumérico único de 8 caracteres |
+| `status` | String | Registered / CheckedIn / Cancelled |
+| `createdAt` | String | ISO 8601 |
 
-GSI: `GSI_Reservation` - PK: `reservationId` (list guests by reservation)
-GSI: `GSI_AccessCode` - PK: `accessCode` (O(1) lookup for entry verification)
+GSI: `GSI_Reservation` — PK: `reservationId` (listar invitados por reserva)
+GSI: `GSI_AccessCode` — PK: `accessCode` (búsqueda O(1) para verificación en entrada)
 
-## Access Code Generation
+## Generación del Código de Acceso
 
-- 8-character uppercase alphanumeric (excludes ambiguous chars: 0, O, I, 1)
-- Uniqueness enforced via conditional put on `GSI_AccessCode`
-- Also encoded as QR code on the frontend for mobile scanning
+- 8 caracteres alfanuméricos en mayúsculas (excluye caracteres ambiguos: 0, O, I, 1)
+- Unicidad garantizada vía `PutItem` condicional en `GSI_AccessCode`
+- Codificado también como QR en el frontend para escaneo móvil

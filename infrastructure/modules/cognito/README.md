@@ -1,41 +1,47 @@
-# Terraform Module: cognito
+# Módulo Terraform: cognito
 
-Creates an Amazon Cognito User Pool with:
-- App Client (no secret, for SPA use with PKCE)
-- Groups: `Admin`, `Manager`, `Member`
-- Password policy and MFA configuration
-- Optional Lambda triggers (post-confirmation, pre-token-generation)
+Crea un Amazon Cognito User Pool con:
+- App Client (sin secreto, para SPA con PKCE)
+- Grupos: `Admin`, `Manager`, `Member`
+- Política de contraseñas y configuración de MFA
+- Triggers Lambda opcionales (post-confirmación, pre-generación de tokens)
+- Configuración de dispositivos para el flujo "Recordar dispositivo" (AC-010)
 
-## Inputs
+## Entradas
 
-| Variable                    | Type         | Description                                    |
-|-----------------------------|--------------|------------------------------------------------|
-| `user_pool_name`            | string       | Cognito User Pool name                         |
-| `app_client_name`           | string       | App Client name                                |
-| `allowed_callback_urls`     | list(string) | OAuth callback URLs (for hosted UI if used)    |
-| `allowed_logout_urls`       | list(string) | OAuth logout URLs                              |
-| `post_confirmation_lambda_arn` | string    | Lambda triggered after user confirms email (optional) |
-| `tags`                      | map(string)  | AWS resource tags                              |
+| Variable | Tipo | Descripción |
+|----------|------|-------------|
+| `user_pool_name` | string | Nombre del Cognito User Pool |
+| `app_client_name` | string | Nombre del App Client |
+| `allowed_callback_urls` | list(string) | URLs de callback OAuth (para hosted UI si se usa) |
+| `allowed_logout_urls` | list(string) | URLs de logout OAuth |
+| `post_confirmation_lambda_arn` | string | Lambda disparada tras confirmar email (opcional) |
+| `tags` | map(string) | Tags de recursos AWS |
 
-## Outputs
+## Salidas
 
-| Output              | Description                              |
-|---------------------|------------------------------------------|
-| `user_pool_id`      | Cognito User Pool ID                     |
-| `user_pool_arn`     | Cognito User Pool ARN                    |
-| `client_id`         | App Client ID                            |
-| `issuer_url`        | JWT issuer URL for API Gateway authorizer|
+| Salida | Descripción |
+|--------|-------------|
+| `user_pool_id` | ID del Cognito User Pool |
+| `user_pool_arn` | ARN del Cognito User Pool |
+| `client_id` | ID del App Client |
+| `issuer_url` | URL del emisor JWT para el autorizador de API Gateway |
 
-## Groups
+## Grupos
 
-| Group Name | Description                                    |
-|------------|------------------------------------------------|
-| `Admin`    | Full platform access                           |
-| `Manager`  | Promotions management, reports                 |
-| `Member`   | Standard member self-service                   |
+| Nombre del Grupo | Descripción |
+|-----------------|-------------|
+| `Admin` | Acceso completo a la plataforma |
+| `Manager` | Gestión de promociones, reportes |
+| `Member` | Autoservicio estándar del socio |
 
-## Token Claims
+## Configuración de Dispositivos (AC-010)
 
-The `pre-token-generation` Lambda trigger (if configured) can add custom claims
-such as `memberId` and `membershipTier` to the Cognito ID token, eliminating
-the need for an extra DynamoDB lookup in protected endpoints.
+```hcl
+device_configuration {
+  challenge_required_on_new_device      = true
+  device_only_remembered_on_user_prompt = true
+}
+```
+
+El dispositivo solo se registra como confiable cuando el backend llama explícitamente a `ConfirmDevice` (nunca de forma automática).
