@@ -1,24 +1,23 @@
-# Environment: dev
+# Ambiente: dev
 
-Terraform overlay for the `dev` environment. Targets a separate AWS account
-from production so that experiments never risk production data.
+Overlay Terraform para el ambiente `dev`. Apunta a una cuenta AWS separada de producción para que los experimentos nunca pongan en riesgo los datos de producción.
 
-## Files
+## Archivos
 
-| File                        | Purpose                                                        |
-|-----------------------------|----------------------------------------------------------------|
-| `main.tf`                   | Module instantiations wired to dev-specific vars               |
-| `variables.tf`              | Variable declarations                                          |
-| `outputs.tf`                | Outputs (table names/ARNs, Cognito IDs)                        |
-| `terraform.tfvars.example`  | Template for local variable values — copy to terraform.tfvars  |
+| Archivo | Propósito |
+|---------|-----------|
+| `main.tf` | Instanciación de módulos con variables específicas de dev |
+| `variables.tf` | Declaración de variables |
+| `outputs.tf` | Outputs (nombres/ARNs de tablas, IDs de Cognito) |
+| `terraform.tfvars.example` | Plantilla de valores — copiar a terraform.tfvars |
 
-## Prerequisites
+## Requisitos Previos
 
-The remote backend bucket and lock table do not exist yet in the DEV account.
-Create them once with the AWS CLI before running `terraform init`:
+El bucket de backend remoto y la tabla de lock no existen aún en la cuenta DEV.
+Crearlos una sola vez con la AWS CLI antes de ejecutar `terraform init`:
 
 ```bash
-# 1. Create the S3 state bucket (versioning + encryption)
+# 1. Crear el bucket S3 de estado (con versionado y cifrado)
 aws s3api create-bucket \
   --bucket ac-tfstate-dev \
   --region us-east-1
@@ -37,7 +36,7 @@ aws s3api put-public-access-block \
   --public-access-block-configuration \
     "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
 
-# 2. Create the DynamoDB lock table
+# 2. Crear la tabla DynamoDB de lock
 aws dynamodb create-table \
   --table-name ac-tflock-dev \
   --attribute-definitions AttributeName=LockID,AttributeType=S \
@@ -46,43 +45,40 @@ aws dynamodb create-table \
   --region us-east-1
 ```
 
-## First-Time Setup
+## Configuración Inicial
 
 ```bash
-# 1. Copy the example vars file and fill in your DEV account ID
+# 1. Copiar el archivo de variables de ejemplo y completar el account ID de DEV
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars — set dev_account_id to your DEV AWS account
 
-# 2. Ensure your local session can assume the DEV role
-#    (e.g. export AWS_PROFILE=<profile-that-can-assume-the-dev-role>)
+# 2. Asegurarse de que la sesión local pueda asumir el rol DEV
+#    (ej. export AWS_PROFILE=<profile-que-puede-asumir-el-rol-dev>)
 
-# 3. Initialize Terraform
+# 3. Inicializar Terraform
 terraform init
 
-# 4. Review plan
+# 4. Revisar el plan
 terraform plan -var-file="terraform.tfvars"
 
-# 5. Apply
+# 5. Aplicar
 terraform apply -var-file="terraform.tfvars"
 ```
 
-## IAM Role Required in DEV Account
+## Rol IAM Requerido en la Cuenta DEV
 
-The provider assumes `arn:aws:iam::<dev_account_id>:role/activa-club-terraform-dev-role`.
-That role must exist in the DEV account and must trust the identity running Terraform
-(e.g. your IAM user or SSO session ARN from the PRD account).
+El provider asume `arn:aws:iam::<dev_account_id>:role/activa-club-terraform-dev-role`.
+Ese rol debe existir en la cuenta DEV y debe confiar en la identidad que ejecuta Terraform.
 
-Minimum permissions needed on the role:
-- `dynamodb:*` (scoped to table ARNs in the DEV account)
-- `cognito-idp:*` (scoped to the DEV user pool)
-- `s3:*` on `ac-tfstate-dev`
-- `dynamodb:*` on `ac-tflock-dev`
+Permisos mínimos necesarios en el rol:
+- `dynamodb:*` (acotado a ARNs de tablas en la cuenta DEV)
+- `cognito-idp:*` (acotado al User Pool DEV)
+- `s3:*` en `ac-tfstate-dev`
+- `dynamodb:*` en `ac-tflock-dev`
 
-## Secrets
+## Secretos
 
-Do NOT store secrets in `terraform.tfvars`.
-API keys and other secrets are stored in AWS SSM Parameter Store and retrieved at Lambda runtime.
-To seed SSM parameters:
+NO almacenar secretos en `terraform.tfvars`.
+Las claves de API y otros secretos se guardan en AWS SSM Parameter Store y se obtienen en runtime desde el Lambda.
 
 ```bash
 aws ssm put-parameter \

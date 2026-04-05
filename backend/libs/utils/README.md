@@ -1,18 +1,18 @@
-# Lib: utils
+# Librería: utils
 
-General-purpose utility functions shared across all ActivaClub services.
+Funciones utilitarias de uso general compartidas por todos los servicios de ActivaClub.
 
-## Contents
+## Contenido
 
-- `date.utils.ts` - Date formatting, timezone normalization (America/Argentina/Buenos_Aires), slot generation
-- `pagination.utils.ts` - DynamoDB `LastEvaluatedKey` to cursor encoding/decoding
-- `response.utils.ts` - HTTP response builder matching the standard envelope format
-- `id.utils.ts` - ULID-based ID generation for DynamoDB items
-- `access-code.utils.ts` - Unique guest access code generator (numeric + QR-friendly string)
+- `date.utils.ts` — Formateo de fechas, normalización de zona horaria (America/Argentina/Buenos_Aires), generación de turnos
+- `pagination.utils.ts` — Codificación/decodificación de `LastEvaluatedKey` de DynamoDB a cursor
+- `response.utils.ts` — Constructor de respuestas HTTP en el formato de envelope estándar
+- `id.utils.ts` — Generación de IDs basados en ULID para ítems de DynamoDB
+- `access-code.utils.ts` — Generador de códigos de acceso únicos para invitados (numérico + string compatible con QR)
 
-## ID Strategy
+## Estrategia de IDs
 
-All primary keys use ULIDs (via `ulid` package) for:
-- Lexicographic sort order (time-prefixed)
-- URL-safe characters
-- Collision-free without coordination
+Todas las claves primarias usan ULIDs (vía paquete `ulid`) por:
+- Orden lexicográfico (prefijo temporal)
+- Caracteres seguros para URLs
+- Sin colisiones, sin coordinación central

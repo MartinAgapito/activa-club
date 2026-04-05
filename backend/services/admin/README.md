@@ -1,21 +1,21 @@
-# Service: admin
+# Servicio: admin
 
 Lambda: `activa-club-admin-dev`
 
-## Responsibility
+## Responsabilidad
 
-Admin-only aggregated views, analytics, and cross-domain management:
-- Member management (list, filter, export)
-- Reservation analytics (usage by area, peak hours)
-- Payment/revenue dashboard
-- Notification dispatch (manual SNS sends)
-- Audit log access
-- FAQ content management
+Vistas agregadas, analíticas y gestión transversal exclusivas del Admin:
+- Gestión de socios (listar, filtrar, exportar)
+- Analíticas de reservas (uso por área, horas pico)
+- Dashboard de pagos e ingresos
+- Envío manual de notificaciones SNS
+- Acceso a logs de auditoría
+- Gestión de contenido FAQ
 
-This service performs **read aggregations** across all other DynamoDB tables.
-It does NOT own any primary table but has read access to all tables.
+Este servicio realiza **agregaciones de lectura** sobre todas las tablas DynamoDB.
+No posee ninguna tabla primaria propia, pero tiene permisos de lectura sobre todas las tablas.
 
-## Clean Architecture Layout
+## Estructura Clean Architecture
 
 ```
 src/
@@ -46,32 +46,30 @@ src/
         └── notification-dispatch.dto.ts
 ```
 
-## API Endpoints
+## Endpoints de la API
 
-| Method | Path                               | Auth  | Description                          |
-|--------|------------------------------------|-------|--------------------------------------|
-| GET    | /v1/admin/members                  | Admin | List/filter all members              |
-| GET    | /v1/admin/analytics/reservations   | Admin | Reservation stats (area, date range) |
-| GET    | /v1/admin/analytics/revenue        | Admin | Revenue totals by period             |
-| GET    | /v1/admin/analytics/members        | Admin | Member growth and tier breakdown     |
-| POST   | /v1/admin/notifications            | Admin | Manual SNS notification dispatch     |
-| GET    | /v1/admin/audit-logs               | Admin | Paginated audit log entries          |
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | /v1/admin/members | Admin | Listar/filtrar todos los socios |
+| GET | /v1/admin/analytics/reservations | Admin | Estadísticas de reservas por área y período |
+| GET | /v1/admin/analytics/revenue | Admin | Totales de ingresos por período |
+| GET | /v1/admin/analytics/members | Admin | Crecimiento de socios y distribución por plan |
+| POST | /v1/admin/notifications | Admin | Envío manual de notificación SNS |
+| GET | /v1/admin/audit-logs | Admin | Entradas de log de auditoría paginadas |
 
-## DynamoDB Access
+## Acceso DynamoDB
 
-This Lambda has IAM read permissions on:
+Este Lambda tiene permisos IAM de lectura sobre:
 - `MembersTable`
 - `ReservationsTable`
 - `PaymentsTable`
 - `GuestsTable`
 - `PromotionsTable`
 - `AreasTable`
-- `AuditLogsTable` (if enabled)
 
-## Analytics Strategy
+## Estrategia de Analíticas
 
-For thesis scope: analytics are computed on-the-fly via DynamoDB scans + GSI queries.
-Future enhancement: integrate Amazon Athena or DynamoDB Streams -> S3 for pre-aggregated reports.
+Para el alcance de la tesis: las analíticas se computan en tiempo real vía scans de DynamoDB + queries en GSIs.
+Mejora futura: integrar Amazon Athena o DynamoDB Streams → S3 para reportes pre-agregados.
 
-Note: DynamoDB Scan operations on large tables can consume significant read capacity units.
-Monitor with CloudWatch and switch to GSI-based queries as data grows.
+Nota: Los `Scan` sobre tablas grandes consumen unidades de lectura significativas. Monitorear con CloudWatch y migrar a queries por GSI a medida que crecen los datos.
