@@ -70,3 +70,9 @@ Link to: docs/design/AC-XXX-design.md
 | AC-008 | Logout del socio — cierre de sesión con revocación de tokens               | EP-01 | Alta      | 3      | Done    |
 | AC-009 | Redirección post-login según rol                                           | EP-01 | Alta      | 2      | Done    |
 | AC-010 | Recordar dispositivo en login — omisión de OTP en dispositivos confiables  | EP-01 | Media     | 5      | Done    |
+| AC-011 | Consulta de disponibilidad de áreas                                        | EP-02 | Alta      | 3      | Backlog |
+| AC-012 | Creación de reserva por el socio                                           | EP-02 | Alta      | 8      | Backlog |
+| AC-013 | Cancelación de reserva por el socio                                        | EP-02 | Alta      | 3      | Backlog |
+| AC-014 | Vista de reservas del socio                                                | EP-02 | Alta      | 3      | Backlog |
+| AC-015 | Gestión de reservas por el Manager                                         | EP-02 | Alta      | 5      | Backlog |
+| AC-016 | Expiración automática de reservas y liberación de cupos                    | EP-02 | Alta      | 3      | Backlog |
