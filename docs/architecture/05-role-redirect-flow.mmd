@@ -1,0 +1,49 @@
+%% ActivaClub - Post-Login Role Redirect + Route Guards (AC-009)
+%% Diagram 5 of 8
+%% Last updated: 2026-04-05
+
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Zustand as Zustand Store
+
+    Note over User,Zustand: After successful OTP verification (verify-otp returns 200)
+
+    Frontend->>Zustand: Read IdToken
+    Frontend->>Frontend: Decode IdToken payload (Base64url)
+    Frontend->>Frontend: Extract cognito:groups claim
+
+    alt cognito:groups contains "Admin"
+        Frontend->>Zustand: Set role = "Admin"
+        Frontend->>Frontend: Redirect to /admin/dashboard
+    else cognito:groups contains "Manager"
+        Frontend->>Zustand: Set role = "Manager"
+        Frontend->>Frontend: Redirect to /admin/dashboard
+    else cognito:groups contains "Member" or claim absent
+        Frontend->>Zustand: Set role = "Member"
+        Frontend->>Frontend: Redirect to /member/dashboard
+    else Decode error or unexpected value
+        Frontend->>Zustand: Set role = "Member" (safe fallback)
+        Frontend->>Frontend: Redirect to /member/dashboard
+        Note over Frontend: Warning logged to console
+    end
+
+    Note over User,Zustand: Route guard on every protected route (PrivateRoute)
+
+    User->>Frontend: Navigate to /admin/dashboard
+    Frontend->>Zustand: Read role
+    alt role is "Admin" or "Manager"
+        Frontend->>Frontend: Render /admin/dashboard
+    else role is "Member"
+        Frontend->>Frontend: Redirect to /member/dashboard
+    else Not authenticated
+        Frontend->>Frontend: Redirect to /login
+    end
+
+    User->>Frontend: Navigate to /member/dashboard
+    Frontend->>Zustand: Read role
+    alt role is "Member"
+        Frontend->>Frontend: Render /member/dashboard
+    else Not authenticated
+        Frontend->>Frontend: Redirect to /login
+    end
