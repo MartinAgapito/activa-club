@@ -1,0 +1,63 @@
+%% ActivaClub - Registration + Email Verification Flow (AC-001 / AC-002 / AC-003 / AC-004)
+%% Diagram 2 of 8
+%% Last updated: 2026-04-05
+
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant MembersLambda
+    participant SeedDB as DynamoDB (SeedMembersTable)
+    participant MembersDB as DynamoDB (MembersTable)
+    participant Cognito
+    participant CES as CustomEmailSender Lambda
+    participant KMS as AWS KMS
+    participant SES as Amazon SES
+
+    Note over User,Cognito: STEP 1 — Registration (POST /v1/auth/register)
+
+    User->>Frontend: Fill DNI, email, password on /register
+    Frontend->>MembersLambda: POST /v1/auth/register { dni, email, password }
+    MembersLambda->>SeedDB: GetItem { pk: "DNI#<dni>" }
+    alt DNI not found
+        MembersLambda-->>Frontend: 404 DNI_NOT_FOUND
+    end
+    alt account_status == inactive
+        MembersLambda-->>Frontend: 403 ACCOUNT_INACTIVE
+    end
+    MembersLambda->>MembersDB: Query GSI_DNI + GSI_Email (duplicate check)
+    alt Already registered
+        MembersLambda-->>Frontend: 409 DNI_ALREADY_REGISTERED / EMAIL_ALREADY_IN_USE
+    end
+    MembersLambda->>Cognito: SignUp { email, password, custom:dni }
+    Cognito->>CES: Trigger CustomEmailSender { code (KMS-encrypted), email }
+    CES->>KMS: Decrypt code
+    KMS-->>CES: Plaintext 6-digit OTP
+    CES->>SES: SendEmail { to: email, body: OTP code }
+    SES->>User: Email with 6-digit OTP (TTL 24h)
+    MembersLambda-->>Frontend: 202 — Code sent to email
+
+    Note over User,Cognito: STEP 2 — Email Verification (POST /v1/auth/verify-email)
+
+    User->>Frontend: Enter 6-digit OTP on /verify-email
+    Frontend->>MembersLambda: POST /v1/auth/verify-email { email, code }
+    MembersLambda->>Cognito: ConfirmSignUp { email, code }
+    alt Code invalid / expired
+        MembersLambda-->>Frontend: 400 INVALID_CODE / 410 CODE_EXPIRED
+    end
+    Cognito-->>MembersLambda: User status CONFIRMED
+    MembersLambda->>Cognito: AdminGetUser (read custom:dni + sub)
+    MembersLambda->>SeedDB: GetItem (get membership_type)
+    MembersLambda->>Cognito: AdminAddUserToGroup { GroupName: "Member" }
+    MembersLambda->>MembersDB: PutItem { MEMBER#<ulid>, PROFILE, all fields }
+    MembersLambda-->>Frontend: 201 — Account activated
+    Frontend->>Frontend: Redirect to /login
+
+    Note over User,Cognito: OPTIONAL — Resend Code (POST /v1/auth/resend-code)
+
+    User->>Frontend: Click "Reenviar código" on /verify-email
+    Frontend->>MembersLambda: POST /v1/auth/resend-code { email }
+    MembersLambda->>Cognito: ResendConfirmationCode { email }
+    Cognito->>CES: Trigger CustomEmailSender (new OTP)
+    CES->>SES: SendEmail (new code)
+    SES->>User: New 6-digit OTP email
+    MembersLambda-->>Frontend: 200 — Code resent

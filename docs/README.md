@@ -1,25 +1,35 @@
-# Docs - ActivaClub
+# Documentación — ActivaClub
 
-Technical documentation for the ActivaClub platform.
+Documentación técnica de la plataforma ActivaClub.
 
-## Structure
+## Estructura
 
 ```
 docs/
-├── architecture/       # System architecture diagrams and overview
-│   ├── architecture.mmd     # Mermaid diagrams (C4-style, auth flow, Stripe, SNS)
-│   └── architecture.drawio  # Draw.io diagram file
-├── design/             # Per-story technical design documents (AC-XXX-design.md)
-└── api/                # OpenAPI specifications (if maintained separately from code)
+├── architecture/       # Diagramas de arquitectura del sistema
+│   ├── architecture.mmd          # Diagrama 1: Overview general (C4-style, graph TB)
+│   ├── 02-registration-flow.mmd  # Diagrama 2: Registro + verificación de email
+│   ├── 03-login-otp-flow.mmd     # Diagrama 3: Login + OTP MFA
+│   ├── 04-logout-flow.mmd        # Diagrama 4: Logout + revocación de tokens
+│   ├── 05-role-redirect-flow.mmd # Diagrama 5: Redirección post-login por rol
+│   ├── 06-remember-device-flow.mmd # Diagrama 6: Recordar dispositivo
+│   ├── 07-payments-flow.mmd      # Diagrama 7: Pagos Stripe + webhook
+│   ├── 08-promotions-flow.mmd    # Diagrama 8: Difusión SNS de promociones
+│   └── architecture.drawio       # Versión Draw.io del diagrama 1
+├── design/             # Documentos de diseño técnico por historia (AC-XXX-design.md)
+└── api/                # Especificaciones OpenAPI (si se mantienen por separado del código)
 ```
 
-## Design Document Convention
+## Convención de Documentos de Diseño
 
-Every backlog item `AC-XXX` that involves code changes gets a corresponding design document:
-- Path: `docs/design/AC-XXX-design.md`
-- Sections: Overview, Services Impacted, API Contract, DynamoDB Changes, AuthZ Rules, Terraform Changes, Frontend Changes, Edge Cases
+Cada historia `AC-XXX` que involucra cambios de código tiene un documento de diseño correspondiente:
+- Ruta: `docs/design/AC-XXX-design.md`
+- Secciones: Overview, API Contract, DynamoDB Changes, Lambda Design, Security Considerations
 
-## Architecture Documents
+## Documentos de Arquitectura
 
-- `architecture/architecture.mmd` - Primary Mermaid source for all system diagrams
-- `architecture/architecture.drawio` - Draw.io version for presentation/export
+- `architecture/architecture.mmd` — Diagrama 1: overview del sistema (usar este para el README principal)
+- `architecture/0N-*.mmd` — Diagramas de flujo individuales por épica/historia
+- `architecture/architecture.drawio` — Versión Draw.io para presentaciones/exportación
+
+**Importante:** Cada archivo `.mmd` contiene exactamente un diagrama. Mermaid no soporta múltiples tipos de diagrama en un solo archivo.

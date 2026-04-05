@@ -1,0 +1,41 @@
+%% ActivaClub - Remember Device Flow (AC-010)
+%% Diagram 6 of 8
+%% Last updated: 2026-04-05
+
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant MembersLambda
+    participant Cognito
+
+    Note over User,Cognito: First login — user checks "Recordar este dispositivo"
+
+    User->>Frontend: Check "Recordar este dispositivo por 30 días" + enter OTP
+    Frontend->>MembersLambda: POST /v1/auth/verify-otp { email, session, otp, rememberDevice: true }
+    MembersLambda->>Cognito: AdminRespondToAuthChallenge { EMAIL_OTP, session, otp }
+    Cognito-->>MembersLambda: { AuthenticationResult: { AccessToken, IdToken, RefreshToken, DeviceKey, DeviceGroupKey } }
+    MembersLambda->>Cognito: ConfirmDevice { DeviceKey, PasswordVerifier, DeviceGroupKey }
+    Cognito-->>MembersLambda: OK (device remembered for 30 days)
+    MembersLambda-->>Frontend: 200 { accessToken, idToken, refreshToken, deviceKey }
+    Frontend->>Frontend: Store DeviceKey in localStorage
+    Frontend->>Frontend: Redirect to dashboard (role-based)
+
+    Note over User,Cognito: Subsequent login from remembered device (< 30 days)
+
+    User->>Frontend: Enter email + password on /login
+    Frontend->>MembersLambda: POST /v1/auth/login { email, password, deviceKey: "<stored>" }
+    MembersLambda->>Cognito: AdminInitiateAuth { USER_PASSWORD_AUTH, email, password, DEVICE_KEY }
+
+    alt Device recognized and valid
+        Cognito-->>MembersLambda: { ChallengeName: DEVICE_SRP_AUTH, Session }
+        MembersLambda->>Cognito: AdminRespondToAuthChallenge { DEVICE_SRP_AUTH, SRP_A }
+        Cognito-->>MembersLambda: { ChallengeName: DEVICE_PASSWORD_VERIFIER }
+        MembersLambda->>Cognito: AdminRespondToAuthChallenge { DEVICE_PASSWORD_VERIFIER, verifier }
+        Cognito-->>MembersLambda: { AuthenticationResult: tokens }
+        MembersLambda-->>Frontend: 200 { accessToken, idToken, refreshToken } (no OTP required)
+        Frontend->>Frontend: Redirect to dashboard — OTP screen skipped
+    else Device expired (> 30 days) or unknown
+        Cognito-->>MembersLambda: { ChallengeName: EMAIL_OTP, Session }
+        MembersLambda-->>Frontend: 200 { challengeName: EMAIL_OTP, session }
+        Frontend->>Frontend: Redirect to /verify-otp (normal OTP flow resumes)
+    end

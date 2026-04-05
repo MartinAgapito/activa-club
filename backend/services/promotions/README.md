@@ -1,17 +1,17 @@
-# Service: promotions
+# Servicio: promotions
 
 Lambda: `activa-club-promotions-dev`
-Table: `PromotionsTable`
+Tabla: `PromotionsTable`
 
-## Responsibility
+## Responsabilidad
 
-Manager-driven promotions and broadcast notifications:
-- Promotion CRUD (create, read, update, delete)
-- SNS publish to broadcast promotions to all subscribed members
-- Promotion scheduling and expiration
-- Member promotion feed (active promotions visible to members)
+Promociones gestionadas por Managers y difusión vía SNS:
+- CRUD de promociones (crear, leer, actualizar, eliminar)
+- Publicación en tópico SNS para difundir a todos los socios suscritos
+- Programación y vencimiento de promociones
+- Feed de promociones activas para socios
 
-## Clean Architecture Layout
+## Estructura Clean Architecture
 
 ```
 src/
@@ -28,8 +28,8 @@ src/
 │   ├── entities/
 │   │   └── promotion.entity.ts
 │   ├── value-objects/
-│   │   ├── promotion-status.vo.ts      # Draft | Active | Expired | Cancelled
-│   │   └── promotion-target.vo.ts      # All | VIP | Gold | Silver
+│   │   ├── promotion-status.vo.ts    # Draft | Active | Expired | Cancelled
+│   │   └── promotion-target.vo.ts    # All | VIP | Gold | Silver
 │   └── repositories/
 │       └── promotion.repository.interface.ts
 ├── infrastructure/
@@ -47,39 +47,38 @@ src/
         └── promotion-response.dto.ts
 ```
 
-## API Endpoints
+## Endpoints de la API
 
-| Method | Path                          | Auth          | Description                       |
-|--------|-------------------------------|---------------|-----------------------------------|
-| POST   | /v1/promotions                | Manager+      | Create promotion                  |
-| GET    | /v1/promotions                | Member+       | List active promotions            |
-| GET    | /v1/promotions/:id            | Member+       | Get promotion detail              |
-| PATCH  | /v1/promotions/:id            | Manager+      | Update promotion                  |
-| DELETE | /v1/promotions/:id            | Admin         | Delete promotion                  |
-| POST   | /v1/promotions/:id/broadcast  | Manager+      | Publish to SNS topic              |
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| POST | /v1/promotions | Manager+ | Crear promoción |
+| GET | /v1/promotions | Member+ | Listar promociones activas |
+| GET | /v1/promotions/:id | Member+ | Detalle de promoción |
+| PATCH | /v1/promotions/:id | Manager+ | Actualizar promoción |
+| DELETE | /v1/promotions/:id | Admin | Eliminar promoción |
+| POST | /v1/promotions/:id/broadcast | Manager+ | Publicar en tópico SNS |
 
 ## DynamoDB: PromotionsTable
 
-| Attribute     | Type   | Notes                                      |
-|---------------|--------|--------------------------------------------|
-| `PK`          | String | `PROMOTION#<promotionId>`                  |
-| `SK`          | String | `METADATA`                                 |
-| `promotionId` | String | ULID                                       |
-| `title`       | String |                                            |
-| `description` | String |                                            |
-| `imageUrl`    | String | S3 presigned URL or CloudFront URL         |
-| `target`      | String | All / VIP / Gold / Silver                  |
-| `status`      | String | Draft / Active / Expired / Cancelled       |
-| `startsAt`    | String | ISO 8601                                   |
-| `expiresAt`   | String | ISO 8601                                   |
-| `createdBy`   | String | Manager memberId                           |
-| `broadcastAt` | String | ISO 8601 timestamp of last SNS publish     |
-| `createdAt`   | String | ISO 8601                                   |
+| Atributo | Tipo | Notas |
+|----------|------|-------|
+| `PK` | String | `PROMOTION#<promotionId>` |
+| `SK` | String | `METADATA` |
+| `promotionId` | String | ULID |
+| `title` | String | |
+| `description` | String | |
+| `imageUrl` | String | URL de S3/CloudFront |
+| `target` | String | All / VIP / Gold / Silver |
+| `status` | String | Draft / Active / Expired / Cancelled |
+| `startsAt` | String | ISO 8601 |
+| `expiresAt` | String | ISO 8601 |
+| `createdBy` | String | memberId del Manager |
+| `broadcastAt` | String | Timestamp del último publish SNS |
 
-GSI: `GSI_Status` - PK: `status`, SK: `startsAt` (list active promotions sorted by date)
+GSI: `GSI_Status` — PK: `status`, SK: `startsAt` (listar activas ordenadas por fecha)
 
-## SNS Integration
+## Integración SNS
 
-- Topic: `activa-club-promotions-<env>`
-- Message attributes include `membershipTier` for subscriber filter policies.
-- Members subscribe to the topic on registration (email or push endpoint).
+- Tópico: `activa-club-promotions-<env>`
+- Los atributos del mensaje incluyen `membershipTier` para filtros en los suscriptores.
+- Los socios se suscriben al tópico al registrarse (endpoint de email o push).

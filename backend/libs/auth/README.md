@@ -1,16 +1,16 @@
-# Lib: auth
+# Librería: auth
 
-Shared authentication and authorization utilities for all ActivaClub Lambda services.
+Utilidades compartidas de autenticación y autorización para todos los servicios Lambda de ActivaClub.
 
-## Contents
+## Contenido
 
-- `cognito.guard.ts` - NestJS guard that validates Cognito JWT tokens from API Gateway
-- `roles.guard.ts` - RBAC guard enforcing Cognito group membership (Admin, Manager, Member)
-- `roles.decorator.ts` - `@Roles()` decorator for controller methods
-- `current-user.decorator.ts` - `@CurrentUser()` parameter decorator to extract claims from request
-- `jwt.utils.ts` - JWT verification helpers using `aws-jwt-verify`
+- `cognito.guard.ts` — Guard de NestJS que valida tokens JWT de Cognito provenientes de API Gateway
+- `roles.guard.ts` — Guard RBAC que verifica la pertenencia a grupos Cognito (Admin, Manager, Member)
+- `roles.decorator.ts` — Decorador `@Roles()` para métodos de controlador
+- `current-user.decorator.ts` — Decorador `@CurrentUser()` para extraer los claims del request
+- `jwt.utils.ts` — Helpers de verificación JWT usando `aws-jwt-verify`
 
-## Usage
+## Uso
 
 ```typescript
 import { CognitoGuard, RolesGuard, Roles, CurrentUser } from '@activa-club/auth';
@@ -21,10 +21,10 @@ import { CognitoGuard, RolesGuard, Roles, CurrentUser } from '@activa-club/auth'
 getMembers(@CurrentUser() user: CognitoUser) { ... }
 ```
 
-## Cognito Groups
+## Grupos Cognito
 
-| Group   | Description                    |
-|---------|--------------------------------|
-| Admin   | Full access to all endpoints   |
-| Manager | Promotions, reports            |
-| Member  | Self-service, reservations     |
+| Grupo   | Descripción |
+|---------|-------------|
+| Admin   | Acceso completo a todos los endpoints |
+| Manager | Promociones y reportes |
+| Member  | Autoservicio, reservas |

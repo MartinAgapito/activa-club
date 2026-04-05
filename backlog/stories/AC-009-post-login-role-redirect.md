@@ -3,7 +3,7 @@
 **Epic:** EP-01 - Incorporación de Socios
 **Prioridad:** Alta
 **Story Points:** 2
-**Estado:** Backlog
+**Estado:** Done
 **Fecha:** 2026-04-03
 **Autor:** Agente Senior Product Owner
 
@@ -43,15 +43,15 @@ El sistema tiene tres roles con interfaces y responsabilidades distintas. Rediri
 
 ## Criterios de Aceptación
 
-- [ ] Tras el OTP exitoso (`POST /v1/auth/verify-otp` responde HTTP 200), el frontend decodifica el `IdToken` y extrae el claim `cognito:groups`.
-- [ ] Si `cognito:groups` contiene `Admin` → redirigir a `/admin/dashboard`.
-- [ ] Si `cognito:groups` contiene `Manager` → redirigir a `/admin/dashboard`.
-- [ ] Si `cognito:groups` contiene `Member` (o el claim está ausente) → redirigir a `/member/dashboard`.
-- [ ] Si un usuario pertenece a múltiples grupos (ej. `Admin` y `Manager`), el rol `Admin` tiene precedencia sobre `Manager`, y `Manager` tiene precedencia sobre `Member`.
-- [ ] La ruta de destino se determina en el cliente (frontend) usando el payload del `IdToken` almacenado en Zustand; no se requiere llamada adicional al backend para resolver el rol.
-- [ ] Si el `IdToken` no puede decodificarse o el claim `cognito:groups` tiene un valor inesperado, el frontend redirige a `/member/dashboard` como fallback seguro y registra un warning en consola.
-- [ ] Las rutas protegidas implementan guardas de rol (`PrivateRoute` o similar): si un usuario intenta acceder a una ruta de un rol superior al suyo (ej. un `Member` accede a `/admin/dashboard`), es redirigido a su dashboard correspondiente.
-- [ ] La redirección es inmediata (sin pantalla intermedia de carga visible al usuario).
+- [x] Tras el OTP exitoso (`POST /v1/auth/verify-otp` responde HTTP 200), el frontend decodifica el `IdToken` y extrae el claim `cognito:groups`.
+- [x] Si `cognito:groups` contiene `Admin` → redirigir a `/admin/dashboard`.
+- [x] Si `cognito:groups` contiene `Manager` → redirigir a `/admin/dashboard`.
+- [x] Si `cognito:groups` contiene `Member` (o el claim está ausente) → redirigir a `/member/dashboard`.
+- [x] Si un usuario pertenece a múltiples grupos (ej. `Admin` y `Manager`), el rol `Admin` tiene precedencia sobre `Manager`, y `Manager` tiene precedencia sobre `Member`.
+- [x] La ruta de destino se determina en el cliente (frontend) usando el payload del `IdToken` almacenado en Zustand; no se requiere llamada adicional al backend para resolver el rol.
+- [x] Si el `IdToken` no puede decodificarse o el claim `cognito:groups` tiene un valor inesperado, el frontend redirige a `/member/dashboard` como fallback seguro y registra un warning en consola.
+- [x] Las rutas protegidas implementan guardas de rol (`PrivateRoute` o similar): si un usuario intenta acceder a una ruta de un rol superior al suyo (ej. un `Member` accede a `/admin/dashboard`), es redirigido a su dashboard correspondiente.
+- [x] La redirección es inmediata (sin pantalla intermedia de carga visible al usuario).
 
 ---
 
@@ -85,18 +85,18 @@ El sistema tiene tres roles con interfaces y responsabilidades distintas. Rediri
 
 ## Definition of Done
 
-- [ ] La función de decodificación del `IdToken` (extracción de `cognito:groups`) está implementada como utilidad reutilizable en el frontend.
-- [ ] El store de Zustand almacena el rol resuelto del usuario (ej. campo `role: "Admin" | "Manager" | "Member"`) junto con los tokens.
-- [ ] `VerifyOtpPage` redirige al dashboard correcto según el rol extraído del `IdToken` tras el login exitoso.
-- [ ] Componente `PrivateRoute` (o equivalente) implementado con validación de rol; redirige a usuarios sin permisos suficientes a su propio dashboard.
-- [ ] La guarda de ruta está aplicada en: `/admin/dashboard` (requiere Admin o Manager), `/member/dashboard` (requiere Member).
-- [ ] Caso de múltiples grupos cubierto: Admin tiene precedencia sobre Manager y Member.
-- [ ] Fallback a `/member/dashboard` implementado para claims ausentes o inesperados.
-- [ ] Tests unitarios cubren: redirect a Admin, redirect a Manager, redirect a Member, multi-grupo con Admin, fallback por claim ausente.
-- [ ] Guardas de ruta probadas manualmente: Member no puede acceder a `/admin/dashboard`.
-- [ ] Probado end-to-end en ambiente dev con usuarios de los tres roles.
-- [ ] Código revisado y aprobado.
-- [ ] Listo para despliegue.
+- [x] La función de decodificación del `IdToken` (extracción de `cognito:groups`) está implementada como utilidad reutilizable en el frontend.
+- [x] El store de Zustand almacena el rol resuelto del usuario (ej. campo `role: "Admin" | "Manager" | "Member"`) junto con los tokens.
+- [x] `VerifyOtpPage` redirige al dashboard correcto según el rol extraído del `IdToken` tras el login exitoso.
+- [x] Componente `PrivateRoute` (o equivalente) implementado con validación de rol; redirige a usuarios sin permisos suficientes a su propio dashboard.
+- [x] La guarda de ruta está aplicada en: `/admin/dashboard` (requiere Admin o Manager), `/member/dashboard` (requiere Member).
+- [x] Caso de múltiples grupos cubierto: Admin tiene precedencia sobre Manager y Member.
+- [x] Fallback a `/member/dashboard` implementado para claims ausentes o inesperados.
+- [x] Tests unitarios cubren: redirect a Admin, redirect a Manager, redirect a Member, multi-grupo con Admin, fallback por claim ausente.
+- [x] Guardas de ruta probadas manualmente: Member no puede acceder a `/admin/dashboard`.
+- [x] Probado end-to-end en ambiente dev con usuarios de los tres roles.
+- [x] Código revisado y aprobado.
+- [x] Listo para despliegue.
 
 ---
 

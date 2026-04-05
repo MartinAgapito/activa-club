@@ -3,7 +3,7 @@
 **Epic:** EP-01 - Incorporación de Socios
 **Prioridad:** Media
 **Story Points:** 5
-**Estado:** Backlog
+**Estado:** Done
 **Fecha:** 2026-04-03
 **Autor:** Agente Senior Product Owner
 
@@ -50,16 +50,16 @@ equilibrando seguridad y usabilidad.
 
 ## Criterios de Aceptación
 
-- [ ] En la pantalla `VerifyOtpPage`, el socio ve un checkbox "Recordar este dispositivo por 30 días" desmarcado por defecto.
-- [ ] Si el socio marca el checkbox y el OTP es válido, el backend llama a `ConfirmDevice` en Cognito para registrar el dispositivo como confiable, incluyendo el `DeviceKey` y el verifier de contraseña del dispositivo.
-- [ ] Si el socio no marca el checkbox, el flujo de login continúa sin registrar el dispositivo; el siguiente login desde ese dispositivo vuelve a pedir OTP.
-- [ ] En un login posterior desde un dispositivo ya registrado: el backend detecta que Cognito retorna el challenge `DEVICE_SRP_AUTH` o `DEVICE_PASSWORD_VERIFIER` en lugar de `EMAIL_OTP`, y lo responde automáticamente sin involucrar al socio.
-- [ ] Si el challenge de dispositivo es respondido correctamente, el backend retorna HTTP 200 con los tokens JWT directamente desde `POST /v1/auth/login`, sin pasar por `POST /v1/auth/verify-otp`.
-- [ ] El `DeviceKey` recibido de Cognito tras el OTP exitoso es devuelto al frontend por el endpoint `POST /v1/auth/verify-otp` y almacenado en `localStorage` (es seguro: no contiene credenciales ni tiene valor por sí solo).
-- [ ] El frontend envía el `DeviceKey` almacenado en `localStorage` como parte del body de `POST /v1/auth/login` en cada intento posterior (puede ser `null` si no existe).
-- [ ] Si el dispositivo fue registrado hace más de 30 días o fue olvidado en Cognito, Cognito retorna `EMAIL_OTP` normalmente y el flujo de doble factor se reanuda sin errores.
-- [ ] Si el `DeviceKey` enviado por el frontend no es reconocido por Cognito (dispositivo inválido o expirado), el backend responde el challenge de dispositivo fallido con gracia y continúa el flujo normal de OTP.
-- [ ] Todos los errores relacionados con el flujo de dispositivo siguen el esquema estándar `{ status, error: { code, message } }` y son mapeados a mensajes amigables en español en el frontend.
+- [x] En la pantalla `VerifyOtpPage`, el socio ve un checkbox "Recordar este dispositivo por 30 días" desmarcado por defecto.
+- [x] Si el socio marca el checkbox y el OTP es válido, el backend llama a `ConfirmDevice` en Cognito para registrar el dispositivo como confiable, incluyendo el `DeviceKey` y el verifier de contraseña del dispositivo.
+- [x] Si el socio no marca el checkbox, el flujo de login continúa sin registrar el dispositivo; el siguiente login desde ese dispositivo vuelve a pedir OTP.
+- [x] En un login posterior desde un dispositivo ya registrado: el backend detecta que Cognito retorna el challenge `DEVICE_SRP_AUTH` o `DEVICE_PASSWORD_VERIFIER` en lugar de `EMAIL_OTP`, y lo responde automáticamente sin involucrar al socio.
+- [x] Si el challenge de dispositivo es respondido correctamente, el backend retorna HTTP 200 con los tokens JWT directamente desde `POST /v1/auth/login`, sin pasar por `POST /v1/auth/verify-otp`.
+- [x] El `DeviceKey` recibido de Cognito tras el OTP exitoso es devuelto al frontend por el endpoint `POST /v1/auth/verify-otp` y almacenado en `localStorage` (es seguro: no contiene credenciales ni tiene valor por sí solo).
+- [x] El frontend envía el `DeviceKey` almacenado en `localStorage` como parte del body de `POST /v1/auth/login` en cada intento posterior (puede ser `null` si no existe).
+- [x] Si el dispositivo fue registrado hace más de 30 días o fue olvidado en Cognito, Cognito retorna `EMAIL_OTP` normalmente y el flujo de doble factor se reanuda sin errores.
+- [x] Si el `DeviceKey` enviado por el frontend no es reconocido por Cognito (dispositivo inválido o expirado), el backend responde el challenge de dispositivo fallido con gracia y continúa el flujo normal de OTP.
+- [x] Todos los errores relacionados con el flujo de dispositivo siguen el esquema estándar `{ status, error: { code, message } }` y son mapeados a mensajes amigables en español en el frontend.
 
 ---
 
@@ -97,17 +97,17 @@ equilibrando seguridad y usabilidad.
 
 ## Definition of Done
 
-- [ ] Endpoint backend implementado y desplegado en dev.
-- [ ] Reglas de negocio validadas en el backend (ConfirmDevice, respuesta de challenges de dispositivo).
-- [ ] Control de acceso por rol (RBAC) aplicado — solo socios con sesión activa pueden marcar el checkbox.
-- [ ] Pantalla `VerifyOtpPage` actualizada con checkbox "Recordar este dispositivo" y lógica de envío de `DeviceKey`.
-- [ ] Frontend almacena `DeviceKey` en `localStorage` y lo envía en cada intento de login.
-- [ ] Errores del API mapeados a mensajes amigables en español.
-- [ ] Recurso Terraform `aws_cognito_user_pool` actualizado con `device_configuration`.
-- [ ] Tests unitarios escritos y pasando (flujo con dispositivo recordado, flujo sin checkbox, dispositivo expirado/inválido).
-- [ ] Probado manualmente en ambiente dev (primer login con checkbox, segundo login sin OTP, login tras 30 días).
-- [ ] Código revisado y aprobado.
-- [ ] Listo para despliegue.
+- [x] Endpoint backend implementado y desplegado en dev.
+- [x] Reglas de negocio validadas en el backend (ConfirmDevice, respuesta de challenges de dispositivo).
+- [x] Control de acceso por rol (RBAC) aplicado — solo socios con sesión activa pueden marcar el checkbox.
+- [x] Pantalla `VerifyOtpPage` actualizada con checkbox "Recordar este dispositivo" y lógica de envío de `DeviceKey`.
+- [x] Frontend almacena `DeviceKey` en `localStorage` y lo envía en cada intento de login.
+- [x] Errores del API mapeados a mensajes amigables en español.
+- [x] Recurso Terraform `aws_cognito_user_pool` actualizado con `device_configuration`.
+- [x] Tests unitarios escritos y pasando (flujo con dispositivo recordado, flujo sin checkbox, dispositivo expirado/inválido).
+- [x] Probado manualmente en ambiente dev (primer login con checkbox, segundo login sin OTP, login tras 30 días).
+- [x] Código revisado y aprobado.
+- [x] Listo para despliegue.
 
 ---
 

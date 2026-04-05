@@ -1,41 +1,40 @@
-# Environment: production
+# Ambiente: production
 
-Terraform overlay for the `production` environment.
+Overlay Terraform para el ambiente `production`.
 
-## Files
+## Archivos
 
-| File                | Purpose                                              |
-|---------------------|------------------------------------------------------|
-| `main.tf`           | Module instantiations wired to dev-specific vars     |
-| `variables.tf`      | Variable declarations                                |
-| `outputs.tf`        | Outputs (API URL, Cognito IDs, CloudFront domain)    |
-| `terraform.tfvars`  | Non-secret variable values for dev (committed)       |
+| Archivo | Propósito |
+|---------|-----------|
+| `main.tf` | Instanciación de módulos con variables específicas de producción |
+| `variables.tf` | Declaración de variables |
+| `outputs.tf` | Outputs (URL del API, IDs de Cognito, dominio de CloudFront) |
+| `terraform.tfvars` | Valores no secretos para producción (versionado en git) |
 
-## First-Time Setup
+## Configuración Inicial
 
 ```bash
-# 1. Configure AWS credentials
+# 1. Configurar credenciales AWS
 export AWS_PROFILE=activaclub-prd
 
-# 2. Initialize Terraform
+# 2. Inicializar Terraform
 terraform init
 
-# 3. Review plan
+# 3. Revisar el plan
 terraform plan -var-file="terraform.tfvars"
 
-# 4. Apply
+# 4. Aplicar
 terraform apply -var-file="terraform.tfvars"
 ```
 
-## Secrets
+## Secretos
 
-Do NOT store secrets in `terraform.tfvars`.
-Stripe keys and other secrets are stored in AWS SSM Parameter Store and retrieved at Lambda runtime.
-To seed SSM parameters:
+NO almacenar secretos en `terraform.tfvars`.
+Las claves de Stripe y otros secretos se guardan en AWS SSM Parameter Store y se obtienen en runtime desde el Lambda.
 
 ```bash
 aws ssm put-parameter \
-  --name "/activa-club/dev/stripe-secret-key" \
-  --value "sk_test_..." \
+  --name "/activa-club/prd/stripe-secret-key" \
+  --value "sk_live_..." \
   --type SecureString
 ```

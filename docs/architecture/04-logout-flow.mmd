@@ -1,0 +1,44 @@
+%% ActivaClub - Logout Flow (AC-008)
+%% Diagram 4 of 8
+%% Last updated: 2026-04-05
+
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Zustand as Zustand Store
+    participant MembersLambda
+    participant Cognito
+
+    User->>Frontend: Click "Cerrar sesión"
+    Frontend->>MembersLambda: POST /v1/auth/logout (Authorization: Bearer AccessToken)
+
+    alt Token already expired
+        MembersLambda-->>Frontend: 401 TOKEN_EXPIRED
+        Frontend->>Zustand: clearAuth() — clear tokens and user data
+        Frontend->>Frontend: Redirect to /login
+    end
+
+    alt Network error
+        MembersLambda-->>Frontend: Network failure
+        Frontend->>Frontend: Show error message in Spanish
+        Note over Frontend: Session preserved — store NOT cleared
+    end
+
+    MembersLambda->>Cognito: AdminUserGlobalSignOut { username }
+    alt Cognito non-critical error
+        Cognito-->>MembersLambda: Error
+        MembersLambda-->>Frontend: 500 LOGOUT_FAILED
+        Frontend->>Zustand: clearAuth()
+        Frontend->>Frontend: Redirect to /login
+    end
+
+    Cognito-->>MembersLambda: OK (all active tokens invalidated)
+    MembersLambda-->>Frontend: 200 { message: "Sesión cerrada correctamente" }
+    Frontend->>Zustand: clearAuth() — clear tokens and user data
+    Frontend->>Frontend: Redirect to /login
+
+    Note over User,Cognito: Post-logout protection
+    User->>Frontend: Navigate to protected route with old token
+    Frontend->>MembersLambda: Any request with revoked AccessToken
+    MembersLambda-->>Frontend: 401 (API Gateway JWT Authorizer rejects token)
+    Frontend->>Frontend: Redirect to /login

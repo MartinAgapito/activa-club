@@ -1,29 +1,29 @@
-# Frontend - ActivaClub
+# Frontend — ActivaClub
 
-React + TypeScript SPA built with Vite.
+SPA React + TypeScript construida con Vite.
 
-## Tech Stack
+## Stack Tecnológico
 
-| Tool            | Purpose                                          |
-|-----------------|--------------------------------------------------|
-| Vite            | Build tool and dev server                        |
-| React 18        | UI library                                       |
-| TypeScript      | Static typing                                    |
-| React Router v6 | Client-side routing                              |
-| Zustand         | Global state management (auth, user session)     |
-| React Query     | Server state, caching, background refetching     |
-| Axios           | HTTP client with Cognito token interceptor       |
-| Shadcn/ui       | Accessible component primitives (Radix-based)   |
-| Tailwind CSS    | Utility-first styling                            |
-| React Hook Form | Form state and validation                        |
-| Zod             | Schema validation (shared with backend DTOs)     |
+| Herramienta     | Propósito                                               |
+|-----------------|---------------------------------------------------------|
+| Vite            | Build tool y servidor de desarrollo                     |
+| React 18        | Librería de UI                                          |
+| TypeScript      | Tipado estático                                         |
+| React Router v6 | Enrutamiento del lado del cliente                       |
+| Zustand         | Estado global (sesión de autenticación, tokens, rol)    |
+| React Query     | Estado del servidor, caché y refetching en background   |
+| Axios           | Cliente HTTP con interceptor de token Cognito           |
+| Shadcn/ui       | Primitivos de componentes accesibles (basados en Radix) |
+| Tailwind CSS    | Estilos utility-first                                   |
+| React Hook Form | Estado y validación de formularios                      |
+| Zod             | Validación de esquemas (compartido con DTOs del backend)|
 
-## Directory Layout
+## Estructura de Directorios
 
 ```
 src/
-├── api/                # Axios client + per-resource API functions
-│   ├── client.ts       # Axios instance with Cognito auth interceptor
+├── api/                # Cliente Axios + funciones de API por recurso
+│   ├── client.ts       # Instancia Axios con interceptor de auth
 │   ├── members.api.ts
 │   ├── reservations.api.ts
 │   ├── payments.api.ts
@@ -31,29 +31,31 @@ src/
 │   ├── guests.api.ts
 │   ├── areas.api.ts
 │   └── admin.api.ts
-├── assets/             # Static images, icons, fonts
-├── components/         # Reusable UI components
-│   ├── ui/             # Shadcn/ui re-exports and customizations
+├── assets/             # Imágenes estáticas, íconos, fuentes
+├── components/         # Componentes de UI reutilizables
+│   ├── ui/             # Re-exports y personalizaciones de Shadcn/ui
 │   ├── layout/         # AppShell, Sidebar, Header, Footer
-│   ├── auth/           # DNI onboarding, login forms
-│   ├── members/        # Member profile card, tier badge
-│   ├── reservations/   # Booking calendar, slot picker, reservation card
-│   ├── payments/       # Payment history table, checkout button
-│   ├── promotions/     # Promotion card, promotions list
-│   ├── guests/         # Guest registration form, access code display
-│   └── admin/          # Dashboard widgets, data tables, charts
+│   ├── auth/           # Formularios de registro y login
+│   ├── members/        # Tarjeta de perfil, badge de plan
+│   ├── reservations/   # Calendario de reservas, selector de turno
+│   ├── payments/       # Historial de pagos, botón de checkout
+│   ├── promotions/     # Tarjeta de promoción, lista de promociones
+│   ├── guests/         # Formulario de invitado, código de acceso
+│   └── admin/          # Widgets de dashboard, tablas de datos, gráficos
 ├── hooks/              # Custom React hooks
 │   ├── useAuth.ts
 │   ├── useCurrentMember.ts
 │   ├── useReservations.ts
 │   ├── usePayments.ts
 │   └── usePromotions.ts
-├── pages/              # Route-level components (one per route)
+├── pages/              # Componentes de nivel de ruta (uno por ruta)
 │   ├── auth/
-│   │   ├── OnboardingPage.tsx
-│   │   └── LoginPage.tsx
+│   │   ├── RegisterPage.tsx
+│   │   ├── VerifyEmailPage.tsx
+│   │   ├── LoginPage.tsx
+│   │   └── VerifyOtpPage.tsx
 │   ├── member/
-│   │   ├── DashboardPage.tsx
+│   │   ├── MemberDashboardPage.tsx
 │   │   ├── ReservationsPage.tsx
 │   │   ├── NewReservationPage.tsx
 │   │   ├── GuestsPage.tsx
@@ -69,74 +71,78 @@ src/
 │   └── shared/
 │       ├── NotFoundPage.tsx
 │       └── UnauthorizedPage.tsx
-├── router/             # React Router configuration
+├── router/             # Configuración de React Router
 │   ├── index.tsx
-│   ├── ProtectedRoute.tsx
+│   ├── PrivateRoute.tsx
 │   └── routes.ts
-├── store/              # Zustand stores
-│   ├── auth.store.ts   # Cognito session, tokens, user claims
-│   └── ui.store.ts     # Global UI state (sidebar, modals)
-├── types/              # TypeScript interfaces and enums
+├── store/              # Stores de Zustand
+│   ├── auth.store.ts   # Sesión Cognito, tokens, rol del usuario
+│   └── ui.store.ts     # Estado global de UI (sidebar, modales)
+├── types/              # Interfaces y enums de TypeScript
 │   ├── member.types.ts
 │   ├── reservation.types.ts
 │   ├── payment.types.ts
 │   ├── promotion.types.ts
 │   ├── guest.types.ts
 │   └── area.types.ts
-└── utils/              # Pure utility functions
+└── utils/              # Funciones utilitarias puras
     ├── date.utils.ts
     ├── format.utils.ts
-    └── qr.utils.ts     # QR code generation for guest access codes
+    └── qr.utils.ts     # Generación de código QR para acceso de invitados
 ```
 
-## Routing Structure
+## Estructura de Rutas
 
-| Path                          | Component              | Auth Required | Role        |
-|-------------------------------|------------------------|---------------|-------------|
-| `/onboarding`                 | OnboardingPage         | No            | -           |
-| `/login`                      | LoginPage              | No            | -           |
-| `/dashboard`                  | DashboardPage          | Yes           | Member+     |
-| `/reservations`               | ReservationsPage       | Yes           | Member+     |
-| `/reservations/new`           | NewReservationPage     | Yes           | Member+     |
-| `/guests`                     | GuestsPage             | Yes           | Member+     |
-| `/payments`                   | PaymentsPage           | Yes           | Member+     |
-| `/promotions`                 | PromotionsPage         | Yes           | Member+     |
-| `/admin`                      | AdminDashboardPage     | Yes           | Admin       |
-| `/admin/members`              | AdminMembersPage       | Yes           | Admin       |
-| `/admin/reservations`         | AdminReservationsPage  | Yes           | Admin       |
-| `/admin/payments`             | AdminPaymentsPage      | Yes           | Admin       |
-| `/admin/promotions`           | AdminPromotionsPage    | Yes           | Admin/Mgr   |
-| `/admin/analytics`            | AdminAnalyticsPage     | Yes           | Admin       |
+| Ruta | Componente | Auth requerida | Rol |
+|------|------------|----------------|-----|
+| `/register` | RegisterPage | No | — |
+| `/verify-email` | VerifyEmailPage | No | — |
+| `/login` | LoginPage | No | — |
+| `/verify-otp` | VerifyOtpPage | No | — |
+| `/member/dashboard` | MemberDashboardPage | Sí | Member |
+| `/member/reservations` | ReservationsPage | Sí | Member |
+| `/member/guests` | GuestsPage | Sí | Member |
+| `/member/payments` | PaymentsPage | Sí | Member |
+| `/member/promotions` | PromotionsPage | Sí | Member |
+| `/admin/dashboard` | AdminDashboardPage | Sí | Admin / Manager |
+| `/admin/members` | AdminMembersPage | Sí | Admin |
+| `/admin/reservations` | AdminReservationsPage | Sí | Admin |
+| `/admin/payments` | AdminPaymentsPage | Sí | Admin |
+| `/admin/promotions` | AdminPromotionsPage | Sí | Admin / Manager |
+| `/admin/analytics` | AdminAnalyticsPage | Sí | Admin |
 
-## State Management Philosophy
+## Filosofía de Estado
 
-- **Zustand** for client-side global state: auth tokens, user claims, UI preferences.
-- **React Query** for all server state: data fetching, mutations, optimistic updates, cache invalidation.
-- Local component state (`useState`) for ephemeral UI state (form steps, modal open/close).
+- **Zustand**: estado global del cliente — tokens de auth, rol del usuario, preferencias de UI. Tokens almacenados solo en memoria (no en localStorage) para prevenir robo por XSS.
+- **React Query**: todo el estado del servidor — fetching, mutaciones, actualizaciones optimistas, invalidación de caché.
+- **useState local**: estado efímero de UI (pasos de formulario, abrir/cerrar modales).
 
-## Authentication Flow
+## Flujo de Autenticación
 
-1. User enters DNI on `/onboarding` -> calls `POST /v1/members/onboard`
-2. On success, Cognito sign-up or sign-in is triggered via Amplify Auth
-3. Cognito returns ID token + Access token stored in Zustand `auth.store`
-4. Axios interceptor attaches `Authorization: Bearer <id_token>` to every request
-5. On token expiry, interceptor uses Amplify `Auth.currentSession()` to refresh
+1. Usuario ingresa email + contraseña en `/login` → `POST /v1/auth/login`
+2. Backend retorna `{ challengeName: "EMAIL_OTP", session }` → redirige a `/verify-otp`
+3. Usuario ingresa OTP de email → `POST /v1/auth/verify-otp`
+4. Backend retorna tokens JWT → se almacenan en Zustand (memoria)
+5. Se decodifica el `IdToken` para extraer `cognito:groups` y resolver el rol
+6. Redirección a `/member/dashboard` (Member) o `/admin/dashboard` (Admin / Manager)
+7. Todas las peticiones al backend incluyen `Authorization: Bearer <accessToken>`
 
-## Getting Started
+## Primeros Pasos
 
 ```bash
 cd frontend
 npm install
-cp .env.example .env.local   # fill in API Gateway URL + Cognito config
+cp .env   # completar con los valores reales de Cognito
 npm run dev
 ```
 
-## Environment Variables
+## Variables de Entorno
 
-| Variable                       | Description                         |
-|--------------------------------|-------------------------------------|
-| `VITE_API_BASE_URL`            | API Gateway HTTP API base URL       |
-| `VITE_COGNITO_USER_POOL_ID`    | Cognito User Pool ID                |
-| `VITE_COGNITO_CLIENT_ID`       | Cognito App Client ID               |
-| `VITE_COGNITO_REGION`          | AWS region                          |
-| `VITE_STRIPE_PUBLISHABLE_KEY`  | Stripe publishable key              |
+| Variable | Descripción |
+|----------|-------------|
+| `VITE_API_URL` | URL base del API Gateway HTTP API. Dejar vacío para que el proxy de Vite intercepte `/v1/*` en desarrollo local. |
+| `VITE_COGNITO_USER_POOL_ID` | ID del Cognito User Pool (ej. `us-east-1_XXXXXXX`) |
+| `VITE_COGNITO_CLIENT_ID` | ID del App Client de Cognito |
+| `VITE_COGNITO_DOMAIN` | Dominio del Cognito User Pool (ej. `activa-club-dev.auth.us-east-1.amazoncognito.com`) |
+
+Ver `.env` para el formato completo.

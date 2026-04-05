@@ -1,0 +1,51 @@
+%% ActivaClub - Login + OTP MFA Flow (AC-005 / AC-006)
+%% Diagram 3 of 8
+%% Last updated: 2026-04-05
+
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant MembersLambda
+    participant Cognito
+    participant CES as CustomEmailSender Lambda
+    participant KMS as AWS KMS
+    participant SES as Amazon SES
+
+    Note over User,Cognito: STEP 1 — Credential Validation (POST /v1/auth/login)
+
+    User->>Frontend: Enter email + password on /login
+    Frontend->>MembersLambda: POST /v1/auth/login { email, password, deviceKey? }
+    MembersLambda->>Cognito: AdminInitiateAuth { USER_PASSWORD_AUTH, email, password }
+    alt Invalid credentials
+        Cognito-->>MembersLambda: NotAuthorizedException / UserNotFoundException
+        MembersLambda-->>Frontend: 401 INVALID_CREDENTIALS
+    end
+    alt Account UNCONFIRMED
+        Cognito-->>MembersLambda: UserNotConfirmedException
+        MembersLambda-->>Frontend: 403 ACCOUNT_NOT_CONFIRMED
+    end
+    Cognito->>CES: Trigger CustomEmailSender { code (KMS-encrypted), email }
+    CES->>KMS: Decrypt code
+    KMS-->>CES: Plaintext 6-digit OTP
+    CES->>SES: SendEmail { to: email, body: OTP code }
+    SES->>User: EMAIL_OTP code (TTL 3 min)
+    Cognito-->>MembersLambda: { ChallengeName: EMAIL_OTP, Session }
+    MembersLambda-->>Frontend: 200 { challengeName, session }
+
+    Note over User,Cognito: STEP 2 — OTP Verification (POST /v1/auth/verify-otp)
+
+    User->>Frontend: Enter 6-digit OTP on /verify-otp
+    Frontend->>MembersLambda: POST /v1/auth/verify-otp { email, session, otp, rememberDevice? }
+    MembersLambda->>Cognito: AdminRespondToAuthChallenge { EMAIL_OTP, session, otp }
+    alt Code invalid
+        Cognito-->>MembersLambda: CodeMismatchException
+        MembersLambda-->>Frontend: 400 INVALID_OTP
+    end
+    alt Session expired (> 3 min)
+        Cognito-->>MembersLambda: ExpiredCodeException
+        MembersLambda-->>Frontend: 410 SESSION_EXPIRED
+    end
+    Cognito-->>MembersLambda: { AuthenticationResult: { AccessToken, IdToken, RefreshToken, DeviceKey } }
+    MembersLambda-->>Frontend: 200 { accessToken, idToken, refreshToken, expiresIn, deviceKey? }
+    Frontend->>Frontend: Store tokens in Zustand (memory only)
+    Frontend->>Frontend: Decode IdToken, resolve role, redirect to dashboard

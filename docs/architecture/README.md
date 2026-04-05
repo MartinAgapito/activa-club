@@ -1,37 +1,28 @@
 # Architecture Diagrams
 
 This directory contains all system architecture diagrams for ActivaClub.
+Each diagram is a standalone `.mmd` file (one diagram per file — required by Mermaid).
 
-## Files
+## Diagrams
 
-| File                  | Format   | Contents                                              |
-|-----------------------|----------|-------------------------------------------------------|
-| `architecture.mmd`    | Mermaid  | Four diagrams: system overview, auth flow, Stripe webhook flow, SNS broadcast flow |
-| `architecture.drawio` | Draw.io  | Visual diagram for presentations (see instructions below) |
+| File | Description | Stories |
+|------|-------------|---------|
+| `architecture.mmd` | System Overview — C4 container-level graph (all actors, AWS services, integrations) | All |
+| `02-registration-flow.mmd` | Registration + Email Verification sequence | AC-001, AC-002, AC-003, AC-004 |
+| `03-login-otp-flow.mmd` | Login + OTP MFA sequence | AC-005, AC-006 |
+| `04-logout-flow.mmd` | Logout + token revocation sequence | AC-008 |
+| `05-role-redirect-flow.mmd` | Post-login role redirect + route guards | AC-009 |
+| `06-remember-device-flow.mmd` | Remember device — skip OTP on trusted devices | AC-010 |
+| `07-payments-flow.mmd` | Stripe checkout + webhook sequence | EP-04 |
+| `08-promotions-flow.mmd` | SNS promotions broadcast sequence | EP-05 |
 
-## Mermaid Diagrams (architecture.mmd)
+## How to render
 
-Four diagrams are defined in sequence:
-1. **System Overview** - C4 container-level graph showing all actors, AWS services, and external integrations
-2. **Authentication Flow** - Sequence diagram for DNI onboarding + Cognito sign-up/sign-in
-3. **Stripe Payment Flow** - Sequence diagram for checkout session creation and webhook processing
-4. **SNS Promotions Broadcast** - Sequence diagram for promotion creation and fan-out to members
+- **VS Code**: Install the [Mermaid Preview](https://marketplace.visualstudio.com/items?itemName=bierner.markdown-mermaid) or [Mermaid Editor](https://marketplace.visualstudio.com/items?itemName=tomoyukim.vscode-mermaid-editor) extension. Open any `.mmd` file and press `Ctrl+Shift+P → Mermaid: Preview`.
+- **Online**: Paste any diagram into [mermaid.live](https://mermaid.live).
+- **Important**: Each `.mmd` file contains exactly one diagram. Mermaid does not support multiple diagram types in a single file.
 
-To render locally: use the [Mermaid Live Editor](https://mermaid.live) or the Mermaid extension in VS Code.
+## Draw.io Diagram
 
-## Draw.io Diagram (architecture.drawio)
-
-To create the Draw.io version:
-1. Open [draw.io](https://draw.io) (or the VS Code Draw.io extension)
-2. Create a new diagram
-3. Import the following component categories from AWS shape library:
-   - Users (Admin, Manager, Member actors)
-   - CloudFront + S3 (frontend delivery)
-   - API Gateway (HTTP API)
-   - Lambda (7 functions)
-   - DynamoDB (6 tables)
-   - Cognito (User Pool)
-   - SNS (2 topics)
-   - Stripe (external service box)
-4. Arrange following the layout in `architecture.mmd` Diagram 1
-5. Save as `architecture.drawio` in this directory
+`architecture.drawio` is the visual version of `architecture.mmd` (Diagram 1) for presentations.
+To update it: open [draw.io](https://draw.io) or the VS Code Draw.io extension and import the AWS shape library.
