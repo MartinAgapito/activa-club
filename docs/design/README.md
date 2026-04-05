@@ -4,29 +4,19 @@ Per-story technical design documents for ActivaClub.
 
 ## Naming Convention
 
-Each document is named after the backlog item it covers:
-
-```
-AC-XXX-design.md
-```
-
-Where `XXX` is the zero-padded backlog item number (e.g., `AC-001-design.md`).
-
-## Required Sections (per document)
-
-1. **Overview** - What changes, why, scope
-2. **Services Impacted** - Which Lambda functions are affected
-3. **API Contract** - HTTP method, path, request body, response body, error codes
-4. **DynamoDB Changes** - New tables, new attributes, new GSIs
-5. **AuthZ Rules** - Which Cognito groups can call which endpoints
-6. **Terraform Changes** - New or modified infrastructure resources
-7. **Frontend Changes** - New pages, components, or API client changes
-8. **Edge Cases** - Business rules, failure modes, limits, debt scenarios
+Each document is named after the backlog item it covers: `AC-XXX-design.md`
 
 ## Index
 
-| Story  | Title                              | Status   |
-|--------|------------------------------------|----------|
-| AC-001 | (first story - to be defined)      | Pending  |
-
-Add rows as stories are designed.
+| Story  | Title | Status |
+|--------|-------|--------|
+| [AC-001](AC-001-design.md) | Member Registration via DNI Matching | Implemented |
+| [AC-002](AC-002-design.md) | Member Login with OTP | Implemented |
+| [AC-003](AC-003-design.md) | Email Verification (ConfirmSignUp) | Implemented |
+| [AC-004](AC-004-design.md) | Resend Verification Code | Implemented |
+| [AC-005](AC-005-design.md) | Login Step 1 — Credential Validation | Implemented |
+| [AC-006](AC-006-design.md) | Login Step 2 — OTP Verification + JWT Emission | Implemented |
+| [AC-007](AC-007-design.md) | Frontend — Full Authentication Flow | Implemented |
+| [AC-008](AC-008-design.md) | Logout — Token Revocation | Implemented |
+| [AC-009](AC-009-design.md) | Post-Login Role Redirect | Implemented |
+| [AC-010](AC-010-design.md) | Remember Device — Skip OTP on Trusted Devices | Implemented |
