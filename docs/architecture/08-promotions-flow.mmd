@@ -1,0 +1,19 @@
+%% ActivaClub - Promotions Broadcast Flow via SNS (EP-05)
+%% Diagram 8 of 8
+%% Last updated: 2026-04-05
+
+sequenceDiagram
+    participant Manager
+    participant Frontend
+    participant PromotionsLambda
+    participant DynamoDB as DynamoDB (PromotionsTable)
+    participant SNS
+    participant Members
+
+    Manager->>Frontend: Create promotion + click "Difundir"
+    Frontend->>PromotionsLambda: POST /v1/promotions/:id/broadcast
+    PromotionsLambda->>DynamoDB: GetItem promotion
+    PromotionsLambda->>SNS: Publish { topicArn, message, attributes: { membershipTier } }
+    SNS-->>Members: Email / Push notification delivered to filtered subscribers
+    PromotionsLambda->>DynamoDB: UpdateItem promotion (broadcastAt = now)
+    PromotionsLambda-->>Frontend: 200 { broadcastAt }
