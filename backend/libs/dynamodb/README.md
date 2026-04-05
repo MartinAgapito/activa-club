@@ -1,14 +1,14 @@
-# Lib: dynamodb
+# Librería: dynamodb
 
-DynamoDB client factory and base repository abstract class for all ActivaClub services.
+Factory del cliente DynamoDB y clase base de repositorio para todos los servicios de ActivaClub.
 
-## Contents
+## Contenido
 
-- `dynamo-client.ts` - Singleton `DynamoDBDocumentClient` factory (reuses connection across warm Lambda invocations)
-- `base.repository.ts` - Abstract `BaseRepository<T>` with typed `get`, `put`, `update`, `delete`, `query`, `scan` helpers
-- `dynamo.errors.ts` - DynamoDB-specific error classes (ItemNotFoundError, ConditionalCheckFailedError)
+- `dynamo-client.ts` — Factory singleton de `DynamoDBDocumentClient` (reutiliza la conexión entre invocaciones calientes de Lambda)
+- `base.repository.ts` — Clase abstracta `BaseRepository<T>` con helpers tipados: `get`, `put`, `update`, `delete`, `query`, `scan`
+- `dynamo.errors.ts` — Clases de error específicas de DynamoDB (`ItemNotFoundError`, `ConditionalCheckFailedError`)
 
-## Usage
+## Uso
 
 ```typescript
 import { BaseRepository } from '@activa-club/dynamodb';
@@ -19,13 +19,13 @@ export class MemberDynamoRepository extends BaseRepository<MemberEntity> {
 }
 ```
 
-## Tables (environment variable names)
+## Tablas (nombres de variables de entorno)
 
-| Env Variable              | DynamoDB Table           |
-|---------------------------|--------------------------|
-| `MEMBERS_TABLE_NAME`      | `MembersTable`           |
-| `RESERVATIONS_TABLE_NAME` | `ReservationsTable`      |
-| `AREAS_TABLE_NAME`        | `AreasTable`             |
-| `GUESTS_TABLE_NAME`       | `GuestsTable`            |
-| `PAYMENTS_TABLE_NAME`     | `PaymentsTable`          |
-| `PROMOTIONS_TABLE_NAME`   | `PromotionsTable`        |
+| Variable de Entorno | Tabla DynamoDB |
+|---------------------|----------------|
+| `MEMBERS_TABLE_NAME` | `MembersTable` |
+| `RESERVATIONS_TABLE_NAME` | `ReservationsTable` |
+| `AREAS_TABLE_NAME` | `AreasTable` |
+| `GUESTS_TABLE_NAME` | `GuestsTable` |
+| `PAYMENTS_TABLE_NAME` | `PaymentsTable` |
+| `PROMOTIONS_TABLE_NAME` | `PromotionsTable` |

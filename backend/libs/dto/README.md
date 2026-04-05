@@ -1,16 +1,16 @@
-# Lib: dto
+# Librería: dto
 
-Shared Data Transfer Objects and validation schemas used across all ActivaClub services.
+Data Transfer Objects compartidos y schemas de validación usados por todos los servicios de ActivaClub.
 
-## Contents
+## Contenido
 
-- `pagination.dto.ts` - Generic `PaginatedRequest` and `PaginatedResponse<T>` types
-- `common-response.dto.ts` - Standard envelope `{ data, meta, error }`
-- `member.dto.ts` - Shared member-related DTOs imported by multiple services
-- `schemas/` - Zod schemas for runtime validation at Lambda entry points
+- `pagination.dto.ts` — Tipos genéricos `PaginatedRequest` y `PaginatedResponse<T>`
+- `common-response.dto.ts` — Envelope estándar `{ data, meta, error }`
+- `member.dto.ts` — DTOs compartidos relacionados a socios, importados por múltiples servicios
+- `schemas/` — Schemas Zod para validación en runtime en los puntos de entrada de Lambda
 
-## Conventions
+## Convenciones
 
-- All DTOs are plain TypeScript classes decorated with `class-validator` annotations.
-- Zod schemas are co-located and used for Lambda event body validation before hitting NestJS pipes.
-- Field names use `camelCase` in TypeScript and map to DynamoDB attribute names via the repository layer.
+- Todos los DTOs son clases TypeScript planas decoradas con anotaciones de `class-validator`.
+- Los schemas Zod están co-ubicados y se usan para validar el body del evento Lambda antes de que llegue a los pipes de NestJS.
+- Los nombres de campos usan `camelCase` en TypeScript y se mapean a los atributos de DynamoDB en la capa de repositorio.

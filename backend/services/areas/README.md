@@ -1,17 +1,17 @@
-# Service: areas
+# Servicio: areas
 
 Lambda: `activa-club-areas-dev`
-Table: `AreasTable`
+Tabla: `AreasTable`
 
-## Responsibility
+## Responsabilidad
 
-Recreational area catalog and schedule configuration:
-- Area definitions (name, description, capacity, amenities)
-- Schedule configuration (opening hours, blocked dates)
-- Capacity rules per membership tier
-- Area images management (S3 references)
+Catálogo de áreas recreativas y configuración de horarios:
+- Definición de áreas (nombre, descripción, capacidad, amenidades)
+- Configuración de horarios (horario de apertura, fechas bloqueadas)
+- Reglas de capacidad por plan de membresía
+- Gestión de imágenes de áreas (referencias a S3)
 
-## Clean Architecture Layout
+## Estructura Clean Architecture
 
 ```
 src/
@@ -28,8 +28,8 @@ src/
 │   ├── entities/
 │   │   └── area.entity.ts
 │   ├── value-objects/
-│   │   ├── area-status.vo.ts           # Active | Inactive | Maintenance
-│   │   ├── schedule.vo.ts              # Opening hours, slot duration
+│   │   ├── area-status.vo.ts         # Active | Inactive | Maintenance
+│   │   ├── schedule.vo.ts            # Horario de apertura, duración de turno
 │   │   └── capacity-rule.vo.ts
 │   └── repositories/
 │       └── area.repository.interface.ts
@@ -46,35 +46,34 @@ src/
         └── area-response.dto.ts
 ```
 
-## API Endpoints
+## Endpoints de la API
 
-| Method | Path                   | Auth       | Description                   |
-|--------|------------------------|------------|-------------------------------|
-| GET    | /v1/areas              | Member+    | List all active areas         |
-| GET    | /v1/areas/:id          | Member+    | Get area detail and schedule  |
-| POST   | /v1/areas              | Admin      | Create new area               |
-| PATCH  | /v1/areas/:id          | Admin      | Update area details           |
-| DELETE | /v1/areas/:id          | Admin      | Deactivate area               |
-| PUT    | /v1/areas/:id/schedule | Admin      | Set area schedule/hours       |
+| Método | Ruta | Auth | Descripción |
+|--------|------|------|-------------|
+| GET | /v1/areas | Member+ | Listar todas las áreas activas |
+| GET | /v1/areas/:id | Member+ | Detalle y horario de un área |
+| POST | /v1/areas | Admin | Crear nueva área |
+| PATCH | /v1/areas/:id | Admin | Actualizar datos del área |
+| DELETE | /v1/areas/:id | Admin | Desactivar área |
+| PUT | /v1/areas/:id/schedule | Admin | Configurar horario del área |
 
 ## DynamoDB: AreasTable
 
-| Attribute       | Type     | Notes                                      |
-|-----------------|----------|--------------------------------------------|
-| `PK`            | String   | `AREA#<areaId>`                            |
-| `SK`            | String   | `METADATA`                                 |
-| `areaId`        | String   | ULID                                       |
-| `name`          | String   |                                            |
-| `description`   | String   |                                            |
-| `capacity`      | Number   | Max concurrent users                       |
-| `slotDuration`  | Number   | Minutes per slot (e.g., 60)               |
-| `openingTime`   | String   | HH:MM                                      |
-| `closingTime`   | String   | HH:MM                                      |
-| `amenities`     | List     | String list of amenity tags                |
-| `imageUrls`     | List     | S3/CloudFront image URLs                   |
-| `status`        | String   | Active / Inactive / Maintenance            |
-| `cancelWindow`  | Number   | Hours before slot that cancellation closes |
-| `createdAt`     | String   | ISO 8601                                   |
-| `updatedAt`     | String   | ISO 8601                                   |
+| Atributo | Tipo | Notas |
+|----------|------|-------|
+| `PK` | String | `AREA#<areaId>` |
+| `SK` | String | `METADATA` |
+| `areaId` | String | ULID |
+| `name` | String | |
+| `description` | String | |
+| `capacity` | Number | Máximo de usuarios concurrentes |
+| `slotDuration` | Number | Minutos por turno (ej. 60) |
+| `openingTime` | String | HH:MM |
+| `closingTime` | String | HH:MM |
+| `amenities` | List | Lista de etiquetas de amenidades |
+| `imageUrls` | List | URLs de S3/CloudFront |
+| `status` | String | Active / Inactive / Maintenance |
+| `cancelWindow` | Number | Horas antes del turno en que cierra la cancelación |
+| `createdAt` | String | ISO 8601 |
 
-GSI: `GSI_Status` - PK: `status` (filter active areas efficiently)
+GSI: `GSI_Status` — PK: `status` (filtrar áreas activas de forma eficiente)

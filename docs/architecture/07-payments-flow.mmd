@@ -1,0 +1,24 @@
+%% ActivaClub - Stripe Payment + Webhook Flow (EP-04)
+%% Diagram 7 of 8
+%% Last updated: 2026-04-05
+
+sequenceDiagram
+    participant Member
+    participant Frontend
+    participant PaymentsLambda
+    participant DynamoDB as DynamoDB (PaymentsTable + MembersTable)
+    participant Stripe
+
+    Member->>Frontend: Click "Pagar Membresía"
+    Frontend->>PaymentsLambda: POST /v1/payments/checkout { billingCycle }
+    PaymentsLambda->>Stripe: Create Checkout Session
+    Stripe-->>PaymentsLambda: { sessionId, sessionUrl }
+    PaymentsLambda->>DynamoDB: PutItem payment (status=Pending)
+    PaymentsLambda-->>Frontend: { sessionUrl }
+    Frontend->>Stripe: Redirect to Stripe Checkout
+    Member->>Stripe: Complete payment
+    Stripe->>PaymentsLambda: POST /v1/payments/webhook (checkout.session.completed)
+    PaymentsLambda->>PaymentsLambda: Verify Stripe signature
+    PaymentsLambda->>DynamoDB: UpdateItem payment (status=Succeeded)
+    PaymentsLambda->>DynamoDB: UpdateItem member (status=Active, membershipExpiry=+1 month/year)
+    Frontend->>Frontend: Redirect to success page
