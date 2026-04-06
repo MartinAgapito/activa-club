@@ -1,0 +1,180 @@
+import apiClient from '@/api/client'
+import type { ApiResponse } from '@/types'
+
+// ─── Domain types ─────────────────────────────────────────────────────────────
+
+export interface AvailabilitySlot {
+  startTime: string       // HH:mm
+  endTime: string         // HH:mm
+  available: number       // seats available
+  capacity: number        // total capacity
+  status: 'available' | 'full' | 'blocked'
+  blockId?: string        // present when status === 'blocked'
+  blockReason?: string
+}
+
+export interface AreaAvailabilityResponse {
+  areaId: string
+  areaName: string
+  date: string
+  slots: AvailabilitySlot[]
+  weeklyQuota: {
+    used: number
+    limit: number
+  }
+}
+
+export interface AreaSummary {
+  areaId: string
+  name: string
+  type: string
+  capacity: number
+  isActive: boolean
+}
+
+export interface ReservationRecord {
+  reservationId: string
+  areaId: string
+  areaName: string
+  date: string          // YYYY-MM-DD
+  startTime: string     // HH:mm
+  endTime: string       // HH:mm
+  status: 'Confirmed' | 'Cancelled' | 'Completed' | 'NoShow'
+  memberId?: string
+  memberName?: string
+  memberEmail?: string
+  createdAt: string
+}
+
+export interface WeeklyQuota {
+  used: number
+  limit: number
+}
+
+export interface MyReservationsResponse {
+  reservations: ReservationRecord[]
+  weeklyQuota: WeeklyQuota
+  nextCursor?: string
+}
+
+export interface ManagerReservationsResponse {
+  date: string
+  areas: {
+    areaId: string
+    areaName: string
+    slots: Array<{
+      startTime: string
+      endTime: string
+      status: 'available' | 'full' | 'blocked'
+      reservation?: ReservationRecord
+      blockId?: string
+      blockReason?: string
+    }>
+  }[]
+}
+
+// ─── Request payloads ─────────────────────────────────────────────────────────
+
+export interface CreateReservationPayload {
+  areaId: string
+  date: string        // YYYY-MM-DD
+  startTime: string   // HH:mm
+  endTime: string     // HH:mm
+}
+
+export interface CancelReservationPayload {
+  reason?: string
+}
+
+export interface CreateAreaBlockPayload {
+  startTime: string   // HH:mm
+  endTime: string     // HH:mm
+  date: string        // YYYY-MM-DD
+  reason: string
+}
+
+// ─── API functions ────────────────────────────────────────────────────────────
+
+export const reservationsApi = {
+  /**
+   * AC-011: Fetch availability slots for an area on a given date.
+   * Also returns the member's weekly quota.
+   */
+  getAvailability(areaId: string, date: string) {
+    return apiClient.get<ApiResponse<AreaAvailabilityResponse>>(
+      `/v1/areas/${areaId}/availability`,
+      { params: { date } }
+    )
+  },
+
+  /**
+   * Fetch the list of all active areas.
+   */
+  getAreas() {
+    return apiClient.get<ApiResponse<AreaSummary[]>>('/v1/areas')
+  },
+
+  /**
+   * AC-012: Create a new reservation.
+   */
+  createReservation(payload: CreateReservationPayload) {
+    return apiClient.post<ApiResponse<ReservationRecord>>('/v1/reservations', payload)
+  },
+
+  /**
+   * AC-013: Cancel own reservation.
+   */
+  cancelReservation(reservationId: string) {
+    return apiClient.delete<ApiResponse<{ message: string }>>(
+      `/v1/reservations/${reservationId}`
+    )
+  },
+
+  /**
+   * AC-014: Fetch own reservations with view filter.
+   */
+  getMyReservations(view: 'upcoming' | 'history', cursor?: string) {
+    return apiClient.get<ApiResponse<MyReservationsResponse>>('/v1/reservations/me', {
+      params: { view, ...(cursor ? { cursor } : {}) },
+    })
+  },
+
+  /**
+   * AC-015: Manager — fetch all reservations for a date (and optional area).
+   */
+  getManagerReservations(date: string, areaId?: string) {
+    return apiClient.get<ApiResponse<ManagerReservationsResponse>>(
+      '/v1/manager/reservations',
+      { params: { date, ...(areaId ? { areaId } : {}) } }
+    )
+  },
+
+  /**
+   * AC-015: Manager — cancel any reservation with a required reason.
+   */
+  managerCancelReservation(reservationId: string, reason: string) {
+    return apiClient.delete<ApiResponse<{ message: string }>>(
+      `/v1/manager/reservations/${reservationId}`,
+      { data: { reason } }
+    )
+  },
+
+  /**
+   * AC-016: Manager — block a time slot in an area.
+   */
+  createAreaBlock(areaId: string, payload: CreateAreaBlockPayload) {
+    return apiClient.post<ApiResponse<{ blockId: string; message: string }>>(
+      `/v1/areas/${areaId}/blocks`,
+      payload
+    )
+  },
+
+  /**
+   * AC-016: Manager — remove a block from an area.
+   */
+  deleteAreaBlock(areaId: string, blockId: string) {
+    return apiClient.delete<ApiResponse<{ message: string }>>(
+      `/v1/areas/${areaId}/blocks/${blockId}`
+    )
+  },
+}

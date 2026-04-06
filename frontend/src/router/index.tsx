@@ -15,7 +15,10 @@ const VerifyEmailPage = lazy(() => import('@/pages/auth/VerifyEmailPage'))
 const VerifyOtpPage = lazy(() => import('@/pages/auth/VerifyOtpPage'))
 const AuthCallbackPage = lazy(() => import('@/pages/auth/AuthCallbackPage'))
 const MemberDashboardPage = lazy(() => import('@/pages/member/DashboardPage'))
+const AvailabilityPage = lazy(() => import('@/pages/member/AvailabilityPage'))
+const MyReservationsPage = lazy(() => import('@/pages/member/MyReservationsPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/DashboardPage'))
+const ManagerCalendarPage = lazy(() => import('@/pages/admin/ManagerCalendarPage'))
 const NotFoundPage = lazy(() => import('@/pages/shared/NotFoundPage'))
 const ProtectedLayout = lazy(() => import('@/components/layout/ProtectedLayout'))
 
@@ -107,6 +110,16 @@ export const router = createBrowserRouter([
             path: 'dashboard',
             element: <MemberDashboardPage />,
           },
+          {
+            // AC-014: My reservations (upcoming + history)
+            path: 'reservations',
+            element: <MyReservationsPage />,
+          },
+          {
+            // AC-011 + AC-012: Availability selector & booking
+            path: 'reservations/new',
+            element: <AvailabilityPage />,
+          },
         ],
       },
     ],
@@ -129,6 +142,11 @@ export const router = createBrowserRouter([
           {
             path: 'dashboard',
             element: <AdminDashboardPage />,
+          },
+          {
+            // AC-015 + AC-016: Manager calendar & block management
+            path: 'reservations',
+            element: <ManagerCalendarPage />,
           },
         ],
       },
