@@ -139,9 +139,6 @@ describe('RolesGuard', () => {
 
     guard.canActivate(context);
 
-    expect(reflector.getAllAndOverride).toHaveBeenCalledWith(
-      ROLES_KEY,
-      expect.any(Array),
-    );
+    expect(reflector.getAllAndOverride).toHaveBeenCalledWith(ROLES_KEY, expect.any(Array));
   });
 });
