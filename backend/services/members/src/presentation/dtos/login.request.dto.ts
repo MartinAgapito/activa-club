@@ -42,4 +42,20 @@ export class LoginRequestDto {
   @IsOptional()
   @IsString({ message: 'deviceKey must be a string' })
   deviceKey?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'AC-010 — Device group key returned by verify-otp. Required alongside deviceKey.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  deviceGroupKey?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'AC-010 — Device password returned by verify-otp. Required for SRP handshake.',
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  devicePassword?: string | null;
 }

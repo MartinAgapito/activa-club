@@ -249,7 +249,7 @@ export class AuthController {
     // Password and deviceKey are intentionally not logged
     this.logger.log(`POST /v1/auth/login — email=${dto.email}`);
 
-    const command = new LoginCommand(dto.email, dto.password, dto.deviceKey);
+    const command = new LoginCommand(dto.email, dto.password, dto.deviceKey, dto.deviceGroupKey, dto.devicePassword);
     const result = await this.loginHandler.execute(command);
 
     // AC-010: device bypass — tokens returned directly, no OTP step needed
@@ -314,7 +314,7 @@ export class AuthController {
     );
     const result = await this.verifyOtpHandler.execute(command);
 
-    // Tokens and device keys are intentionally not logged
+    // Tokens and device credentials are intentionally not logged
     return {
       accessToken: result.accessToken,
       idToken: result.idToken,
@@ -322,6 +322,8 @@ export class AuthController {
       expiresIn: result.expiresIn,
       tokenType: result.tokenType,
       deviceKey: result.deviceKey,
+      deviceGroupKey: result.deviceGroupKey,
+      devicePassword: result.devicePassword,
     };
   }
 

@@ -24,6 +24,8 @@ import { authApi, type AuthApiError } from '@/api/auth.api'
 import { useAuthStore } from '@/store'
 
 const DEVICE_KEY_STORAGE_KEY = 'activa-club-device-key'
+const DEVICE_GROUP_KEY_STORAGE_KEY = 'activa-club-device-group-key'
+const DEVICE_PASSWORD_STORAGE_KEY = 'activa-club-device-password'
 
 interface LocationState {
   email?: string
@@ -68,11 +70,13 @@ export default function VerifyOtpPage() {
         rememberDevice,
       })
 
-      const { idToken, deviceKey } = response.data.data
+      const { idToken, deviceKey, deviceGroupKey, devicePassword } = response.data.data
 
-      // AC-010: persist device key so future logins can skip OTP
-      if (deviceKey) {
+      // AC-010: persist all three device credentials — required for DEVICE_SRP_AUTH handshake
+      if (deviceKey && deviceGroupKey && devicePassword) {
         localStorage.setItem(DEVICE_KEY_STORAGE_KEY, deviceKey)
+        localStorage.setItem(DEVICE_GROUP_KEY_STORAGE_KEY, deviceGroupKey)
+        localStorage.setItem(DEVICE_PASSWORD_STORAGE_KEY, devicePassword)
       }
 
       // Decode the JWT, build CognitoUser, and persist both in the store

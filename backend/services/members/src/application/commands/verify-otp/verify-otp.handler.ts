@@ -71,12 +71,18 @@ export class VerifyOtpHandler {
     // ── AC-010: Remember Device ─────────────────────────────────────────────
     let deviceKey: string | null = null;
 
+    let deviceGroupKey: string | null = null;
+    let devicePassword: string | null = null;
+
     if (command.rememberDevice && auth.NewDeviceMetadata?.DeviceKey) {
-      deviceKey = await this.confirmDeviceAfterAuth(
+      const result = await this.confirmDeviceAfterAuth(
         auth.AccessToken,
         auth.NewDeviceMetadata.DeviceKey,
         auth.NewDeviceMetadata.DeviceGroupKey ?? '',
       );
+      deviceKey = result.deviceKey;
+      deviceGroupKey = result.deviceGroupKey;
+      devicePassword = result.devicePassword;
     }
 
     return new VerifyOtpResult({
@@ -86,6 +92,8 @@ export class VerifyOtpHandler {
       expiresIn: auth.ExpiresIn ?? 3600,
       tokenType: 'Bearer',
       deviceKey,
+      deviceGroupKey,
+      devicePassword,
     });
   }
 
@@ -102,9 +110,8 @@ export class VerifyOtpHandler {
     accessToken: string,
     deviceKey: string,
     deviceGroupKey: string,
-  ): Promise<string | null> {
+  ): Promise<{ deviceKey: string; deviceGroupKey: string; devicePassword: string }> {
     try {
-      // Generate a cryptographically random 32-byte hex device password
       const devicePassword = crypto.randomBytes(32).toString('hex');
 
       const { passwordVerifier, salt } = generateDeviceSrpVerifier(
@@ -120,7 +127,7 @@ export class VerifyOtpHandler {
       await this.cognitoService.updateDeviceStatus(accessToken, deviceKey);
 
       this.logger.log(`VerifyOtpHandler: device confirmed and marked as remembered`);
-      return deviceKey;
+      return { deviceKey, deviceGroupKey, devicePassword };
     } catch (error) {
       this.logger.warn(
         `VerifyOtpHandler: ConfirmDevice failed for deviceKey — device will not be remembered`,

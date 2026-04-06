@@ -52,15 +52,21 @@ export default function LoginPage() {
   const { isSubmitting } = form.formState
 
   const DEVICE_KEY_STORAGE_KEY = 'activa-club-device-key'
+  const DEVICE_GROUP_KEY_STORAGE_KEY = 'activa-club-device-group-key'
+  const DEVICE_PASSWORD_STORAGE_KEY = 'activa-club-device-password'
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
       const storedDeviceKey = localStorage.getItem(DEVICE_KEY_STORAGE_KEY)
+      const storedDeviceGroupKey = localStorage.getItem(DEVICE_GROUP_KEY_STORAGE_KEY)
+      const storedDevicePassword = localStorage.getItem(DEVICE_PASSWORD_STORAGE_KEY)
 
       const response = await authApi.login({
         email: data.email,
         password: data.password,
         deviceKey: storedDeviceKey ?? null,
+        deviceGroupKey: storedDeviceGroupKey ?? null,
+        devicePassword: storedDevicePassword ?? null,
       })
       const { session, challengeName, idToken } = response.data.data
 

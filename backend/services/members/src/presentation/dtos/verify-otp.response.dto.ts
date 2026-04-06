@@ -41,13 +41,23 @@ export class VerifyOtpDataDto {
    * Null when rememberDevice was false or NewDeviceMetadata was absent.
    */
   @ApiPropertyOptional({
-    description:
-      'AC-010 — Cognito device key. Present when rememberDevice=true was requested and the device was successfully registered. ' +
-      'Persist this value and include it as deviceKey in future POST /v1/auth/login requests to skip OTP.',
+    description: 'AC-010 — Cognito device key. Persist and send in future logins.',
     example: 'us-east-1_abc123:device-key-uuid',
     nullable: true,
   })
   deviceKey: string | null;
+
+  @ApiPropertyOptional({
+    description: 'AC-010 — Cognito device group key. Required for DEVICE_SRP_AUTH handshake.',
+    nullable: true,
+  })
+  deviceGroupKey: string | null;
+
+  @ApiPropertyOptional({
+    description: 'AC-010 — Device password used during ConfirmDevice. Required for DEVICE_SRP_AUTH.',
+    nullable: true,
+  })
+  devicePassword: string | null;
 }
 
 /**

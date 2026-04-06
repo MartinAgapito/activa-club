@@ -43,6 +43,21 @@ function makeDeviceSrpAuthResponse(session = 'device-session-xyz') {
   };
 }
 
+function makeDevicePasswordVerifierResponse(session = 'device-verifier-session') {
+  return {
+    ChallengeName: 'DEVICE_PASSWORD_VERIFIER',
+    Session: session,
+    ChallengeParameters: {
+      SRP_B: 'a'.repeat(64),
+      SALT: Buffer.alloc(16).toString('base64'),
+      SECRET_BLOCK: Buffer.alloc(32).toString('base64'),
+      DEVICE_KEY: 'us-east-1_device-key-abc',
+      USERNAME: 'martin.garcia@email.com',
+    },
+    $metadata: {},
+  };
+}
+
 function makeTokenResponse() {
   return {
     AuthenticationResult: {
@@ -65,6 +80,8 @@ describe('LoginHandler (AC-002 Step 1 / AC-010)', () => {
     'martin.garcia@email.com',
     'SecurePass1!',
     'us-east-1_device-key-abc',
+    'us-east-1_group-key',
+    'random-device-password-hex',
   );
 
   beforeEach(() => {
@@ -121,9 +138,10 @@ describe('LoginHandler (AC-002 Step 1 / AC-010)', () => {
   describe('execute — AC-010 device bypass (deviceKey provided, DEVICE_SRP_AUTH)', () => {
     it('calls adminInitiateAuth with the deviceKey when provided', async () => {
       mockCognitoService.adminInitiateAuth.mockResolvedValue(makeDeviceSrpAuthResponse() as never);
-      mockCognitoService.adminRespondToDeviceChallenge.mockResolvedValue(
-        makeTokenResponse() as never,
-      );
+      // Round 1 → DEVICE_PASSWORD_VERIFIER, Round 2 → tokens
+      mockCognitoService.adminRespondToDeviceChallenge
+        .mockResolvedValueOnce(makeDevicePasswordVerifierResponse() as never)
+        .mockResolvedValueOnce(makeTokenResponse() as never);
 
       await handler.execute(DEVICE_COMMAND);
 
@@ -134,28 +152,42 @@ describe('LoginHandler (AC-002 Step 1 / AC-010)', () => {
       );
     });
 
-    it('calls adminRespondToDeviceChallenge when Cognito returns DEVICE_SRP_AUTH', async () => {
+    it('calls adminRespondToDeviceChallenge twice (round 1: DEVICE_SRP_AUTH, round 2: DEVICE_PASSWORD_VERIFIER)', async () => {
       mockCognitoService.adminInitiateAuth.mockResolvedValue(makeDeviceSrpAuthResponse() as never);
-      mockCognitoService.adminRespondToDeviceChallenge.mockResolvedValue(
-        makeTokenResponse() as never,
-      );
+      mockCognitoService.adminRespondToDeviceChallenge
+        .mockResolvedValueOnce(makeDevicePasswordVerifierResponse() as never)
+        .mockResolvedValueOnce(makeTokenResponse() as never);
 
       await handler.execute(DEVICE_COMMAND);
 
-      expect(mockCognitoService.adminRespondToDeviceChallenge).toHaveBeenCalledTimes(1);
-      expect(mockCognitoService.adminRespondToDeviceChallenge).toHaveBeenCalledWith(
+      expect(mockCognitoService.adminRespondToDeviceChallenge).toHaveBeenCalledTimes(2);
+      // Round 1
+      expect(mockCognitoService.adminRespondToDeviceChallenge).toHaveBeenNthCalledWith(
+        1,
         DEVICE_COMMAND.email,
         'device-session-xyz',
         'DEVICE_SRP_AUTH',
-        expect.objectContaining({ DEVICE_KEY: DEVICE_COMMAND.deviceKey }),
+        expect.objectContaining({ DEVICE_KEY: DEVICE_COMMAND.deviceKey, SRP_A: expect.any(String) }),
+      );
+      // Round 2
+      expect(mockCognitoService.adminRespondToDeviceChallenge).toHaveBeenNthCalledWith(
+        2,
+        DEVICE_COMMAND.email,
+        'device-verifier-session',
+        'DEVICE_PASSWORD_VERIFIER',
+        expect.objectContaining({
+          DEVICE_KEY: DEVICE_COMMAND.deviceKey,
+          PASSWORD_CLAIM_SIGNATURE: expect.any(String),
+          TIMESTAMP: expect.any(String),
+        }),
       );
     });
 
     it('returns challengeName=null with tokens when device bypass succeeds', async () => {
       mockCognitoService.adminInitiateAuth.mockResolvedValue(makeDeviceSrpAuthResponse() as never);
-      mockCognitoService.adminRespondToDeviceChallenge.mockResolvedValue(
-        makeTokenResponse() as never,
-      );
+      mockCognitoService.adminRespondToDeviceChallenge
+        .mockResolvedValueOnce(makeDevicePasswordVerifierResponse() as never)
+        .mockResolvedValueOnce(makeTokenResponse() as never);
 
       const result = await handler.execute(DEVICE_COMMAND);
 
@@ -169,17 +201,18 @@ describe('LoginHandler (AC-002 Step 1 / AC-010)', () => {
     });
   });
 
-  // ── AC-010: device bypass — DEVICE_SRP_AUTH → still requires EMAIL_OTP ─────
+  // ── AC-010: device bypass — DEVICE_PASSWORD_VERIFIER → still requires EMAIL_OTP ─
 
   describe('execute — AC-010 device bypasses SRP but EMAIL_OTP still required', () => {
     it('returns challengeName=EMAIL_OTP when device challenge passes but OTP is still needed', async () => {
       mockCognitoService.adminInitiateAuth.mockResolvedValue(makeDeviceSrpAuthResponse() as never);
-      // Device challenge passed but Cognito still requires OTP
-      mockCognitoService.adminRespondToDeviceChallenge.mockResolvedValue({
-        ChallengeName: 'EMAIL_OTP',
-        Session: 'otp-session-after-device',
-        $metadata: {},
-      } as never);
+      mockCognitoService.adminRespondToDeviceChallenge
+        .mockResolvedValueOnce(makeDevicePasswordVerifierResponse() as never)
+        .mockResolvedValueOnce({
+          ChallengeName: 'EMAIL_OTP',
+          Session: 'otp-session-after-device',
+          $metadata: {},
+        } as never);
 
       const result = await handler.execute(DEVICE_COMMAND);
 

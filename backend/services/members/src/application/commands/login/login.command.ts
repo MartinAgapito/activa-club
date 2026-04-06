@@ -1,12 +1,9 @@
 /**
  * Login command — AC-002 Step 1 / AC-010.
  *
- * Carries validated credentials from the presentation layer to LoginHandler.
- * No decorators or framework dependencies.
- * Password is never logged.
- *
- * AC-010: deviceKey is optional. When provided, it is included in AdminInitiateAuth
- * so Cognito can attempt device-based authentication and potentially skip the OTP challenge.
+ * AC-010: deviceKey, deviceGroupKey, and devicePassword are all required to
+ * complete the DEVICE_SRP_AUTH two-round handshake with Cognito. The client
+ * must persist and send all three values that were returned by verify-otp.
  */
 export class LoginCommand {
   constructor(
@@ -14,5 +11,9 @@ export class LoginCommand {
     public readonly password: string,
     /** AC-010: Cognito device key from a previous remember-device session. */
     public readonly deviceKey?: string | null,
+    /** AC-010: Cognito device group key — required for DEVICE_SRP_AUTH SRP computation. */
+    public readonly deviceGroupKey?: string | null,
+    /** AC-010: Random device password from ConfirmDevice — required for DEVICE_SRP_AUTH. */
+    public readonly devicePassword?: string | null,
   ) {}
 }

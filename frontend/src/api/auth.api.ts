@@ -22,6 +22,8 @@ export interface LoginPayload {
   email: string
   password: string
   deviceKey?: string | null
+  deviceGroupKey?: string | null
+  devicePassword?: string | null
 }
 
 export interface VerifyOtpPayload {
@@ -61,8 +63,10 @@ export interface VerifyOtpData {
   idToken: string
   accessToken?: string
   refreshToken?: string
-  // AC-010: Cognito device key — store in localStorage if rememberDevice was true
+  // AC-010: All three must be stored to complete the DEVICE_SRP_AUTH handshake on re-login
   deviceKey: string | null
+  deviceGroupKey: string | null
+  devicePassword: string | null
 }
 
 export interface LogoutData {
