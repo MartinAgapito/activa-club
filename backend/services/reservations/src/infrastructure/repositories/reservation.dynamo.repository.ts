@@ -3,6 +3,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   QueryCommand,
+  QueryCommandInput,
   TransactWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { TransactionCanceledException } from '@aws-sdk/client-dynamodb';
@@ -137,7 +138,7 @@ export class ReservationDynamoRepository implements ReservationRepositoryInterfa
     }
 
     try {
-      const params: Parameters<typeof QueryCommand>[0] = {
+      const params: QueryCommandInput = {
         TableName: this.tableName,
         IndexName: 'GSI_Member',
         KeyConditionExpression: 'member_id = :mid',
