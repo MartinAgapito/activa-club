@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import type { CognitoUser, UserRole } from '@/types'
 
 // ─── JWT decode helper (no external dependency needed) ───────────────────────
@@ -152,11 +152,14 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'activa-club-auth',
-      // Tokens and auth state are intentionally excluded — JWTs must not persist
-      // in localStorage (AC-006/AC-007). On page refresh the user re-authenticates.
-      // Only the user profile is kept for display purposes (e.g. welcome messages).
+      // sessionStorage: tokens survive F5 but are cleared when the tab is closed.
+      // This avoids the original localStorage concern (AC-006/AC-007) while keeping
+      // the user logged in across page refreshes within the same browser session.
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         user: state.user,
+        idToken: state.idToken,
+        isAuthenticated: state.isAuthenticated,
       }),
     }
   )
