@@ -10,6 +10,7 @@ import {
   HttpStatus,
   Logger,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,8 +20,9 @@ import {
   ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 
-import { RolesGuard, Roles } from '../guards/roles.guard';
+import { RolesGuard, Roles, extractCognitoPayload } from '../guards/roles.guard';
 import { ManagerCalendarQueryDto } from '../dtos/manager-calendar-query.dto';
 import { CreateAreaBlockDto } from '../dtos/create-area-block.dto';
 
@@ -101,10 +103,17 @@ export class ManagerController {
   @ApiResponse({ status: 200, description: 'Block created or conflict warning returned.' })
   @ApiResponse({ status: 400, description: 'INVALID_BLOCK_RANGE' })
   @ApiResponse({ status: 404, description: 'AREA_NOT_FOUND' })
-  async createAreaBlock(@Param('areaId') areaId: string, @Body() dto: CreateAreaBlockDto) {
+  async createAreaBlock(
+    @Param('areaId') areaId: string,
+    @Body() dto: CreateAreaBlockDto,
+    @Req() req: Request,
+  ) {
+    const payload = extractCognitoPayload(req);
+    const createdBy = payload?.sub ?? '';
     this.logger.log(`POST /v1/areas/${areaId}/blocks date=${dto.date}`);
     return this.createAreaBlockHandler.execute(
       new CreateAreaBlockCommand(
+        createdBy,
         areaId,
         dto.date,
         dto.startTime,
