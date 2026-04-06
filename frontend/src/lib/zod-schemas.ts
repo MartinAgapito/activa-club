@@ -118,3 +118,23 @@ export const memberProfileSchema = z.object({
 })
 
 export type MemberProfileFormValues = z.infer<typeof memberProfileSchema>
+
+// ─── Cancel reservation schema (manager — reason required) ───────────────────
+
+export const managerCancelReservationSchema = z.object({
+  reason: z.string().min(5, 'El motivo debe tener al menos 5 caracteres').max(500),
+})
+
+export type ManagerCancelReservationFormValues = z.infer<typeof managerCancelReservationSchema>
+
+// ─── Create area block schema ─────────────────────────────────────────────────
+
+export const createAreaBlockSchema = z.object({
+  areaId: z.string().min(1, 'Seleccioná un área'),
+  date: z.string().min(1, 'Seleccioná una fecha'),
+  startTime: z.string().min(1, 'Seleccioná una hora de inicio'),
+  endTime: z.string().min(1, 'Seleccioná una hora de fin'),
+  reason: z.string().min(5, 'El motivo debe tener al menos 5 caracteres').max(500),
+})
+
+export type CreateAreaBlockFormValues = z.infer<typeof createAreaBlockSchema>
