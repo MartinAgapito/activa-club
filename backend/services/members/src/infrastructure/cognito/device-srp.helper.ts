@@ -57,7 +57,10 @@ export function generateDeviceSrpVerifier(
   const N = BigInt(`0x${N_HEX}`);
 
   // ── Generate a random 16-byte salt ────────────────────────────────────────
-  const saltBytes = crypto.randomBytes(16);
+  // Cognito rejects salts/verifiers whose first byte >= 0x80 (interpreted as
+  // negative in two's complement). Pad with 0x00 to ensure a positive value.
+  const saltRaw = crypto.randomBytes(16);
+  const saltBytes = saltRaw[0] >= 0x80 ? Buffer.concat([Buffer.alloc(1), saltRaw]) : saltRaw;
   const salt = saltBytes.toString('base64');
 
   // ── Compute x = H(salt || H(deviceGroupKey:deviceKey:devicePassword)) ────
@@ -78,11 +81,13 @@ export function generateDeviceSrpVerifier(
   // ── Compute verifier v = g^x mod N ────────────────────────────────────────
   const v = modPow(g, x, N);
 
-  // Encode verifier as base64 (big-endian, no leading zeros padding needed)
-  const vHex = v.toString(16).padStart(2, '0');
-  // Ensure even-length hex string for Buffer.from
-  const vHexPadded = vHex.length % 2 === 0 ? vHex : `0${vHex}`;
-  const passwordVerifier = Buffer.from(vHexPadded, 'hex').toString('base64');
+  // Encode verifier as base64. If the first byte >= 0x80 Cognito rejects it as
+  // "negative", so prepend a 0x00 byte to guarantee a positive big-endian integer.
+  const vHex = v.toString(16);
+  const vHexEven = vHex.length % 2 === 0 ? vHex : `0${vHex}`;
+  const vBuf = Buffer.from(vHexEven, 'hex');
+  const vPadded = vBuf[0] >= 0x80 ? Buffer.concat([Buffer.alloc(1), vBuf]) : vBuf;
+  const passwordVerifier = vPadded.toString('base64');
 
   return { passwordVerifier, salt, devicePassword };
 }
