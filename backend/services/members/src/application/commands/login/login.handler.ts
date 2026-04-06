@@ -3,6 +3,11 @@ import { LoginCommand } from './login.command';
 import { LoginResult } from './login.result';
 import { CognitoService } from '../../../infrastructure/cognito/cognito.service';
 import {
+  generateSrpEphemeral,
+  computeDevicePasswordClaim,
+  generateCognitoTimestamp,
+} from '../../../infrastructure/cognito/device-srp.helper';
+import {
   InvalidCredentialsException,
   AccountNotConfirmedException,
   AccountDisabledException,
@@ -69,15 +74,17 @@ export class LoginHandler {
     // attempt to resolve it. If tokens come back directly, return them.
     if (
       command.deviceKey &&
+      command.deviceGroupKey &&
+      command.devicePassword &&
       cognitoResponse.ChallengeName &&
       LoginHandler.DEVICE_CHALLENGES.has(cognitoResponse.ChallengeName)
     ) {
       return this.handleDeviceChallenge(
         command.email,
-        cognitoResponse.ChallengeName,
         cognitoResponse.Session ?? '',
         command.deviceKey,
-        cognitoResponse.ChallengeParameters ?? {},
+        command.deviceGroupKey,
+        command.devicePassword,
       );
     }
 
@@ -114,66 +121,103 @@ export class LoginHandler {
    * Device challenge errors are silently caught and fall back to EMAIL_OTP by
    * re-initiating auth without a device key.
    */
+  /**
+   * Completes the DEVICE_SRP_AUTH two-round handshake:
+   *
+   * Round 1 — DEVICE_SRP_AUTH:
+   *   Generate ephemeral key pair (a, A). Send SRP_A + DEVICE_KEY.
+   *   Cognito responds with DEVICE_PASSWORD_VERIFIER containing SRP_B, SALT, SECRET_BLOCK.
+   *
+   * Round 2 — DEVICE_PASSWORD_VERIFIER:
+   *   Compute PASSWORD_CLAIM_SIGNATURE using the device password and SRP values.
+   *   Cognito returns tokens directly on success.
+   */
   private async handleDeviceChallenge(
     email: string,
-    challengeName: string,
     session: string,
     deviceKey: string,
-    challengeParameters: Record<string, string>,
+    deviceGroupKey: string,
+    devicePassword: string,
   ): Promise<LoginResult> {
-    this.logger.log(
-      `LoginHandler: attempting device challenge=${challengeName} for email=${email}`,
-    );
-
-    let deviceResponse: Awaited<ReturnType<CognitoService['adminRespondToDeviceChallenge']>>;
+    this.logger.log(`LoginHandler: attempting device challenge=DEVICE_SRP_AUTH for email=${email}`);
 
     try {
-      deviceResponse = await this.cognitoService.adminRespondToDeviceChallenge(
+      // ── Round 1: DEVICE_SRP_AUTH ───────────────────────────────────────────
+      const { a, AHex } = generateSrpEphemeral();
+
+      const round1 = await this.cognitoService.adminRespondToDeviceChallenge(
         email,
         session,
-        challengeName,
-        { DEVICE_KEY: deviceKey, ...challengeParameters },
+        'DEVICE_SRP_AUTH',
+        { DEVICE_KEY: deviceKey, SRP_A: AHex },
       );
+
+      if (round1.ChallengeName !== 'DEVICE_PASSWORD_VERIFIER' || !round1.ChallengeParameters) {
+        this.logger.warn(
+          `LoginHandler: unexpected challenge after DEVICE_SRP_AUTH: ${round1.ChallengeName}, falling back`,
+        );
+        return this.initiateEmailOtpFallback(email);
+      }
+
+      // ── Round 2: DEVICE_PASSWORD_VERIFIER ─────────────────────────────────
+      const cp = round1.ChallengeParameters;
+      const timestamp = generateCognitoTimestamp();
+
+      const { signature } = computeDevicePasswordClaim({
+        a,
+        AHex,
+        BHex: cp['SRP_B'] ?? '',
+        saltBase64: cp['SALT'] ?? '',
+        secretBlockBase64: cp['SECRET_BLOCK'] ?? '',
+        deviceGroupKey,
+        deviceKey,
+        devicePassword,
+        timestamp,
+      });
+
+      const round2 = await this.cognitoService.adminRespondToDeviceChallenge(
+        email,
+        round1.Session ?? '',
+        'DEVICE_PASSWORD_VERIFIER',
+        {
+          USERNAME: email,
+          DEVICE_KEY: deviceKey,
+          PASSWORD_CLAIM_SIGNATURE: signature,
+          PASSWORD_CLAIM_SECRET_BLOCK: cp['SECRET_BLOCK'] ?? '',
+          TIMESTAMP: timestamp,
+        },
+      );
+
+      // Device auth complete — Cognito returns tokens directly
+      const auth = round2.AuthenticationResult;
+      if (auth?.AccessToken && auth?.IdToken && auth?.RefreshToken) {
+        this.logger.log(
+          `LoginHandler: device bypass successful — tokens issued directly for email=${email}`,
+        );
+        return new LoginResult({
+          challengeName: null,
+          accessToken: auth.AccessToken,
+          idToken: auth.IdToken,
+          refreshToken: auth.RefreshToken,
+          expiresIn: auth.ExpiresIn ?? 3600,
+        });
+      }
+
+      // Device auth passed but Cognito still requires EMAIL_OTP
+      if (round2.ChallengeName === 'EMAIL_OTP' && round2.Session) {
+        this.logger.log(`LoginHandler: device passed but EMAIL_OTP still required for email=${email}`);
+        return new LoginResult({ challengeName: 'EMAIL_OTP', session: round2.Session });
+      }
+
+      this.logger.warn(`LoginHandler: unexpected state after DEVICE_PASSWORD_VERIFIER, falling back`);
+      return this.initiateEmailOtpFallback(email);
     } catch (error) {
-      // Device challenge failed (expired, revoked, etc.) — fall back to EMAIL_OTP
       this.logger.warn(
         `LoginHandler: device challenge failed for email=${email}, falling back to EMAIL_OTP. ` +
           `Reason: ${error instanceof Error ? error.message : String(error)}`,
       );
       return this.initiateEmailOtpFallback(email);
     }
-
-    // Device challenge succeeded and Cognito returned tokens directly
-    const auth = deviceResponse.AuthenticationResult;
-    if (auth?.AccessToken && auth?.IdToken && auth?.RefreshToken) {
-      this.logger.log(
-        `LoginHandler: device bypass successful — tokens issued directly for email=${email}`,
-      );
-      return new LoginResult({
-        challengeName: null,
-        accessToken: auth.AccessToken,
-        idToken: auth.IdToken,
-        refreshToken: auth.RefreshToken,
-        expiresIn: auth.ExpiresIn ?? 3600,
-      });
-    }
-
-    // Device challenge passed but Cognito returned a further challenge (EMAIL_OTP or other)
-    if (deviceResponse.ChallengeName === 'EMAIL_OTP' && deviceResponse.Session) {
-      this.logger.log(
-        `LoginHandler: device passed but EMAIL_OTP still required for email=${email}`,
-      );
-      return new LoginResult({
-        challengeName: 'EMAIL_OTP',
-        session: deviceResponse.Session,
-      });
-    }
-
-    // Unexpected state from device challenge — fall back to standard EMAIL_OTP
-    this.logger.warn(
-      `LoginHandler: unexpected device challenge result challenge=${deviceResponse.ChallengeName}, falling back`,
-    );
-    return this.initiateEmailOtpFallback(email);
   }
 
   /**
