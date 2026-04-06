@@ -350,9 +350,7 @@ export class AuthController {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
     description: 'LOGOUT_FAILED — unexpected Cognito error during sign-out.',
   })
-  async logout(
-    @Headers('authorization') authorizationHeader: string,
-  ): Promise<LogoutResponseDto> {
+  async logout(@Headers('authorization') authorizationHeader: string): Promise<LogoutResponseDto> {
     this.logger.log('POST /v1/auth/logout');
 
     if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {

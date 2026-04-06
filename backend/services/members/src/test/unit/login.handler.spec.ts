@@ -101,7 +101,11 @@ describe('LoginHandler (AC-002 Step 1 / AC-010)', () => {
     it('passes deviceKey=null to adminInitiateAuth when not provided in command', async () => {
       mockCognitoService.adminInitiateAuth.mockResolvedValue(makeEmailOtpResponse() as never);
 
-      const commandWithNullDevice = new LoginCommand('martin.garcia@email.com', 'SecurePass1!', null);
+      const commandWithNullDevice = new LoginCommand(
+        'martin.garcia@email.com',
+        'SecurePass1!',
+        null,
+      );
       await handler.execute(commandWithNullDevice);
 
       expect(mockCognitoService.adminInitiateAuth).toHaveBeenCalledWith(

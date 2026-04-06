@@ -1,6 +1,9 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { ArgumentsHost } from '@nestjs/common';
-import { GlobalExceptionFilter, ErrorResponse } from '../../../../src/shared/filters/global-exception.filter';
+import {
+  GlobalExceptionFilter,
+  ErrorResponse,
+} from '../../../../src/shared/filters/global-exception.filter';
 
 describe('GlobalExceptionFilter', () => {
   let filter: GlobalExceptionFilter;
