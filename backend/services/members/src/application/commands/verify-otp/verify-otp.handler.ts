@@ -115,7 +115,11 @@ export class VerifyOtpHandler {
 
       await this.cognitoService.confirmDevice(accessToken, deviceKey, passwordVerifier, salt);
 
-      this.logger.log(`VerifyOtpHandler: device remembered, deviceKey registered`);
+      // With device_only_remembered_on_user_prompt=true, ConfirmDevice alone is
+      // not enough — we must explicitly mark the device as "remembered".
+      await this.cognitoService.updateDeviceStatus(accessToken, deviceKey);
+
+      this.logger.log(`VerifyOtpHandler: device confirmed and marked as remembered`);
       return deviceKey;
     } catch (error) {
       this.logger.warn(

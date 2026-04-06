@@ -11,6 +11,7 @@ import {
   AdminRespondToAuthChallengeCommand,
   AdminUserGlobalSignOutCommand,
   ConfirmDeviceCommand,
+  UpdateDeviceStatusCommand,
   AttributeType,
   AdminInitiateAuthCommandOutput,
   AdminRespondToAuthChallengeCommandOutput,
@@ -321,6 +322,29 @@ export class CognitoService {
 
     await this.client.send(command);
     this.logger.log(`confirmDevice: device registered successfully deviceKey=${deviceKey}`);
+  }
+
+  /**
+   * Marks a previously confirmed device as "remembered" so Cognito bypasses
+   * the OTP challenge on subsequent logins from the same device.
+   *
+   * Must be called after confirmDevice when device_only_remembered_on_user_prompt
+   * is enabled on the Cognito User Pool (which is the case in ActivaClub).
+   *
+   * @param accessToken - The user's AccessToken returned after successful auth.
+   * @param deviceKey   - The device key from NewDeviceMetadata.
+   */
+  async updateDeviceStatus(accessToken: string, deviceKey: string): Promise<void> {
+    this.logger.debug(`updateDeviceStatus: marking deviceKey=${deviceKey} as remembered`);
+
+    const command = new UpdateDeviceStatusCommand({
+      AccessToken: accessToken,
+      DeviceKey: deviceKey,
+      DeviceRememberedStatus: 'remembered',
+    });
+
+    await this.client.send(command);
+    this.logger.log(`updateDeviceStatus: deviceKey=${deviceKey} marked as remembered`);
   }
 
   /**

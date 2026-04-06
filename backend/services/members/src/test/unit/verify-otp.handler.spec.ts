@@ -14,6 +14,7 @@ import {
 const mockCognitoService = {
   adminRespondToAuthChallenge: jest.fn(),
   confirmDevice: jest.fn(),
+  updateDeviceStatus: jest.fn().mockResolvedValue(undefined),
 } as unknown as jest.Mocked<CognitoService>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
