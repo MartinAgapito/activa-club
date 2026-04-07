@@ -35,6 +35,7 @@ const DOMAIN_EXCEPTION_MAP: Record<string, number> = {
   SessionExpiredException: HttpStatus.GONE,
   TooManyAttemptsException: HttpStatus.TOO_MANY_REQUESTS,
   UnexpectedAuthChallengeException: HttpStatus.INTERNAL_SERVER_ERROR,
+  StaleDeviceCredentialsException: HttpStatus.CONFLICT,
   // AC-008 — Logout
   InvalidTokenException: HttpStatus.UNAUTHORIZED,
   LogoutFailedException: HttpStatus.INTERNAL_SERVER_ERROR,
