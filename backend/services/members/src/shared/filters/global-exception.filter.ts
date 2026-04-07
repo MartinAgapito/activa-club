@@ -23,6 +23,7 @@ import {
   InvalidOtpException,
   SessionExpiredException,
   UnexpectedAuthChallengeException,
+  StaleDeviceCredentialsException,
   InvalidTokenException,
   LogoutFailedException,
   DeviceConfirmationFailedException,
@@ -90,6 +91,10 @@ const DOMAIN_EXCEPTION_MAP: Record<string, { httpStatus: HttpStatus; code: strin
   UnexpectedAuthChallengeException: {
     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
     code: 'INTERNAL_ERROR',
+  },
+  StaleDeviceCredentialsException: {
+    httpStatus: HttpStatus.CONFLICT,
+    code: 'DEVICE_AUTH_FAILED',
   },
 
   // AC-008 — Logout
