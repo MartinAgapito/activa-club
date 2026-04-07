@@ -168,9 +168,12 @@ export function computeDevicePasswordClaim(params: {
   const exp = a + u * x;
   const S = modPow(base, exp, N);
 
-  // K = H(S)
+  // K = HKDF(SHA256, IKM=pad(S), salt=pad(u), info="Caldera Derived Key\x01", length=16)
+  // Cognito uses this HKDF derivation (same as aws-amplify AuthenticationHelper.computehkdf).
   const SBuf = hexToPositiveBuffer(S.toString(16));
-  const K = crypto.createHash('sha256').update(SBuf).digest();
+  const uBuf = hexToPositiveBuffer(u.toString(16));
+  const hkdfInfo = Buffer.concat([Buffer.from('Caldera Derived Key', 'utf8'), Buffer.alloc(1, 1)]);
+  const K = Buffer.from(crypto.hkdfSync('sha256', SBuf, uBuf, hkdfInfo, 16));
 
   // signature = HMAC-SHA256(K, deviceGroupKey | deviceKey | SECRET_BLOCK | timestamp)
   const msg = Buffer.concat([
