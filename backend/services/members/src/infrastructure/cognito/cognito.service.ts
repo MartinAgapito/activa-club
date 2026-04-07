@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
+import * as https from 'https';
 import {
   CognitoIdentityProviderClient,
   SignUpCommand,
@@ -53,7 +55,12 @@ export class CognitoService {
       throw new Error('Environment variable COGNITO_CLIENT_ID is not set');
     }
 
-    this.client = new CognitoIdentityProviderClient({ region });
+    this.client = new CognitoIdentityProviderClient({
+      region,
+      requestHandler: new NodeHttpHandler({
+        httpsAgent: new https.Agent({ keepAlive: true }),
+      }),
+    });
   }
 
   // ─── AC-001: Registration ────────────────────────────────────────────────
