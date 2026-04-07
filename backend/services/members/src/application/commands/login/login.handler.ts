@@ -203,7 +203,7 @@ export class LoginHandler {
         a,
         AHex,
         BHex: cp['SRP_B'] ?? '',
-        saltBase64: cp['SALT'] ?? '',
+        saltHex: cp['SALT'] ?? '',
         secretBlockBase64: cp['SECRET_BLOCK'] ?? '',
         deviceGroupKey,
         deviceKey,

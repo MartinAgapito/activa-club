@@ -126,17 +126,19 @@ export function computeDevicePasswordClaim(params: {
   a: bigint;
   AHex: string;
   BHex: string;
-  saltBase64: string;
+  /** SALT from Cognito DEVICE_PASSWORD_VERIFIER challenge — hex-encoded string. */
+  saltHex: string;
   secretBlockBase64: string;
   deviceGroupKey: string;
   deviceKey: string;
   devicePassword: string;
   timestamp: string;
 }): { signature: string } {
-  const { a, AHex, BHex, saltBase64, secretBlockBase64, deviceGroupKey, deviceKey, devicePassword, timestamp } = params;
+  const { a, AHex, BHex, saltHex, secretBlockBase64, deviceGroupKey, deviceKey, devicePassword, timestamp } = params;
 
   const B = BigInt(`0x${BHex}`);
-  const saltBytes = Buffer.from(saltBase64, 'base64');
+  // Cognito returns SALT as hex in the DEVICE_PASSWORD_VERIFIER challenge params.
+  const saltBytes = Buffer.from(saltHex, 'hex');
   const secretBlock = Buffer.from(secretBlockBase64, 'base64');
 
   // k = H(pad(N) | pad(g))
