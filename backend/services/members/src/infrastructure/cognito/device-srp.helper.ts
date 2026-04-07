@@ -172,14 +172,19 @@ export function computeDevicePasswordClaim(params: {
   const exp = a + u * x;
   const S = modPow(base, exp, N);
 
-  // K = HKDF(SHA256, IKM=pad(S), salt=pad(u), info="Caldera Derived Key", length=16)
-  // Node.js hkdfSync follows RFC 5869 and appends the counter byte 0x01 to info internally.
-  // Amplify passes "Caldera Derived Key\x01" to a simple HMAC (no counter appended by the lib).
-  // Both produce: HMAC-SHA256(PRK, "Caldera Derived Key\x01") — so we pass info WITHOUT \x01.
+  // K = HKDF-like derivation matching Amplify's AuthenticationHelper.computehkdf exactly:
+  //   PRK = HMAC-SHA256(salt=pad(u), IKM=pad(S))       ← Extract
+  //   K   = HMAC-SHA256(PRK, "Caldera Derived Key\x01")[:16]  ← Expand (single block, counter pre-included)
+  // Amplify's custom HKDF does NOT use crypto.hkdfSync (RFC 5869) — it manually runs
+  // the two HMAC steps above. Using hkdfSync caused a double \x01 suffix mismatch.
   const SBuf = hexToPositiveBuffer(S.toString(16));
   const uBuf = hexToPositiveBuffer(u.toString(16));
-  const hkdfInfo = Buffer.from('Caldera Derived Key', 'utf8');
-  const K = Buffer.from(crypto.hkdfSync('sha256', SBuf, uBuf, hkdfInfo, 16));
+  const prk = crypto.createHmac('sha256', uBuf).update(SBuf).digest();
+  const K = crypto
+    .createHmac('sha256', prk)
+    .update(Buffer.concat([Buffer.from('Caldera Derived Key', 'utf8'), Buffer.alloc(1, 1)]))
+    .digest()
+    .subarray(0, 16);
 
   console.log('[SRP-MATH] NBuf.length=', NBuf.length, 'gBuf.length=', gBuf.length);
   console.log('[SRP-MATH] k(hex)=', k.toString(16).slice(0, 16) + '...');
