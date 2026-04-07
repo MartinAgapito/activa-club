@@ -89,7 +89,19 @@ export class LoginHandler {
     }
 
     // ── Standard EMAIL_OTP flow ────────────────────────────────────────────
-    // Cognito with MFA=ON must return EMAIL_OTP challenge; anything else is unexpected
+    // If Cognito returned a device challenge but we lack the full SRP credentials
+    // (deviceGroupKey or devicePassword missing), the stored device data is stale.
+    // Signal the client to clear device storage and retry without deviceKey.
+    if (
+      cognitoResponse.ChallengeName &&
+      LoginHandler.DEVICE_CHALLENGES.has(cognitoResponse.ChallengeName)
+    ) {
+      this.logger.warn(
+        `LoginHandler: device challenge=${cognitoResponse.ChallengeName} received but credentials incomplete for email=${command.email} — signalling client to clear device data`,
+      );
+      throw new UnexpectedAuthChallengeException('DEVICE_AUTH_FAILED');
+    }
+
     if (cognitoResponse.ChallengeName !== 'EMAIL_OTP') {
       this.logger.error(
         `LoginHandler: unexpected challenge=${cognitoResponse.ChallengeName} for email=${command.email}`,
