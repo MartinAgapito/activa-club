@@ -66,6 +66,19 @@ export class LoginHandler {
         command.deviceKey,
       );
     } catch (error) {
+      // Cognito throws ResourceNotFoundException when the stored deviceKey no
+      // longer exists (device was removed or pool was recreated). Signal the
+      // client to clear its device storage and retry without the device key.
+      if (
+        error instanceof Error &&
+        error.name === 'ResourceNotFoundException' &&
+        command.deviceKey
+      ) {
+        this.logger.warn(
+          `LoginHandler: deviceKey not found in Cognito for email=${command.email} — signalling client to clear device data`,
+        );
+        throw new StaleDeviceCredentialsException();
+      }
       this.mapInitiateAuthError(error);
       throw error;
     }
