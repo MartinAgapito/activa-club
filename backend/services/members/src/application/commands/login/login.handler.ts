@@ -203,7 +203,7 @@ export class LoginHandler {
 
       const round2 = await this.cognitoService.adminRespondToDeviceChallenge(
         email,
-        round1.Session ?? '',
+        round1.Session ?? session,
         'DEVICE_PASSWORD_VERIFIER',
         {
           USERNAME: email,
