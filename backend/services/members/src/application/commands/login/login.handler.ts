@@ -189,6 +189,16 @@ export class LoginHandler {
       const cp = round1.ChallengeParameters;
       const timestamp = generateCognitoTimestamp();
 
+      this.logger.debug(`[SRP-TRACE] deviceGroupKey="${deviceGroupKey}"`);
+      this.logger.debug(`[SRP-TRACE] deviceKey="${deviceKey}"`);
+      this.logger.debug(`[SRP-TRACE] devicePassword="${devicePassword}"`);
+      this.logger.debug(`[SRP-TRACE] AHex(first32)="${AHex.slice(0, 32)}..."`);
+      this.logger.debug(`[SRP-TRACE] SRP_B(first32)="${(cp['SRP_B'] ?? '').slice(0, 32)}..."`);
+      this.logger.debug(`[SRP-TRACE] SALT="${cp['SALT'] ?? ''}"`);
+      this.logger.debug(`[SRP-TRACE] SECRET_BLOCK(first32)="${(cp['SECRET_BLOCK'] ?? '').slice(0, 32)}..."`);
+      this.logger.debug(`[SRP-TRACE] timestamp="${timestamp}"`);
+      this.logger.debug(`[SRP-TRACE] round1.Session defined=${!!round1.Session}`);
+
       const { signature } = computeDevicePasswordClaim({
         a,
         AHex,
@@ -200,6 +210,8 @@ export class LoginHandler {
         devicePassword,
         timestamp,
       });
+
+      this.logger.debug(`[SRP-TRACE] signature="${signature}"`);
 
       const round2 = await this.cognitoService.adminRespondToDeviceChallenge(
         email,

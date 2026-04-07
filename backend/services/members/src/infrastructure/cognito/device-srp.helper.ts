@@ -175,6 +175,15 @@ export function computeDevicePasswordClaim(params: {
   const hkdfInfo = Buffer.concat([Buffer.from('Caldera Derived Key', 'utf8'), Buffer.alloc(1, 1)]);
   const K = Buffer.from(crypto.hkdfSync('sha256', SBuf, uBuf, hkdfInfo, 16));
 
+  console.log('[SRP-MATH] k(hex)=', k.toString(16).slice(0, 16) + '...');
+  console.log('[SRP-MATH] u(hex)=', u.toString(16).slice(0, 16) + '...');
+  console.log('[SRP-MATH] x(hex)=', x.toString(16).slice(0, 16) + '...');
+  console.log('[SRP-MATH] B-kgx positive=', ((B - kgx) % N + N) % N > 0n);
+  console.log('[SRP-MATH] S(hex,first16)=', S.toString(16).slice(0, 16) + '...');
+  console.log('[SRP-MATH] SBuf.length=', SBuf.length, 'first byte=', SBuf[0]);
+  console.log('[SRP-MATH] uBuf.length=', uBuf.length, 'first byte=', uBuf[0]);
+  console.log('[SRP-MATH] K(hex)=', K.toString('hex'));
+
   // signature = HMAC-SHA256(K, deviceGroupKey | deviceKey | SECRET_BLOCK | timestamp)
   const msg = Buffer.concat([
     Buffer.from(deviceGroupKey, 'utf8'),
