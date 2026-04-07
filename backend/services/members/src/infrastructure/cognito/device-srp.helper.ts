@@ -172,11 +172,13 @@ export function computeDevicePasswordClaim(params: {
   const exp = a + u * x;
   const S = modPow(base, exp, N);
 
-  // K = HKDF(SHA256, IKM=pad(S), salt=pad(u), info="Caldera Derived Key\x01", length=16)
-  // Cognito uses this HKDF derivation (same as aws-amplify AuthenticationHelper.computehkdf).
+  // K = HKDF(SHA256, IKM=pad(S), salt=pad(u), info="Caldera Derived Key", length=16)
+  // Node.js hkdfSync follows RFC 5869 and appends the counter byte 0x01 to info internally.
+  // Amplify passes "Caldera Derived Key\x01" to a simple HMAC (no counter appended by the lib).
+  // Both produce: HMAC-SHA256(PRK, "Caldera Derived Key\x01") — so we pass info WITHOUT \x01.
   const SBuf = hexToPositiveBuffer(S.toString(16));
   const uBuf = hexToPositiveBuffer(u.toString(16));
-  const hkdfInfo = Buffer.concat([Buffer.from('Caldera Derived Key', 'utf8'), Buffer.alloc(1, 1)]);
+  const hkdfInfo = Buffer.from('Caldera Derived Key', 'utf8');
   const K = Buffer.from(crypto.hkdfSync('sha256', SBuf, uBuf, hkdfInfo, 16));
 
   console.log('[SRP-MATH] NBuf.length=', NBuf.length, 'gBuf.length=', gBuf.length);
