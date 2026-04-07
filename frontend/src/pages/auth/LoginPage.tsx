@@ -95,9 +95,31 @@ export default function LoginPage() {
         const code = body?.error?.code ?? body?.error
 
         // Account exists but email not verified → send user to verify-email page
-        // so they can resend the verification link from there
         if (code === 'ACCOUNT_NOT_CONFIRMED') {
           navigate(`/auth/verify-email?email=${encodeURIComponent(data.email)}`)
+          return
+        }
+
+        // Device credentials are stale — clear them and retry without device key
+        if (code === 'DEVICE_AUTH_FAILED') {
+          localStorage.removeItem(DEVICE_KEY_STORAGE_KEY)
+          localStorage.removeItem(DEVICE_GROUP_KEY_STORAGE_KEY)
+          localStorage.removeItem(DEVICE_PASSWORD_STORAGE_KEY)
+          try {
+            const retryResponse = await authApi.login({
+              email: data.email,
+              password: data.password,
+              deviceKey: null,
+              deviceGroupKey: null,
+              devicePassword: null,
+            })
+            const { session, challengeName } = retryResponse.data.data
+            navigate('/auth/verify-otp', {
+              state: { email: data.email, session, challengeName },
+            })
+          } catch {
+            // Retry also failed — fall through to generic error
+          }
           return
         }
 
