@@ -141,9 +141,11 @@ export function computeDevicePasswordClaim(params: {
   const saltBytes = Buffer.from(saltHex, 'hex');
   const secretBlock = Buffer.from(secretBlockBase64, 'base64');
 
-  // k = H(pad(N) | pad(g))
-  const NBuf = bigintToFixedBuffer(N, 256);
-  const gBuf = bigintToFixedBuffer(g, 256);
+  // k = H(padHex(N) | padHex(g))
+  // Uses minimal padding (same as Amplify padHex): even-length hex + 0x00 prefix if high bit set.
+  // g=2 → "02" → 1 byte. Using bigintToFixedBuffer(g, 256) would pad g to 256 bytes, giving a wrong k.
+  const NBuf = hexToPositiveBuffer(N.toString(16));
+  const gBuf = hexToPositiveBuffer(g.toString(16));
   const k = BigInt(
     `0x${crypto.createHash('sha256').update(Buffer.concat([NBuf, gBuf])).digest('hex')}`,
   );
@@ -177,6 +179,7 @@ export function computeDevicePasswordClaim(params: {
   const hkdfInfo = Buffer.concat([Buffer.from('Caldera Derived Key', 'utf8'), Buffer.alloc(1, 1)]);
   const K = Buffer.from(crypto.hkdfSync('sha256', SBuf, uBuf, hkdfInfo, 16));
 
+  console.log('[SRP-MATH] NBuf.length=', NBuf.length, 'gBuf.length=', gBuf.length);
   console.log('[SRP-MATH] k(hex)=', k.toString(16).slice(0, 16) + '...');
   console.log('[SRP-MATH] u(hex)=', u.toString(16).slice(0, 16) + '...');
   console.log('[SRP-MATH] x(hex)=', x.toString(16).slice(0, 16) + '...');
