@@ -180,6 +180,21 @@ export class UnexpectedAuthChallengeException extends Error {
   }
 }
 
+/**
+ * StaleDeviceCredentialsException — HTTP 409.
+ * The client sent a deviceKey but is missing deviceGroupKey or devicePassword,
+ * meaning the stored device credentials are incomplete or from an older session.
+ * The client should clear device storage and retry without deviceKey.
+ */
+export class StaleDeviceCredentialsException extends Error {
+  readonly code = 'DEVICE_AUTH_FAILED';
+
+  constructor() {
+    super('Device credentials are stale. Please sign in again.');
+    this.name = 'StaleDeviceCredentialsException';
+  }
+}
+
 // ─── AC-010: Remember Device Exceptions ─────────────────────────────────────
 
 /**

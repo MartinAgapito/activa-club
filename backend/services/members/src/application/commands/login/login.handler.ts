@@ -13,6 +13,7 @@ import {
   AccountDisabledException,
   TooManyAttemptsException,
   UnexpectedAuthChallengeException,
+  StaleDeviceCredentialsException,
 } from '../../../domain/exceptions/member.exceptions';
 
 /**
@@ -99,7 +100,7 @@ export class LoginHandler {
       this.logger.warn(
         `LoginHandler: device challenge=${cognitoResponse.ChallengeName} received but credentials incomplete for email=${command.email} — signalling client to clear device data`,
       );
-      throw new UnexpectedAuthChallengeException('DEVICE_AUTH_FAILED');
+      throw new StaleDeviceCredentialsException();
     }
 
     if (cognitoResponse.ChallengeName !== 'EMAIL_OTP') {
