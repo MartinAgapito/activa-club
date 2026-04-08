@@ -61,10 +61,15 @@ export function generateDeviceSrpVerifier(
   deviceKey: string,
   devicePassword: string,
 ): DeviceSrpVerifier {
-  // Cognito rejects salts/verifiers whose first byte >= 0x80 (interpreted as
-  // negative in two's complement). Pad with 0x00 to ensure a positive value.
-  const saltRaw = crypto.randomBytes(16);
-  const saltBytes = saltRaw[0] >= 0x80 ? Buffer.concat([Buffer.alloc(1), saltRaw]) : saltRaw;
+  // Salt must have first byte < 0x80 so Cognito stores it as-is and returns it
+  // as hex without stripping a leading 0x00. If we added a 0x00 prefix to force
+  // positivity, Cognito would strip that byte when returning SALT in the challenge,
+  // making the stored x unreproducible. Regenerate until first byte is safe.
+  let saltRaw: Buffer;
+  do {
+    saltRaw = crypto.randomBytes(16);
+  } while (saltRaw[0] >= 0x80);
+  const saltBytes = saltRaw;
   const salt = saltBytes.toString('base64');
 
   const innerHash = crypto
