@@ -11,6 +11,7 @@ import { ResendCodeHandler } from './src/application/commands/resend-code/resend
 import { LoginHandler } from './src/application/commands/login/login.handler';
 import { VerifyOtpHandler } from './src/application/commands/verify-otp/verify-otp.handler';
 import { LogoutHandler } from './src/application/commands/logout/logout.handler';
+import { RefreshTokenHandler } from './src/application/commands/refresh-token/refresh-token.handler';
 
 // Infrastructure
 import { DynamoMemberRepository } from './src/infrastructure/repositories/dynamo-member.repository';
@@ -73,6 +74,9 @@ import { SEED_MEMBER_REPOSITORY } from './src/domain/repositories/seed-member.re
 
     // ── AC-008 use cases ───────────────────────────────────────────────────
     LogoutHandler,
+
+    // ── AC-010 use cases (session persistence via refresh token) ──────────
+    RefreshTokenHandler,
   ],
 })
 export class MembersModule {}

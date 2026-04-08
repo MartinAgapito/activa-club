@@ -219,36 +219,23 @@ export class CognitoService {
    * When email MFA is ON, Cognito returns an EMAIL_OTP challenge.
    * The response contains ChallengeName and Session (opaque, 3-minute TTL).
    *
-   * When deviceKey is provided (AC-010), it is included in AuthParameters so
-   * Cognito can attempt device-based authentication before issuing the OTP challenge.
-   * If the device is recognized and verified, Cognito may return tokens directly
-   * (ChallengeName = undefined) or a DEVICE_SRP_AUTH / DEVICE_PASSWORD_VERIFIER challenge.
-   *
-   * @param email     - Member email (used as Cognito USERNAME).
-   * @param password  - Member password (never logged).
-   * @param deviceKey - Optional Cognito device key from a previous remember-device session.
+   * @param email    - Member email (used as Cognito USERNAME).
+   * @param password - Member password (never logged).
    */
   async adminInitiateAuth(
     email: string,
     password: string,
-    deviceKey?: string | null,
   ): Promise<AdminInitiateAuthCommandOutput> {
     this.logger.debug(`adminInitiateAuth: initiating auth for email=${email}`);
-
-    const authParameters: Record<string, string> = {
-      USERNAME: email,
-      PASSWORD: password,
-    };
-
-    if (deviceKey) {
-      authParameters['DEVICE_KEY'] = deviceKey;
-    }
 
     const command = new AdminInitiateAuthCommand({
       UserPoolId: this.userPoolId,
       ClientId: this.clientId,
       AuthFlow: 'ADMIN_USER_PASSWORD_AUTH',
-      AuthParameters: authParameters,
+      AuthParameters: {
+        USERNAME: email,
+        PASSWORD: password,
+      },
     });
 
     const response = await this.client.send(command);
@@ -292,16 +279,15 @@ export class CognitoService {
     return response;
   }
 
-  // ─── AC-010: Remember Device ─────────────────────────────────────────────────
+  // ─── AC-010: Remember Device (ConfirmDevice / UpdateDeviceStatus) ────────────
+  // Device registration still happens after verify-otp so Cognito records the
+  // device. Session persistence (skipping OTP on return) is handled separately
+  // via the refresh token flow (POST /v1/auth/refresh).
 
   /**
    * Confirms and registers a device after a successful authentication.
    * Must be called with the AccessToken returned by adminRespondToAuthChallenge
    * and the DeviceKey + SRP verifier config from NewDeviceMetadata.
-   *
-   * On success, the device is registered in Cognito and subsequent logins from
-   * this device can skip the EMAIL_OTP challenge when deviceKey is included in
-   * AdminInitiateAuth.
    *
    * Requires the access token issued to the authenticated user — no IAM role needed.
    *
@@ -354,42 +340,48 @@ export class CognitoService {
     this.logger.log(`updateDeviceStatus: deviceKey=${deviceKey} marked as remembered`);
   }
 
-  /**
-   * Responds to a DEVICE_SRP_AUTH or DEVICE_PASSWORD_VERIFIER challenge.
-   * Used in the AC-010 device login bypass flow when Cognito requires device
-   * verification before issuing tokens directly.
-   *
-   * @param email           - Cognito USERNAME.
-   * @param session         - Opaque session token from adminInitiateAuth response.
-   * @param challengeName   - The device challenge name returned by Cognito.
-   * @param challengeParams - Key/value pairs required for the device challenge response.
-   */
-  async adminRespondToDeviceChallenge(
-    email: string,
-    session: string,
-    challengeName: string,
-    challengeParams: Record<string, string>,
-  ): Promise<AdminRespondToAuthChallengeCommandOutput> {
-    this.logger.debug(
-      `adminRespondToDeviceChallenge: responding to ${challengeName} for email=${email}`,
-    );
+  // ─── AC-010: Refresh Token ───────────────────────────────────────────────────
 
-    const command = new AdminRespondToAuthChallengeCommand({
+  /**
+   * Exchanges a Cognito refresh token for new access + id tokens.
+   * Uses REFRESH_TOKEN_AUTH flow via AdminInitiateAuth.
+   *
+   * @param refreshToken - The refresh token stored on the client after login.
+   * @returns New accessToken, idToken, expiresIn, tokenType.
+   * @throws NotAuthorizedException if the refresh token is expired or revoked.
+   */
+  async refreshTokens(refreshToken: string): Promise<{
+    accessToken: string;
+    idToken: string;
+    expiresIn: number;
+    tokenType: string;
+  }> {
+    this.logger.debug('refreshTokens: exchanging refresh token');
+
+    const command = new AdminInitiateAuthCommand({
       UserPoolId: this.userPoolId,
       ClientId: this.clientId,
-      ChallengeName: challengeName as never,
-      Session: session,
-      ChallengeResponses: {
-        USERNAME: email,
-        ...challengeParams,
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
+      AuthParameters: {
+        REFRESH_TOKEN: refreshToken,
       },
     });
 
     const response = await this.client.send(command);
-    this.logger.debug(
-      `adminRespondToDeviceChallenge: result challenge=${response.ChallengeName ?? 'none'} for email=${email}`,
-    );
-    return response;
+    const auth = response.AuthenticationResult;
+
+    if (!auth?.AccessToken || !auth?.IdToken) {
+      throw new Error('refreshTokens: Cognito did not return tokens');
+    }
+
+    this.logger.debug('refreshTokens: tokens refreshed successfully');
+
+    return {
+      accessToken: auth.AccessToken,
+      idToken: auth.IdToken,
+      expiresIn: auth.ExpiresIn ?? 3600,
+      tokenType: auth.TokenType ?? 'Bearer',
+    };
   }
 
   // ─── AC-008: Logout ──────────────────────────────────────────────────────────
