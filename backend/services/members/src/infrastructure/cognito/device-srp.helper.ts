@@ -86,6 +86,11 @@ export function generateDeviceSrpVerifier(
   const vPadded = vBuf[0] >= 0x80 ? Buffer.concat([Buffer.alloc(1), vBuf]) : vBuf;
   const passwordVerifier = vPadded.toString('base64');
 
+  console.log('[VERIFIER-TRACE] saltBytes.length=', saltBytes.length, 'saltHex=', saltBytes.toString('hex'));
+  console.log('[VERIFIER-TRACE] x(first16)=', xHash.slice(0, 16));
+  console.log('[VERIFIER-TRACE] vPadded.length=', vPadded.length, 'vPadded.first byte=', vPadded[0]);
+  console.log('[VERIFIER-TRACE] credential format: groupKey:deviceKey:password =', `${deviceGroupKey}:${deviceKey}`.slice(0, 40) + '...');
+
   return { passwordVerifier, salt, devicePassword };
 }
 
