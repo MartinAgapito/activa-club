@@ -142,8 +142,11 @@ export function computeDevicePasswordClaim(params: {
   const { a, AHex, BHex, saltHex, secretBlockBase64, deviceGroupKey, deviceKey, devicePassword, timestamp } = params;
 
   const B = BigInt(`0x${BHex}`);
-  // Cognito returns SALT as hex in the DEVICE_PASSWORD_VERIFIER challenge params.
-  const saltBytes = Buffer.from(saltHex, 'hex');
+  // Cognito returns SALT as a BigInteger hex string (no leading zeros).
+  // If the hex has odd length (e.g. "116691c0..."), Buffer.from(...,'hex') would silently
+  // drop the last nibble, producing wrong bytes. Pad to even length first.
+  const saltHexEven = saltHex.length % 2 === 0 ? saltHex : `0${saltHex}`;
+  const saltBytes = Buffer.from(saltHexEven, 'hex');
   const secretBlock = Buffer.from(secretBlockBase64, 'base64');
 
   // k = H(padHex(N) | padHex(g))
