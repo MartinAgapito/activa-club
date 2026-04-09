@@ -64,10 +64,12 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       logout: async () => {
+        const REFRESH_TOKEN_STORAGE_KEY = 'activa-club-refresh-token'
         const { idToken } = useAuthStore.getState()
 
         // If there is no token the session is already gone — just clear local state.
         if (!idToken) {
+          localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
           set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
           window.location.href = '/auth/login'
           return
@@ -81,6 +83,7 @@ export const useAuthStore = create<AuthState>()(
           const { authApi } = await import('@/api/auth.api')
           await authApi.logout(idToken)
           // Success — clear the store and redirect to login
+          localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
           set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
           window.location.href = '/auth/login'
         } catch (error: unknown) {
@@ -92,6 +95,7 @@ export const useAuthStore = create<AuthState>()(
 
           if (status === 401) {
             // Token already expired or revoked — treat as logged out
+            localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
             set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
             window.location.href = '/auth/login'
             return

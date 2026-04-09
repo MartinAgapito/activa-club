@@ -3,34 +3,22 @@ import { LoginCommand } from './login.command';
 import { LoginResult } from './login.result';
 import { CognitoService } from '../../../infrastructure/cognito/cognito.service';
 import {
-  generateSrpEphemeral,
-  computeDevicePasswordClaim,
-  generateCognitoTimestamp,
-} from '../../../infrastructure/cognito/device-srp.helper';
-import {
   InvalidCredentialsException,
   AccountNotConfirmedException,
   AccountDisabledException,
   TooManyAttemptsException,
   UnexpectedAuthChallengeException,
-  StaleDeviceCredentialsException,
 } from '../../../domain/exceptions/member.exceptions';
 
 /**
- * Login handler (use case) — AC-002 Step 1 / AC-010.
+ * Login handler (use case) — AC-002 Step 1.
  *
  * Initiates Cognito authentication with USER_PASSWORD_AUTH flow.
  * When credentials are valid and MFA is enabled, Cognito responds with an
  * EMAIL_OTP challenge and sends a 6-digit code to the member's verified email.
  *
- * AC-010 device bypass:
- * When the client sends a previously-remembered deviceKey, it is included in
- * AdminInitiateAuth. Cognito may return a DEVICE_SRP_AUTH or
- * DEVICE_PASSWORD_VERIFIER challenge instead of EMAIL_OTP. If the device
- * challenge is resolved successfully and Cognito returns tokens, this handler
- * returns a LoginResult with challengeName=null and the full token set,
- * skipping the OTP step. If the device challenge fails or is unrecognized,
- * the handler falls back to the standard EMAIL_OTP flow.
+ * AC-010 session persistence is handled separately via the refresh token flow
+ * (POST /v1/auth/refresh), not at the login step.
  *
  * Exception mapping from Cognito SDK names:
  *   - NotAuthorizedException (wrong password)    → InvalidCredentialsException (401) [no enumeration]
@@ -46,12 +34,6 @@ import {
 export class LoginHandler {
   private readonly logger = new Logger(LoginHandler.name);
 
-  /** Cognito challenge names that indicate a device verification step. */
-  private static readonly DEVICE_CHALLENGES = new Set([
-    'DEVICE_SRP_AUTH',
-    'DEVICE_PASSWORD_VERIFIER',
-  ]);
-
   constructor(private readonly cognitoService: CognitoService) {}
 
   async execute(command: LoginCommand): Promise<LoginResult> {
@@ -63,57 +45,10 @@ export class LoginHandler {
       cognitoResponse = await this.cognitoService.adminInitiateAuth(
         command.email,
         command.password,
-        command.deviceKey,
       );
     } catch (error) {
-      // Cognito throws ResourceNotFoundException when the stored deviceKey no
-      // longer exists (device was removed or pool was recreated). Signal the
-      // client to clear its device storage and retry without the device key.
-      if (
-        error instanceof Error &&
-        error.name === 'ResourceNotFoundException' &&
-        command.deviceKey
-      ) {
-        this.logger.warn(
-          `LoginHandler: deviceKey not found in Cognito for email=${command.email} — signalling client to clear device data`,
-        );
-        throw new StaleDeviceCredentialsException();
-      }
       this.mapInitiateAuthError(error);
       throw error;
-    }
-
-    // ── AC-010: Device bypass flow ─────────────────────────────────────────
-    // When a deviceKey was provided and Cognito returns a device challenge,
-    // attempt to resolve it. If tokens come back directly, return them.
-    if (
-      command.deviceKey &&
-      command.deviceGroupKey &&
-      command.devicePassword &&
-      cognitoResponse.ChallengeName &&
-      LoginHandler.DEVICE_CHALLENGES.has(cognitoResponse.ChallengeName)
-    ) {
-      return this.handleDeviceChallenge(
-        command.email,
-        cognitoResponse.Session ?? '',
-        command.deviceKey,
-        command.deviceGroupKey,
-        command.devicePassword,
-      );
-    }
-
-    // ── Standard EMAIL_OTP flow ────────────────────────────────────────────
-    // If Cognito returned a device challenge but we lack the full SRP credentials
-    // (deviceGroupKey or devicePassword missing), the stored device data is stale.
-    // Signal the client to clear device storage and retry without deviceKey.
-    if (
-      cognitoResponse.ChallengeName &&
-      LoginHandler.DEVICE_CHALLENGES.has(cognitoResponse.ChallengeName)
-    ) {
-      this.logger.warn(
-        `LoginHandler: device challenge=${cognitoResponse.ChallengeName} received but credentials incomplete for email=${command.email} — signalling client to clear device data`,
-      );
-      throw new StaleDeviceCredentialsException();
     }
 
     if (cognitoResponse.ChallengeName !== 'EMAIL_OTP') {
@@ -134,141 +69,6 @@ export class LoginHandler {
       challengeName: cognitoResponse.ChallengeName,
       session,
     });
-  }
-
-  /**
-   * Attempts to resolve a DEVICE_SRP_AUTH or DEVICE_PASSWORD_VERIFIER challenge.
-   *
-   * If Cognito returns authentication tokens after the device challenge, the login
-   * is complete and challengeName is set to null. If Cognito returns another
-   * challenge (including EMAIL_OTP), the handler falls back to the OTP flow
-   * by returning a LoginResult with that challenge and session.
-   *
-   * Device challenge errors are silently caught and fall back to EMAIL_OTP by
-   * re-initiating auth without a device key.
-   */
-  /**
-   * Completes the DEVICE_SRP_AUTH two-round handshake:
-   *
-   * Round 1 — DEVICE_SRP_AUTH:
-   *   Generate ephemeral key pair (a, A). Send SRP_A + DEVICE_KEY.
-   *   Cognito responds with DEVICE_PASSWORD_VERIFIER containing SRP_B, SALT, SECRET_BLOCK.
-   *
-   * Round 2 — DEVICE_PASSWORD_VERIFIER:
-   *   Compute PASSWORD_CLAIM_SIGNATURE using the device password and SRP values.
-   *   Cognito returns tokens directly on success.
-   */
-  private async handleDeviceChallenge(
-    email: string,
-    session: string,
-    deviceKey: string,
-    deviceGroupKey: string,
-    devicePassword: string,
-  ): Promise<LoginResult> {
-    this.logger.log(`LoginHandler: attempting device challenge=DEVICE_SRP_AUTH for email=${email}`);
-
-    try {
-      // ── Round 1: DEVICE_SRP_AUTH ───────────────────────────────────────────
-      const { a, AHex } = generateSrpEphemeral();
-
-      const round1 = await this.cognitoService.adminRespondToDeviceChallenge(
-        email,
-        session,
-        'DEVICE_SRP_AUTH',
-        { DEVICE_KEY: deviceKey, SRP_A: AHex },
-      );
-
-      if (round1.ChallengeName !== 'DEVICE_PASSWORD_VERIFIER' || !round1.ChallengeParameters) {
-        this.logger.warn(
-          `LoginHandler: unexpected challenge after DEVICE_SRP_AUTH: ${round1.ChallengeName}, falling back`,
-        );
-        return this.initiateEmailOtpFallback(email);
-      }
-
-      // ── Round 2: DEVICE_PASSWORD_VERIFIER ─────────────────────────────────
-      const cp = round1.ChallengeParameters;
-      const timestamp = generateCognitoTimestamp();
-
-      this.logger.debug(`[SRP-TRACE] deviceGroupKey="${deviceGroupKey}"`);
-      this.logger.debug(`[SRP-TRACE] deviceKey="${deviceKey}"`);
-      this.logger.debug(`[SRP-TRACE] devicePassword="${devicePassword}"`);
-      this.logger.debug(`[SRP-TRACE] AHex(first32)="${AHex.slice(0, 32)}..."`);
-      this.logger.debug(`[SRP-TRACE] SRP_B(first32)="${(cp['SRP_B'] ?? '').slice(0, 32)}..."`);
-      this.logger.debug(`[SRP-TRACE] SALT="${cp['SALT'] ?? ''}"`);
-      this.logger.debug(`[SRP-TRACE] SECRET_BLOCK(first32)="${(cp['SECRET_BLOCK'] ?? '').slice(0, 32)}..."`);
-      this.logger.debug(`[SRP-TRACE] timestamp="${timestamp}"`);
-      this.logger.debug(`[SRP-TRACE] round1.Session defined=${!!round1.Session}`);
-
-      const { signature } = computeDevicePasswordClaim({
-        a,
-        AHex,
-        BHex: cp['SRP_B'] ?? '',
-        saltHex: cp['SALT'] ?? '',
-        secretBlockBase64: cp['SECRET_BLOCK'] ?? '',
-        deviceGroupKey,
-        deviceKey,
-        devicePassword,
-        timestamp,
-      });
-
-      this.logger.debug(`[SRP-TRACE] signature="${signature}"`);
-
-      const round2 = await this.cognitoService.adminRespondToDeviceChallenge(
-        email,
-        round1.Session ?? session,
-        'DEVICE_PASSWORD_VERIFIER',
-        {
-          USERNAME: email,
-          DEVICE_KEY: deviceKey,
-          PASSWORD_CLAIM_SIGNATURE: signature,
-          PASSWORD_CLAIM_SECRET_BLOCK: cp['SECRET_BLOCK'] ?? '',
-          TIMESTAMP: timestamp,
-        },
-      );
-
-      // Device auth complete — Cognito returns tokens directly
-      const auth = round2.AuthenticationResult;
-      if (auth?.AccessToken && auth?.IdToken && auth?.RefreshToken) {
-        this.logger.log(
-          `LoginHandler: device bypass successful — tokens issued directly for email=${email}`,
-        );
-        return new LoginResult({
-          challengeName: null,
-          accessToken: auth.AccessToken,
-          idToken: auth.IdToken,
-          refreshToken: auth.RefreshToken,
-          expiresIn: auth.ExpiresIn ?? 3600,
-        });
-      }
-
-      // Device auth passed but Cognito still requires EMAIL_OTP
-      if (round2.ChallengeName === 'EMAIL_OTP' && round2.Session) {
-        this.logger.log(`LoginHandler: device passed but EMAIL_OTP still required for email=${email}`);
-        return new LoginResult({ challengeName: 'EMAIL_OTP', session: round2.Session });
-      }
-
-      this.logger.warn(`LoginHandler: unexpected state after DEVICE_PASSWORD_VERIFIER, falling back`);
-      return this.initiateEmailOtpFallback(email);
-    } catch (error) {
-      this.logger.warn(
-        `LoginHandler: device challenge failed for email=${email}, falling back to EMAIL_OTP. ` +
-          `Reason: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      return this.initiateEmailOtpFallback(email);
-    }
-  }
-
-  /**
-   * Re-initiates authentication without a device key to fall back to the standard
-   * EMAIL_OTP flow. Used when device challenge fails or returns unexpected results.
-   */
-  private async initiateEmailOtpFallback(email: string): Promise<LoginResult> {
-    this.logger.log(`LoginHandler: initiating EMAIL_OTP fallback for email=${email}`);
-
-    // We do not have the password here — the fallback must be driven by the
-    // caller re-submitting the login request without a deviceKey.
-    // Return an UnexpectedAuthChallengeException so the client knows to retry.
-    throw new UnexpectedAuthChallengeException('DEVICE_AUTH_FAILED');
   }
 
   /**

@@ -51,27 +51,17 @@ export default function LoginPage() {
 
   const { isSubmitting } = form.formState
 
-  const DEVICE_KEY_STORAGE_KEY = 'activa-club-device-key'
-  const DEVICE_GROUP_KEY_STORAGE_KEY = 'activa-club-device-group-key'
-  const DEVICE_PASSWORD_STORAGE_KEY = 'activa-club-device-password'
+  const REFRESH_TOKEN_STORAGE_KEY = 'activa-club-refresh-token'
 
-  const onSubmit = async (data: LoginFormValues) => {
-    try {
-      const storedDeviceKey = localStorage.getItem(DEVICE_KEY_STORAGE_KEY)
-      const storedDeviceGroupKey = localStorage.getItem(DEVICE_GROUP_KEY_STORAGE_KEY)
-      const storedDevicePassword = localStorage.getItem(DEVICE_PASSWORD_STORAGE_KEY)
+  // AC-010: on mount, try silent re-authentication via stored refresh token
+  useEffect(() => {
+    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
+    if (!storedRefreshToken || isAuthenticated) return
 
-      const response = await authApi.login({
-        email: data.email,
-        password: data.password,
-        deviceKey: storedDeviceKey ?? null,
-        deviceGroupKey: storedDeviceGroupKey ?? null,
-        devicePassword: storedDevicePassword ?? null,
-      })
-      const { session, challengeName, idToken } = response.data.data
-
-      // AC-010: device challenge passed — tokens returned directly, skip OTP screen
-      if ((!challengeName || challengeName === null) && idToken) {
+    authApi
+      .refreshToken(storedRefreshToken)
+      .then((response) => {
+        const { idToken } = response.data.data
         const { setTokens } = useAuthStore.getState()
         setTokens(idToken)
         const { user } = useAuthStore.getState()
@@ -80,8 +70,21 @@ export default function LoginPage() {
             ? '/admin/dashboard'
             : '/member/dashboard'
         navigate(destination, { replace: true })
-        return
-      }
+      })
+      .catch(() => {
+        // Refresh token expired or revoked — clear it and show the login form
+        localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const onSubmit = async (data: LoginFormValues) => {
+    try {
+      const response = await authApi.login({
+        email: data.email,
+        password: data.password,
+      })
+      const { session, challengeName } = response.data.data
 
       // Navigate to OTP verification step, carrying session + email
       navigate('/auth/verify-otp', {
@@ -97,29 +100,6 @@ export default function LoginPage() {
         // Account exists but email not verified → send user to verify-email page
         if (code === 'ACCOUNT_NOT_CONFIRMED') {
           navigate(`/auth/verify-email?email=${encodeURIComponent(data.email)}`)
-          return
-        }
-
-        // Device credentials are stale — clear them and retry without device key
-        if (code === 'DEVICE_AUTH_FAILED') {
-          localStorage.removeItem(DEVICE_KEY_STORAGE_KEY)
-          localStorage.removeItem(DEVICE_GROUP_KEY_STORAGE_KEY)
-          localStorage.removeItem(DEVICE_PASSWORD_STORAGE_KEY)
-          try {
-            const retryResponse = await authApi.login({
-              email: data.email,
-              password: data.password,
-              deviceKey: null,
-              deviceGroupKey: null,
-              devicePassword: null,
-            })
-            const { session, challengeName } = retryResponse.data.data
-            navigate('/auth/verify-otp', {
-              state: { email: data.email, session, challengeName },
-            })
-          } catch {
-            // Retry also failed — fall through to generic error
-          }
           return
         }
 

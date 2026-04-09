@@ -21,9 +21,6 @@ export interface ResendCodePayload {
 export interface LoginPayload {
   email: string
   password: string
-  deviceKey?: string | null
-  deviceGroupKey?: string | null
-  devicePassword?: string | null
 }
 
 export interface VerifyOtpPayload {
@@ -52,18 +49,14 @@ export interface LoginData {
   session?: string
   challengeName: string | null
   email: string
-  // AC-010: present when device challenge passed and tokens issued directly
-  idToken?: string
-  accessToken?: string
-  refreshToken?: string
-  expiresIn?: number
 }
 
 export interface VerifyOtpData {
   idToken: string
   accessToken?: string
-  refreshToken?: string
-  // AC-010: All three must be stored to complete the DEVICE_SRP_AUTH handshake on re-login
+  /** AC-010: Persist in localStorage for silent re-authentication via POST /v1/auth/refresh. */
+  refreshToken: string
+  /** AC-010: Device keys returned by Cognito ConfirmDevice (stored client-side for reference). */
   deviceKey: string | null
   deviceGroupKey: string | null
   devicePassword: string | null
@@ -71,6 +64,13 @@ export interface VerifyOtpData {
 
 export interface LogoutData {
   message: string
+}
+
+export interface RefreshTokenData {
+  accessToken: string
+  idToken: string
+  expiresIn: number
+  tokenType: string
 }
 
 // ─── Error shape returned by the backend ─────────────────────────────────────
@@ -124,6 +124,14 @@ export const authApi = {
    */
   verifyOtp(payload: VerifyOtpPayload) {
     return apiClient.post<ApiResponse<VerifyOtpData>>('/v1/auth/verify-otp', payload)
+  },
+
+  /**
+   * AC-010: Exchange a stored refresh token for new access + id tokens.
+   * Called silently on page load to restore the session without credentials.
+   */
+  refreshToken(refreshToken: string) {
+    return apiClient.post<ApiResponse<RefreshTokenData>>('/v1/auth/refresh', { refreshToken })
   },
 
   /**

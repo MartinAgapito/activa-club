@@ -24,6 +24,7 @@ import { VerifyEmailRequestDto } from '../dtos/verify-email.request.dto';
 import { ResendCodeRequestDto } from '../dtos/resend-code.request.dto';
 import { LoginRequestDto } from '../dtos/login.request.dto';
 import { VerifyOtpRequestDto } from '../dtos/verify-otp.request.dto';
+import { RefreshTokenRequestDto } from '../dtos/refresh-token.request.dto';
 
 // Response DTOs
 import { RegisterMemberDataDto } from '../dtos/register-member.response.dto';
@@ -31,6 +32,7 @@ import { VerifyEmailDataDto } from '../dtos/verify-email.response.dto';
 import { LoginDataDto } from '../dtos/login.response.dto';
 import { VerifyOtpDataDto } from '../dtos/verify-otp.response.dto';
 import { LogoutResponseDto } from '../dtos/logout.response.dto';
+import { RefreshTokenDataDto } from '../dtos/refresh-token.response.dto';
 
 // Commands
 import { RegisterMemberCommand } from '../../application/commands/register-member/register-member.command';
@@ -39,6 +41,7 @@ import { ResendCodeCommand } from '../../application/commands/resend-code/resend
 import { LoginCommand } from '../../application/commands/login/login.command';
 import { VerifyOtpCommand } from '../../application/commands/verify-otp/verify-otp.command';
 import { LogoutCommand } from '../../application/commands/logout/logout.command';
+import { RefreshTokenCommand } from '../../application/commands/refresh-token/refresh-token.command';
 
 // Handlers
 import { RegisterMemberHandler } from '../../application/commands/register-member/register-member.handler';
@@ -47,6 +50,7 @@ import { ResendCodeHandler } from '../../application/commands/resend-code/resend
 import { LoginHandler } from '../../application/commands/login/login.handler';
 import { VerifyOtpHandler } from '../../application/commands/verify-otp/verify-otp.handler';
 import { LogoutHandler } from '../../application/commands/logout/logout.handler';
+import { RefreshTokenHandler } from '../../application/commands/refresh-token/refresh-token.handler';
 
 /**
  * Auth controller — authentication endpoints.
@@ -57,6 +61,7 @@ import { LogoutHandler } from '../../application/commands/logout/logout.handler'
  *   POST /v1/auth/resend-code   — AC-001 Support: resend OTP to email (→ 200)
  *   POST /v1/auth/login         — AC-002 Step 1: credential validation → EMAIL_OTP challenge (→ 200)
  *   POST /v1/auth/verify-otp    — AC-002 Step 2: OTP challenge response → JWT tokens (→ 200)
+ *   POST /v1/auth/refresh       — AC-010: refresh token → new access/id tokens (→ 200)
  *   POST /v1/auth/logout        — AC-008: global sign-out (→ 200) [requires Bearer token]
  *
  * Public routes (register, verify-email, resend-code, login, verify-otp) require no auth.
@@ -78,6 +83,7 @@ export class AuthController {
     private readonly loginHandler: LoginHandler,
     private readonly verifyOtpHandler: VerifyOtpHandler,
     private readonly logoutHandler: LogoutHandler,
+    private readonly refreshTokenHandler: RefreshTokenHandler,
   ) {}
 
   // ─── AC-001 Step 1: POST /v1/auth/register ────────────────────────────────
@@ -221,7 +227,11 @@ export class AuthController {
   @ApiOperation({
     summary: 'Login — credential validation (Step 1)',
     description:
-      'Validates email and password via Cognito AdminInitiateAuth (USER_PASSWORD_AUTH). When MFA is ON, Cognito sends a 6-digit OTP to the verified email and returns an EMAIL_OTP challenge with a 3-minute session token.',
+      'Validates email and password via Cognito AdminInitiateAuth (USER_PASSWORD_AUTH). ' +
+      'When MFA is ON, Cognito sends a 6-digit OTP to the verified email and returns an ' +
+      'EMAIL_OTP challenge with a 3-minute session token. ' +
+      'AC-010 session persistence (staying logged in across visits) is handled via ' +
+      'POST /v1/auth/refresh using the refresh token stored after verify-otp.',
   })
   @ApiBody({ type: LoginRequestDto })
   @ApiResponse({
@@ -246,24 +256,11 @@ export class AuthController {
     description: 'TOO_MANY_ATTEMPTS — Cognito rate limiting.',
   })
   async login(@Body() dto: LoginRequestDto): Promise<LoginDataDto> {
-    // Password and deviceKey are intentionally not logged
+    // Password is intentionally not logged
     this.logger.log(`POST /v1/auth/login — email=${dto.email}`);
 
-    const command = new LoginCommand(dto.email, dto.password, dto.deviceKey, dto.deviceGroupKey, dto.devicePassword);
+    const command = new LoginCommand(dto.email, dto.password);
     const result = await this.loginHandler.execute(command);
-
-    // AC-010: device bypass — tokens returned directly, no OTP step needed
-    if (result.challengeName === null) {
-      return {
-        challengeName: null,
-        session: null,
-        message: 'Device recognized. You are now signed in.',
-        accessToken: result.accessToken,
-        idToken: result.idToken,
-        refreshToken: result.refreshToken,
-        expiresIn: result.expiresIn,
-      };
-    }
 
     return {
       challengeName: result.challengeName,
@@ -324,6 +321,45 @@ export class AuthController {
       deviceKey: result.deviceKey,
       deviceGroupKey: result.deviceGroupKey,
       devicePassword: result.devicePassword,
+    };
+  }
+
+  // ─── AC-010: POST /v1/auth/refresh ────────────────────────────────────────
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Refresh tokens — session persistence (AC-010)',
+    description:
+      'Exchanges a valid Cognito refresh token for new access and id tokens. ' +
+      'Allows the client to stay logged in without re-entering credentials or OTP. ' +
+      'The refresh token remains valid for 30 days (Cognito default).',
+  })
+  @ApiBody({ type: RefreshTokenRequestDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Tokens refreshed successfully.',
+    type: RefreshTokenDataDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'INVALID_TOKEN — refresh token is expired or has been revoked.',
+  })
+  @ApiResponse({
+    status: HttpStatus.GONE,
+    description: 'SESSION_EXPIRED — the user account no longer exists.',
+  })
+  async refresh(@Body() dto: RefreshTokenRequestDto): Promise<RefreshTokenDataDto> {
+    this.logger.log('POST /v1/auth/refresh');
+
+    const command = new RefreshTokenCommand(dto.refreshToken);
+    const result = await this.refreshTokenHandler.execute(command);
+
+    return {
+      accessToken: result.accessToken,
+      idToken: result.idToken,
+      expiresIn: result.expiresIn,
+      tokenType: result.tokenType,
     };
   }
 
