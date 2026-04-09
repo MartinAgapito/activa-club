@@ -322,6 +322,14 @@ module "api_gateway" {
       lambda_function_name = "${var.project}-members-${var.env}"
       auth_required        = false
     },
+    # ── AC-010: Session persistence ───────────────────────────────
+    {
+      method               = "POST"
+      path                 = "/v1/auth/refresh"
+      lambda_invoke_arn    = module.members_lambda.invoke_arn
+      lambda_function_name = "${var.project}-members-${var.env}"
+      auth_required        = false
+    },
     # ── AC-008: Logout ────────────────────────────────────────────
     {
       method               = "POST"
