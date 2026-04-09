@@ -311,16 +311,13 @@ export class AuthController {
     );
     const result = await this.verifyOtpHandler.execute(command);
 
-    // Tokens and device credentials are intentionally not logged
+    // Tokens are intentionally not logged
     return {
       accessToken: result.accessToken,
       idToken: result.idToken,
       refreshToken: result.refreshToken,
       expiresIn: result.expiresIn,
       tokenType: result.tokenType,
-      deviceKey: result.deviceKey,
-      deviceGroupKey: result.deviceGroupKey,
-      devicePassword: result.devicePassword,
     };
   }
 

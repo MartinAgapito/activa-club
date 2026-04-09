@@ -1,14 +1,11 @@
-import * as crypto from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { VerifyOtpCommand } from './verify-otp.command';
 import { VerifyOtpResult } from './verify-otp.result';
 import { CognitoService } from '../../../infrastructure/cognito/cognito.service';
-import { generateDeviceSrpVerifier } from '../../../infrastructure/cognito/device-srp.helper';
 import {
   InvalidOtpException,
   SessionExpiredException,
   TooManyAttemptsException,
-  DeviceConfirmationFailedException,
 } from '../../../domain/exceptions/member.exceptions';
 
 /**
@@ -17,12 +14,8 @@ import {
  * Responds to the Cognito EMAIL_OTP challenge with the code submitted by the member.
  * On success, Cognito returns AccessToken, IdToken, and RefreshToken.
  *
- * AC-010 extension: when rememberDevice=true and Cognito returns NewDeviceMetadata,
- * this handler:
- *   1. Generates a random device password (32 bytes hex).
- *   2. Computes the SRP verifier and salt for the device.
- *   3. Calls CognitoService.confirmDevice to register the device.
- *   4. Returns the deviceKey in the result so the client can persist it.
+ * AC-010 session persistence is handled via the refresh token (POST /v1/auth/refresh).
+ * Cognito device tracking (ConfirmDevice / UpdateDeviceStatus) is not used.
  *
  * Exception mapping from Cognito SDK names:
  *   - CodeMismatchException    → InvalidOtpException (400)
@@ -30,7 +23,7 @@ import {
  *   - TooManyRequestsException → TooManyAttemptsException (429)
  *   - NotAuthorizedException   → SessionExpiredException (410)  [session gone/used]
  *
- * Security: tokens and device keys returned from Cognito are NEVER logged.
+ * Security: tokens returned from Cognito are NEVER logged.
  */
 @Injectable()
 export class VerifyOtpHandler {
@@ -68,73 +61,13 @@ export class VerifyOtpHandler {
     // Tokens are intentionally not logged
     this.logger.log(`VerifyOtpHandler: authentication complete for email=${command.email}`);
 
-    // ── AC-010: Remember Device ─────────────────────────────────────────────
-    let deviceKey: string | null = null;
-
-    let deviceGroupKey: string | null = null;
-    let devicePassword: string | null = null;
-
-    if (command.rememberDevice && auth.NewDeviceMetadata?.DeviceKey) {
-      const result = await this.confirmDeviceAfterAuth(
-        auth.AccessToken,
-        auth.NewDeviceMetadata.DeviceKey,
-        auth.NewDeviceMetadata.DeviceGroupKey ?? '',
-      );
-      deviceKey = result.deviceKey;
-      deviceGroupKey = result.deviceGroupKey;
-      devicePassword = result.devicePassword;
-    }
-
     return new VerifyOtpResult({
       accessToken: auth.AccessToken,
       idToken: auth.IdToken,
       refreshToken: auth.RefreshToken,
       expiresIn: auth.ExpiresIn ?? 3600,
       tokenType: 'Bearer',
-      deviceKey,
-      deviceGroupKey,
-      devicePassword,
     });
-  }
-
-  /**
-   * Calls ConfirmDevice after a successful OTP authentication.
-   * Generates a random device password, computes the SRP verifier, and registers
-   * the device with Cognito. Returns the device key on success, null on failure
-   * (a ConfirmDevice failure must not block the authenticated session).
-   *
-   * Throws DeviceConfirmationFailedException if Cognito rejects the request —
-   * callers should surface this as a non-blocking warning to the client.
-   */
-  private async confirmDeviceAfterAuth(
-    accessToken: string,
-    deviceKey: string,
-    deviceGroupKey: string,
-  ): Promise<{ deviceKey: string; deviceGroupKey: string; devicePassword: string }> {
-    try {
-      const devicePassword = crypto.randomBytes(32).toString('hex');
-
-      const { passwordVerifier, salt } = generateDeviceSrpVerifier(
-        deviceGroupKey,
-        deviceKey,
-        devicePassword,
-      );
-
-      await this.cognitoService.confirmDevice(accessToken, deviceKey, passwordVerifier, salt);
-
-      // With device_only_remembered_on_user_prompt=true, ConfirmDevice alone is
-      // not enough — we must explicitly mark the device as "remembered".
-      await this.cognitoService.updateDeviceStatus(accessToken, deviceKey);
-
-      this.logger.log(`VerifyOtpHandler: device confirmed and marked as remembered`);
-      return { deviceKey, deviceGroupKey, devicePassword };
-    } catch (error) {
-      this.logger.warn(
-        `VerifyOtpHandler: ConfirmDevice failed for deviceKey — device will not be remembered`,
-        error instanceof Error ? error.message : String(error),
-      );
-      throw new DeviceConfirmationFailedException();
-    }
   }
 
   /**

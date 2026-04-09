@@ -44,15 +44,13 @@ export class VerifyOtpRequestDto {
   otp: string;
 
   /**
-   * AC-010: When true, the backend will call Cognito ConfirmDevice after successful
-   * OTP verification and return a deviceKey the client can persist.
-   * On subsequent logins, including deviceKey in the login request allows skipping
-   * the OTP challenge from a recognized device.
+   * AC-010: Accepted for backwards compatibility but has no effect on the backend.
+   * Session persistence is handled via the refresh token returned in the response.
    */
   @ApiPropertyOptional({
     description:
-      'AC-010 — When true, the device is registered with Cognito after successful OTP verification. ' +
-      'The response will include a deviceKey to persist for future logins.',
+      'AC-010 — Accepted for backwards compatibility. Session persistence is handled ' +
+      'via the refresh token (POST /v1/auth/refresh). No device registration is performed.',
     example: false,
     default: false,
   })

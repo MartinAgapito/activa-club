@@ -23,10 +23,8 @@ import {
   InvalidOtpException,
   SessionExpiredException,
   UnexpectedAuthChallengeException,
-  StaleDeviceCredentialsException,
   InvalidTokenException,
   LogoutFailedException,
-  DeviceConfirmationFailedException,
 } from '../../domain/exceptions/member.exceptions';
 
 /**
@@ -92,22 +90,11 @@ const DOMAIN_EXCEPTION_MAP: Record<string, { httpStatus: HttpStatus; code: strin
     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
     code: 'INTERNAL_ERROR',
   },
-  StaleDeviceCredentialsException: {
-    httpStatus: HttpStatus.CONFLICT,
-    code: 'DEVICE_AUTH_FAILED',
-  },
-
   // AC-008 — Logout
   InvalidTokenException: { httpStatus: HttpStatus.UNAUTHORIZED, code: 'INVALID_TOKEN' },
   LogoutFailedException: {
     httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
     code: 'LOGOUT_FAILED',
-  },
-
-  // AC-010 — Remember Device
-  DeviceConfirmationFailedException: {
-    httpStatus: HttpStatus.INTERNAL_SERVER_ERROR,
-    code: 'DEVICE_CONFIRMATION_FAILED',
   },
 };
 
