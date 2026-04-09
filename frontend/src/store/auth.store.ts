@@ -26,14 +26,10 @@ interface AuthState {
   // Actions
   login: (user: CognitoUser) => void
   /**
-   * AC-008: Logout action.
-   * Calls POST /v1/auth/logout to invalidate all Cognito sessions,
-   * then clears the local store.
-   *
-   * Behavior:
-   *   - Success (200): clears the store and redirects to /auth/login.
-   *   - 401 (token expired/revoked): clears the store and redirects to /auth/login.
-   *   - Network error: surfaces the error and does NOT clear the store.
+   * AC-010: Soft logout.
+   * Clears local auth state only — does NOT call Cognito AdminUserGlobalSignOut
+   * so the refresh token in localStorage remains valid for silent re-authentication
+   * on the next visit (remember-device flow).
    */
   logout: () => Promise<void>
   clearAuth: () => void
@@ -64,47 +60,8 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       logout: async () => {
-        const REFRESH_TOKEN_STORAGE_KEY = 'activa-club-refresh-token'
-        const { idToken } = useAuthStore.getState()
-
-        // If there is no token the session is already gone — just clear local state.
-        if (!idToken) {
-          localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
-          set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
-          window.location.href = '/auth/login'
-          return
-        }
-
-        set({ isLoading: true })
-
-        try {
-          // Lazy import avoids a circular dependency:
-          // auth.store → auth.api → client → useAuthStore → auth.store
-          const { authApi } = await import('@/api/auth.api')
-          await authApi.logout(idToken)
-          // Success — clear the store and redirect to login
-          localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
-          set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
-          window.location.href = '/auth/login'
-        } catch (error: unknown) {
-          const axiosError = error as {
-            response?: { status?: number }
-            message?: string
-          }
-          const status = axiosError?.response?.status
-
-          if (status === 401) {
-            // Token already expired or revoked — treat as logged out
-            localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
-            set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
-            window.location.href = '/auth/login'
-            return
-          }
-
-          // Network error or unexpected server error — do NOT clear the store
-          set({ isLoading: false })
-          throw error
-        }
+        set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
+        window.location.href = '/auth/login'
       },
 
       clearAuth: () =>

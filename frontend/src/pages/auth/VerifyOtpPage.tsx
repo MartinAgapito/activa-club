@@ -23,9 +23,6 @@ import { verifyOtpSchema, type VerifyOtpFormValues } from '@/lib/zod-schemas'
 import { authApi, type AuthApiError } from '@/api/auth.api'
 import { useAuthStore } from '@/store'
 
-const DEVICE_KEY_STORAGE_KEY = 'activa-club-device-key'
-const DEVICE_GROUP_KEY_STORAGE_KEY = 'activa-club-device-group-key'
-const DEVICE_PASSWORD_STORAGE_KEY = 'activa-club-device-password'
 const REFRESH_TOKEN_STORAGE_KEY = 'activa-club-refresh-token'
 
 interface LocationState {
@@ -71,21 +68,16 @@ export default function VerifyOtpPage() {
         rememberDevice,
       })
 
-      const { idToken, refreshToken, deviceKey, deviceGroupKey, devicePassword } = response.data.data
+      const { idToken, refreshToken } = response.data.data
 
       console.log('[AC-010][verify-otp] refreshToken received:', !!refreshToken)
 
-      // AC-010: persist device credentials if returned
-      if (deviceKey && deviceGroupKey && devicePassword) {
-        localStorage.setItem(DEVICE_KEY_STORAGE_KEY, deviceKey)
-        localStorage.setItem(DEVICE_GROUP_KEY_STORAGE_KEY, deviceGroupKey)
-        localStorage.setItem(DEVICE_PASSWORD_STORAGE_KEY, devicePassword)
-      }
-
-      // AC-010: store refresh token for silent re-authentication on next visit
-      if (refreshToken) {
+      // AC-010: store refresh token only if user opted in to remember this device
+      if (rememberDevice && refreshToken) {
         localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken)
-        console.log('[AC-010][verify-otp] refreshToken stored in localStorage')
+        console.log('[AC-010][verify-otp] refreshToken stored in localStorage (rememberDevice=true)')
+      } else if (!rememberDevice) {
+        console.log('[AC-010][verify-otp] rememberDevice=false — refreshToken not stored')
       } else {
         console.warn('[AC-010][verify-otp] refreshToken missing from response — session persistence will not work')
       }
