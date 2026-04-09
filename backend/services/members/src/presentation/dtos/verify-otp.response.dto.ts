@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 
 /**
  * Data portion of the OTP verification success response.
@@ -33,31 +33,6 @@ export class VerifyOtpDataDto {
     example: 'Bearer',
   })
   tokenType: string;
-
-  /**
-   * AC-010: Cognito device key returned when rememberDevice=true and ConfirmDevice succeeded.
-   * The client must persist this key (e.g., localStorage or secure storage) and include it
-   * in subsequent login requests to skip the OTP challenge on this device.
-   * Null when rememberDevice was false or NewDeviceMetadata was absent.
-   */
-  @ApiPropertyOptional({
-    description: 'AC-010 — Cognito device key. Persist and send in future logins.',
-    example: 'us-east-1_abc123:device-key-uuid',
-    nullable: true,
-  })
-  deviceKey: string | null;
-
-  @ApiPropertyOptional({
-    description: 'AC-010 — Cognito device group key. Required for DEVICE_SRP_AUTH handshake.',
-    nullable: true,
-  })
-  deviceGroupKey: string | null;
-
-  @ApiPropertyOptional({
-    description: 'AC-010 — Device password used during ConfirmDevice. Required for DEVICE_SRP_AUTH.',
-    nullable: true,
-  })
-  devicePassword: string | null;
 }
 
 /**

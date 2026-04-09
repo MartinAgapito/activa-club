@@ -12,8 +12,6 @@ import {
   AdminInitiateAuthCommand,
   AdminRespondToAuthChallengeCommand,
   AdminUserGlobalSignOutCommand,
-  ConfirmDeviceCommand,
-  UpdateDeviceStatusCommand,
   AttributeType,
   AdminInitiateAuthCommandOutput,
   AdminRespondToAuthChallengeCommandOutput,
@@ -277,67 +275,6 @@ export class CognitoService {
     const response = await this.client.send(command);
     this.logger.log(`adminRespondToAuthChallenge: authentication successful for email=${email}`);
     return response;
-  }
-
-  // ─── AC-010: Remember Device (ConfirmDevice / UpdateDeviceStatus) ────────────
-  // Device registration still happens after verify-otp so Cognito records the
-  // device. Session persistence (skipping OTP on return) is handled separately
-  // via the refresh token flow (POST /v1/auth/refresh).
-
-  /**
-   * Confirms and registers a device after a successful authentication.
-   * Must be called with the AccessToken returned by adminRespondToAuthChallenge
-   * and the DeviceKey + SRP verifier config from NewDeviceMetadata.
-   *
-   * Requires the access token issued to the authenticated user — no IAM role needed.
-   *
-   * @param accessToken      - The user's AccessToken returned after successful auth.
-   * @param deviceKey        - The device key from NewDeviceMetadata.
-   * @param passwordVerifier - Base64-encoded SRP password verifier for the device.
-   * @param salt             - Base64-encoded SRP salt for the device.
-   */
-  async confirmDevice(
-    accessToken: string,
-    deviceKey: string,
-    passwordVerifier: string,
-    salt: string,
-  ): Promise<void> {
-    this.logger.debug(`confirmDevice: registering deviceKey=${deviceKey}`);
-
-    const command = new ConfirmDeviceCommand({
-      AccessToken: accessToken,
-      DeviceKey: deviceKey,
-      DeviceSecretVerifierConfig: {
-        PasswordVerifier: passwordVerifier,
-        Salt: salt,
-      },
-    });
-
-    await this.client.send(command);
-    this.logger.log(`confirmDevice: device registered successfully deviceKey=${deviceKey}`);
-  }
-
-  /**
-   * Marks a previously confirmed device as "remembered" so Cognito bypasses
-   * the OTP challenge on subsequent logins from the same device.
-   *
-   * Must be called after confirmDevice when device_only_remembered_on_user_prompt
-   * is enabled on the Cognito User Pool (which is the case in ActivaClub).
-   *
-   * @param accessToken - The user's AccessToken returned after successful auth.
-   * @param deviceKey   - The device key from NewDeviceMetadata.
-   */
-  async updateDeviceStatus(accessToken: string, deviceKey: string): Promise<void> {
-    this.logger.debug(`updateDeviceStatus: marking deviceKey=${deviceKey} as remembered`);
-
-    const command = new UpdateDeviceStatusCommand({
-      AccessToken: accessToken,
-      DeviceKey: deviceKey,
-      DeviceRememberedStatus: 'remembered',
-    });
-
-    await this.client.send(command);
-    this.logger.log(`updateDeviceStatus: deviceKey=${deviceKey} marked as remembered`);
   }
 
   // ─── AC-010: Refresh Token ───────────────────────────────────────────────────
