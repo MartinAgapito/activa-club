@@ -134,7 +134,7 @@ resource "aws_cognito_user_pool" "this" {
   # device_only_remembered_on_user_prompt: devices are only tracked when the
   # member explicitly opts in (rememberDevice = true in the verify-otp flow).
   device_configuration {
-    challenge_required_on_new_device      = true
+    challenge_required_on_new_device      = false
     device_only_remembered_on_user_prompt = true
   }
 
