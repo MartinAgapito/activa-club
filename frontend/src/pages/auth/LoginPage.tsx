@@ -56,11 +56,13 @@ export default function LoginPage() {
   // AC-010: on mount, try silent re-authentication via stored refresh token
   useEffect(() => {
     const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
+    console.log('[AC-010][login] storedRefreshToken found:', !!storedRefreshToken, '| isAuthenticated:', isAuthenticated)
     if (!storedRefreshToken || isAuthenticated) return
 
     authApi
       .refreshToken(storedRefreshToken)
       .then((response) => {
+        console.log('[AC-010][login] refresh success, idToken present:', !!response.data.data?.idToken)
         const { idToken } = response.data.data
         const { setTokens } = useAuthStore.getState()
         setTokens(idToken)
@@ -71,7 +73,8 @@ export default function LoginPage() {
             : '/member/dashboard'
         navigate(destination, { replace: true })
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[AC-010][login] refresh failed — status:', err?.response?.status, '| body:', err?.response?.data ?? err?.message)
         // Refresh token expired or revoked — clear it and show the login form
         localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
       })

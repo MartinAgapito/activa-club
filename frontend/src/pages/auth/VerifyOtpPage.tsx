@@ -73,7 +73,9 @@ export default function VerifyOtpPage() {
 
       const { idToken, refreshToken, deviceKey, deviceGroupKey, devicePassword } = response.data.data
 
-      // AC-010: persist all three device credentials — required for DEVICE_SRP_AUTH handshake
+      console.log('[AC-010][verify-otp] refreshToken received:', !!refreshToken)
+
+      // AC-010: persist device credentials if returned
       if (deviceKey && deviceGroupKey && devicePassword) {
         localStorage.setItem(DEVICE_KEY_STORAGE_KEY, deviceKey)
         localStorage.setItem(DEVICE_GROUP_KEY_STORAGE_KEY, deviceGroupKey)
@@ -83,6 +85,9 @@ export default function VerifyOtpPage() {
       // AC-010: store refresh token for silent re-authentication on next visit
       if (refreshToken) {
         localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken)
+        console.log('[AC-010][verify-otp] refreshToken stored in localStorage')
+      } else {
+        console.warn('[AC-010][verify-otp] refreshToken missing from response — session persistence will not work')
       }
 
       // Decode the JWT, build CognitoUser, and persist both in the store
