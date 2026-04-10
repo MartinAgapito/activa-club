@@ -293,7 +293,7 @@ export class CognitoService {
     expiresIn: number;
     tokenType: string;
   }> {
-    this.logger.debug('refreshTokens: exchanging refresh token');
+    this.logger.log('refreshTokens: exchanging refresh token for new tokens');
 
     const command = new AdminInitiateAuthCommand({
       UserPoolId: this.userPoolId,
@@ -304,21 +304,32 @@ export class CognitoService {
       },
     });
 
-    const response = await this.client.send(command);
-    const auth = response.AuthenticationResult;
+    try {
+      const response = await this.client.send(command);
+      const auth = response.AuthenticationResult;
 
-    if (!auth?.AccessToken || !auth?.IdToken) {
-      throw new Error('refreshTokens: Cognito did not return tokens');
+      if (!auth?.AccessToken || !auth?.IdToken) {
+        this.logger.error('refreshTokens: Cognito returned no tokens', {
+          ChallengeName: response.ChallengeName,
+          ChallengeParameters: response.ChallengeParameters,
+        });
+        throw new Error(`refreshTokens: Cognito did not return tokens. ChallengeName=${response.ChallengeName ?? 'none'}`);
+      }
+
+      this.logger.log('refreshTokens: tokens refreshed successfully');
+      return {
+        accessToken: auth.AccessToken,
+        idToken: auth.IdToken,
+        expiresIn: auth.ExpiresIn ?? 3600,
+        tokenType: auth.TokenType ?? 'Bearer',
+      };
+    } catch (error) {
+      this.logger.error('refreshTokens: Cognito error', {
+        name: error instanceof Error ? error.name : 'unknown',
+        message: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
-
-    this.logger.debug('refreshTokens: tokens refreshed successfully');
-
-    return {
-      accessToken: auth.AccessToken,
-      idToken: auth.IdToken,
-      expiresIn: auth.ExpiresIn ?? 3600,
-      tokenType: auth.TokenType ?? 'Bearer',
-    };
   }
 
   // ─── AC-008: Logout ──────────────────────────────────────────────────────────

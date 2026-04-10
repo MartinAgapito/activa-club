@@ -33,6 +33,10 @@ export class RefreshTokenHandler {
       this.logger.log('RefreshTokenHandler: tokens refreshed successfully');
       return result;
     } catch (error) {
+      this.logger.error('RefreshTokenHandler: failed to refresh token', {
+        name: error instanceof Error ? error.name : 'unknown',
+        message: error instanceof Error ? error.message : String(error),
+      });
       this.mapRefreshError(error);
       throw error;
     }
