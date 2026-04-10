@@ -129,13 +129,14 @@ resource "aws_cognito_user_pool" "this" {
     }
   }
 
-  # Device tracking (AC-010 — Remember Device).
-  # challenge_required_on_new_device: users must pass MFA on each new device.
-  # device_only_remembered_on_user_prompt: devices are only tracked when the
-  # member explicitly opts in (rememberDevice = true in the verify-otp flow).
+  # Device tracking disabled (AC-010).
+  # Session persistence uses a plain refresh token stored in localStorage — no
+  # Cognito device tracking required. Enabling device tracking causes Cognito to
+  # embed a device key in the refresh token; REFRESH_TOKEN_AUTH then requires that
+  # key to be sent back, which fails with "Invalid Refresh Token." when omitted.
   device_configuration {
     challenge_required_on_new_device      = false
-    device_only_remembered_on_user_prompt = true
+    device_only_remembered_on_user_prompt = false
   }
 
   # CustomEmailSender trigger — optional.

@@ -56,10 +56,6 @@ export interface VerifyOtpData {
   accessToken?: string
   /** AC-010: Persist in localStorage for silent re-authentication via POST /v1/auth/refresh. */
   refreshToken: string
-  /** AC-010: Device keys returned by Cognito ConfirmDevice (stored client-side for reference). */
-  deviceKey: string | null
-  deviceGroupKey: string | null
-  devicePassword: string | null
 }
 
 export interface LogoutData {
