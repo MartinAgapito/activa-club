@@ -129,15 +129,13 @@ resource "aws_cognito_user_pool" "this" {
     }
   }
 
-  # Device tracking disabled (AC-010).
-  # Session persistence uses a plain refresh token stored in localStorage — no
-  # Cognito device tracking required. Enabling device tracking causes Cognito to
-  # embed a device key in the refresh token; REFRESH_TOKEN_AUTH then requires that
-  # key to be sent back, which fails with "Invalid Refresh Token." when omitted.
-  device_configuration {
-    challenge_required_on_new_device      = false
-    device_only_remembered_on_user_prompt = false
-  }
+  # Device tracking intentionally omitted (AC-010).
+  # An absent device_configuration block tells Cognito to issue refresh tokens
+  # with NO device key embedded. Any device_configuration block — even with both
+  # flags set to false — activates "always remember" mode, which binds the refresh
+  # token to a device key and makes REFRESH_TOKEN_AUTH fail with "Invalid Refresh
+  # Token." unless DEVICE_KEY is also sent. Session persistence is achieved purely
+  # via a 30-day refresh token stored in localStorage, no device tracking needed.
 
   # CustomEmailSender trigger — optional.
   # When lambda_arn is provided Cognito encrypts the OTP code with the KMS key
