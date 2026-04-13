@@ -70,16 +70,9 @@ export default function VerifyOtpPage() {
 
       const { idToken, refreshToken } = response.data.data
 
-      console.log('[AC-010][verify-otp] refreshToken received:', !!refreshToken)
-
       // AC-010: store refresh token only if user opted in to remember this device
       if (rememberDevice && refreshToken) {
         localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken)
-        console.log('[AC-010][verify-otp] refreshToken stored in localStorage (rememberDevice=true)')
-      } else if (!rememberDevice) {
-        console.log('[AC-010][verify-otp] rememberDevice=false — refreshToken not stored')
-      } else {
-        console.warn('[AC-010][verify-otp] refreshToken missing from response — session persistence will not work')
       }
 
       // Decode the JWT, build CognitoUser, and persist both in the store
