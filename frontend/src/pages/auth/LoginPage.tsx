@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
@@ -53,11 +53,19 @@ export default function LoginPage() {
 
   const REFRESH_TOKEN_STORAGE_KEY = 'activa-club-refresh-token'
 
+  // AC-010: start in "refreshing" state only if a stored token exists
+  const [isSilentRefreshing, setIsSilentRefreshing] = useState<boolean>(
+    () => !!localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
+  )
+
   // AC-010: on mount, try silent re-authentication via stored refresh token
   useEffect(() => {
     const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
     console.log('[AC-010][login] storedRefreshToken found:', !!storedRefreshToken, '| isAuthenticated:', isAuthenticated)
-    if (!storedRefreshToken || isAuthenticated) return
+    if (!storedRefreshToken || isAuthenticated) {
+      setIsSilentRefreshing(false)
+      return
+    }
 
     authApi
       .refreshToken(storedRefreshToken)
@@ -77,6 +85,7 @@ export default function LoginPage() {
         console.error('[AC-010][login] refresh failed — status:', err?.response?.status, '| body:', err?.response?.data ?? err?.message)
         // Refresh token expired or revoked — clear it and show the login form
         localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
+        setIsSilentRefreshing(false)
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -130,6 +139,15 @@ export default function LoginPage() {
         })
       }
     }
+  }
+
+  // AC-010: show a spinner while the silent refresh is in progress
+  if (isSilentRefreshing) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-slate-50/50">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    )
   }
 
   return (
