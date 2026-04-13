@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { CognitoUser, UserRole } from '@/types'
+import { authApi } from '@/api/auth.api'
 
 // ─── JWT decode helper (no external dependency needed) ───────────────────────
 
@@ -20,16 +21,17 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
 interface AuthState {
   user: CognitoUser | null
   idToken: string | null
+  accessToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
 
   // Actions
   login: (user: CognitoUser) => void
   /**
-   * AC-010: Soft logout.
-   * Clears local auth state only — does NOT call Cognito AdminUserGlobalSignOut
-   * so the refresh token in localStorage remains valid for silent re-authentication
-   * on the next visit (remember-device flow).
+   * AC-008/AC-010: Full logout.
+   * Calls backend GlobalSignOut, removes the refresh token from localStorage,
+   * and clears all local auth state. On the next visit, LoginPage will show
+   * the login form (no silent refresh because the refresh token is gone).
    */
   logout: () => Promise<void>
   clearAuth: () => void
@@ -39,16 +41,17 @@ interface AuthState {
    * Decodes the JWT idToken, builds a CognitoUser from its claims,
    * and persists both to the store. Used after CUSTOM_AUTH verify-otp success.
    */
-  setTokens: (idToken: string) => void
+  setTokens: (idToken: string, accessToken: string) => void
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       idToken: null,
+      accessToken: null,
       isAuthenticated: false,
       isLoading: false,
 
@@ -60,7 +63,16 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       logout: async () => {
-        set({ user: null, idToken: null, isAuthenticated: false, isLoading: false })
+        const { accessToken } = get()
+        if (accessToken) {
+          try {
+            await authApi.logout(accessToken)
+          } catch {
+            // Backend call failed — local state is still cleared
+          }
+        }
+        localStorage.removeItem('activa-club-refresh-token')
+        set({ user: null, idToken: null, accessToken: null, isAuthenticated: false, isLoading: false })
         window.location.href = '/auth/login'
       },
 
@@ -79,7 +91,7 @@ export const useAuthStore = create<AuthState>()(
           user: state.user ? { ...state.user, ...partial } : null,
         })),
 
-      setTokens: (idToken: string) => {
+      setTokens: (idToken: string, accessToken: string) => {
         const claims = decodeJwtPayload(idToken)
 
         // Resolve role from cognito:groups with precedence: Admin > Manager > Member
@@ -105,6 +117,7 @@ export const useAuthStore = create<AuthState>()(
 
         set({
           idToken,
+          accessToken,
           user: cognitoUser,
           isAuthenticated: true,
           isLoading: false,
@@ -121,6 +134,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         idToken: state.idToken,
         isAuthenticated: state.isAuthenticated,
+        // accessToken is intentionally excluded — kept only in memory for this tab
       }),
     }
   )

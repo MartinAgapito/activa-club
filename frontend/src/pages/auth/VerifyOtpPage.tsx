@@ -68,7 +68,7 @@ export default function VerifyOtpPage() {
         rememberDevice,
       })
 
-      const { idToken, refreshToken } = response.data.data
+      const { idToken, accessToken, refreshToken } = response.data.data
 
       // AC-010: store refresh token only if user opted in to remember this device
       if (rememberDevice && refreshToken) {
@@ -76,7 +76,7 @@ export default function VerifyOtpPage() {
       }
 
       // Decode the JWT, build CognitoUser, and persist both in the store
-      setTokens(idToken)
+      setTokens(idToken, accessToken ?? '')
 
       // Redirect based on the role resolved from the token
       const { user } = useAuthStore.getState()
