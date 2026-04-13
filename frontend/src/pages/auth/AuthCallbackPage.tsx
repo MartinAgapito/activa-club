@@ -1,23 +1,20 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthStore } from '@/store'
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate()
-  const { refreshUser, isAuthenticated } = useAuth()
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
 
   useEffect(() => {
-    const handleCallback = async () => {
-      try {
-        await refreshUser()
-      } catch {
-        navigate('/auth/login?reason=callback-error', { replace: true })
-      }
+    // OAuth/Hosted UI callback — not used in the current CUSTOM_AUTH flow.
+    // Redirect to login; if a valid refresh token exists LoginPage will
+    // silently re-authenticate and forward to the dashboard.
+    if (!isAuthenticated) {
+      navigate('/auth/login', { replace: true })
     }
-
-    handleCallback()
-  }, [refreshUser, navigate])
+  }, [isAuthenticated, navigate])
 
   useEffect(() => {
     if (isAuthenticated) {
