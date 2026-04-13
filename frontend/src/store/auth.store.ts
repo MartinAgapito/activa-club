@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { CognitoUser, UserRole } from '@/types'
-import { authApi } from '@/api/auth.api'
 
 // ─── JWT decode helper (no external dependency needed) ───────────────────────
 
@@ -48,7 +47,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       idToken: null,
       accessToken: null,
@@ -63,15 +62,13 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       logout: async () => {
-        const { accessToken } = get()
-        if (accessToken) {
-          try {
-            await authApi.logout(accessToken)
-          } catch {
-            // Backend call failed — local state is still cleared
-          }
-        }
-        localStorage.removeItem('activa-club-refresh-token')
+        // Soft logout — the refresh token in localStorage is intentionally kept
+        // so the remember-device flow (AC-010) remains active for 30 days.
+        // A sessionStorage flag tells LoginPage to show the form instead of
+        // silently redirecting to the dashboard right after this logout.
+        // sessionStorage is cleared when the browser is closed, so on the next
+        // fresh browser session the silent refresh runs normally.
+        sessionStorage.setItem('activa-club-logged-out', 'true')
         set({ user: null, idToken: null, accessToken: null, isAuthenticated: false, isLoading: false })
         window.location.href = '/auth/login'
       },
