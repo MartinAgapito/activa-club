@@ -53,7 +53,9 @@ export default function LoginPage() {
 
   const REFRESH_TOKEN_STORAGE_KEY = 'activa-club-refresh-token'
 
-  // AC-010: start in "refreshing" state only if a stored token exists
+  // AC-010: start in "refreshing" state only if a stored refresh token exists.
+  // If the user explicitly logged out, the token was removed from localStorage,
+  // so this will be false and the login form is shown immediately.
   const [isSilentRefreshing, setIsSilentRefreshing] = useState<boolean>(
     () => !!localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
   )
@@ -69,9 +71,9 @@ export default function LoginPage() {
     authApi
       .refreshToken(storedRefreshToken)
       .then((response) => {
-        const { idToken } = response.data.data
+        const { idToken, accessToken } = response.data.data
         const { setTokens } = useAuthStore.getState()
-        setTokens(idToken)
+        setTokens(idToken, accessToken)
         const { user } = useAuthStore.getState()
         const destination =
           user?.role === 'Admin' || user?.role === 'Manager'

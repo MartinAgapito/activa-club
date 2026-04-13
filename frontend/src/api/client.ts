@@ -1,5 +1,4 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { fetchAuthSession } from 'aws-amplify/auth'
 import { useAuthStore } from '@/store'
 
 const API_URL = import.meta.env.VITE_API_URL as string
@@ -12,28 +11,13 @@ export const apiClient = axios.create({
   timeout: 30_000,
 })
 
-// Request interceptor: attach JWT token
-// Priority: idToken from store (CUSTOM_AUTH flow) > Amplify session (OAuth/Hosted UI flow)
+// Request interceptor: attach JWT token from the CUSTOM_AUTH store
 apiClient.interceptors.request.use(
-  async (config: InternalAxiosRequestConfig) => {
-    // 1. Try the idToken stored after CUSTOM_AUTH verify-otp
+  (config: InternalAxiosRequestConfig) => {
     const storedToken = useAuthStore.getState().idToken
     if (storedToken) {
       config.headers.Authorization = `Bearer ${storedToken}`
-      return config
     }
-
-    // 2. Fall back to Amplify session (covers OAuth / Hosted UI sign-in)
-    try {
-      const session = await fetchAuthSession()
-      const token = session.tokens?.idToken?.toString()
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-    } catch {
-      // User is not authenticated; continue without token
-    }
-
     return config
   },
   (error: AxiosError) => Promise.reject(error)
@@ -50,7 +34,9 @@ apiClient.interceptors.response.use(
 
     if (!isAuthEndpoint) {
       if (error.response?.status === 401) {
-        localStorage.removeItem('activa-club-auth')
+        // The Zustand session in sessionStorage will be cleared when the tab closes.
+        // The refresh token in localStorage is left intact so LoginPage can attempt
+        // a silent refresh on arrival — which will fail if the token is truly expired.
         window.location.href = '/auth/login'
       }
 
