@@ -1,4 +1,5 @@
 import { LogOut, Menu, User } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
@@ -17,6 +18,7 @@ export function Header() {
   const { user, signOut } = useAuth()
   const { toggleSidebar } = useUIStore()
   const { toast } = useToast()
+  const navigate = useNavigate()
 
   const userInitials = user
     ? `${user.username.charAt(0).toUpperCase()}`
@@ -25,6 +27,10 @@ export function Header() {
   const handleSignOut = async () => {
     try {
       await signOut()
+      // Navigate via React Router (no full page reload) so the store's
+      // in-memory state (isAuthenticated: false) is already correct when
+      // LoginPage mounts — avoids the sessionStorage hydration race condition.
+      navigate('/auth/login', { replace: true })
     } catch {
       toast({
         variant: 'destructive',
