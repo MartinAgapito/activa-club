@@ -53,15 +53,23 @@ export default function LoginPage() {
 
   const REFRESH_TOKEN_STORAGE_KEY = 'activa-club-refresh-token'
 
-  // AC-010: start in "refreshing" state only if a stored refresh token exists.
-  // If the user explicitly logged out, the token was removed from localStorage,
-  // so this will be false and the login form is shown immediately.
-  const [isSilentRefreshing, setIsSilentRefreshing] = useState<boolean>(
-    () => !!localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
-  )
+  // AC-010: show spinner only if there is a stored refresh token AND the user
+  // did not just explicitly log out (flag in sessionStorage, cleared on browser close).
+  const [isSilentRefreshing, setIsSilentRefreshing] = useState<boolean>(() => {
+    if (sessionStorage.getItem('activa-club-logged-out')) return false
+    return !!localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
+  })
 
   // AC-010: on mount, try silent re-authentication via stored refresh token
   useEffect(() => {
+    // User just logged out — show the form and clear the flag so the next
+    // navigation (or fresh browser session) behaves normally.
+    if (sessionStorage.getItem('activa-club-logged-out')) {
+      sessionStorage.removeItem('activa-club-logged-out')
+      setIsSilentRefreshing(false)
+      return
+    }
+
     const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
     if (!storedRefreshToken || isAuthenticated) {
       setIsSilentRefreshing(false)
@@ -90,6 +98,31 @@ export default function LoginPage() {
   }, [])
 
   const onSubmit = async (data: LoginFormValues) => {
+    // AC-010: if this device has a stored refresh token, use it instead of the
+    // normal email+password → OTP flow. This is the "remember device" mechanism:
+    // the user proves they have previously authenticated on this device, so no
+    // OTP challenge is needed. If the refresh fails (expired/revoked), fall
+    // through to the normal login flow which will require OTP.
+    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
+    if (storedRefreshToken) {
+      try {
+        const refreshResponse = await authApi.refreshToken(storedRefreshToken)
+        const { idToken, accessToken } = refreshResponse.data.data
+        const { setTokens } = useAuthStore.getState()
+        setTokens(idToken, accessToken)
+        const { user } = useAuthStore.getState()
+        const destination =
+          user?.role === 'Admin' || user?.role === 'Manager'
+            ? '/admin/dashboard'
+            : '/member/dashboard'
+        navigate(destination, { replace: true })
+        return
+      } catch {
+        // Token expired or revoked — remove it and continue with normal login
+        localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
+      }
+    }
+
     try {
       const response = await authApi.login({
         email: data.email,
@@ -97,18 +130,14 @@ export default function LoginPage() {
       })
       const { session, challengeName } = response.data.data
 
-      // Navigate to OTP verification step, carrying session + email
       navigate('/auth/verify-otp', {
         state: { email: data.email, session, challengeName },
       })
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const body = error.response?.data as AuthApiError | undefined
-        // The shared Lambda filter returns error as a string; the members filter
-        // returns it as an object with a code property. Handle both shapes.
         const code = body?.error?.code ?? body?.error
 
-        // Account exists but email not verified → send user to verify-email page
         if (code === 'ACCOUNT_NOT_CONFIRMED') {
           navigate(`/auth/verify-email?email=${encodeURIComponent(data.email)}`)
           return
