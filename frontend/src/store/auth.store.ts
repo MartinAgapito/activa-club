@@ -64,11 +64,14 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         // Soft logout — the refresh token in localStorage is intentionally kept
         // so the remember-device flow (AC-010) remains active for 30 days.
-        // A sessionStorage flag tells LoginPage to show the form instead of
-        // silently redirecting to the dashboard right after this logout.
-        // sessionStorage is cleared when the browser is closed, so on the next
-        // fresh browser session the silent refresh runs normally.
+        //
+        // We clear the Zustand persisted state from sessionStorage directly
+        // before redirecting, because the persist middleware writes asynchronously
+        // and window.location.href triggers an immediate page unload. Without this,
+        // the new page hydrates from stale sessionStorage (isAuthenticated: true)
+        // and the useEffect in LoginPage redirects back to the dashboard.
         sessionStorage.setItem('activa-club-logged-out', 'true')
+        sessionStorage.removeItem('activa-club-auth')
         set({ user: null, idToken: null, accessToken: null, isAuthenticated: false, isLoading: false })
         window.location.href = '/auth/login'
       },
