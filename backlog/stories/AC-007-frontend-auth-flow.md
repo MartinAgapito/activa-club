@@ -68,7 +68,7 @@ en el sistema.
 ## Reglas de Negocio
 
 - **Sin llamadas directas a Cognito desde el frontend:** Todas las operaciones de autenticación se realizan a través de los endpoints REST del backend.
-- **Almacenamiento seguro de tokens:** Los tokens no deben almacenarse en `localStorage`; se usa memoria (Zustand store) o `httpOnly cookie`.
+- **Almacenamiento seguro de tokens:** El `accessToken` se almacena solo en memoria (Zustand, no persiste). El `idToken` y `user` se persisten en `sessionStorage` (se limpian al cerrar el browser). El `refreshToken` puede guardarse en `localStorage` solo si el socio marcó explícitamente "Recordar este dispositivo" (ver AC-010); en ese caso su presencia en localStorage es intencional y esperada.
 - **Mensajes en español:** Todos los mensajes visibles para el usuario deben estar en español, independientemente del código de error del API.
 - **Toggle de visibilidad de contraseña reutilizable:** El toggle debe implementarse como un componente único y no como lógica duplicada en cada formulario.
 - **Verificación por link:** La pantalla de verificación de email no muestra un formulario de ingreso de código; en cambio, procesa automáticamente el link al cargar, confirmando la cuenta sin intervención manual del socio.

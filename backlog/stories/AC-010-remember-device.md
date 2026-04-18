@@ -39,9 +39,10 @@ equilibrando seguridad y usabilidad.
 
 ## Precondiciones
 
-- AC-005 y AC-006 completados: flujo de login con OTP operativo.
-- AC-007 completado: la pantalla de verificación OTP está implementada en el frontend.
-- La configuración del proveedor de identidad soporta el registro de dispositivos bajo demanda (solo cuando el socio lo solicita).
+- AC-005 y AC-006 completados: flujo de login con OTP operativo (`POST /v1/auth/login` + `POST /v1/auth/verify-otp`).
+- AC-007 completado: la pantalla de verificación OTP está implementada en el frontend (`VerifyOtpPage`).
+- El App Client de Cognito tiene `refresh_token_validity = 30 days` configurado en Terraform.
+- El bloque `device_configuration` está **ausente** del recurso `aws_cognito_user_pool` en Terraform.
 - El socio tiene una cuenta con estado `CONFIRMED` y ha completado al menos un login exitoso con OTP previamente.
 
 ---
