@@ -6,8 +6,8 @@ import {
 } from '../../application/ports/areas.repository.interface';
 
 interface AreaDynamoItem {
-  PK: string;
-  SK: string;
+  pk: string;
+  sk: string;
   area_id: string;
   name: string;
   status: string;
@@ -54,7 +54,7 @@ export class AreasDynamoRepository implements AreasRepositoryInterface {
       const result = await this.client.send(
         new GetCommand({
           TableName: this.tableName,
-          Key: { PK: `AREA#${areaId}`, SK: 'CONFIG' },
+          Key: { pk: `AREA#${areaId}`, sk: 'CONFIG' },
         }),
       );
 
@@ -77,7 +77,7 @@ export class AreasDynamoRepository implements AreasRepositoryInterface {
         const result = await this.client.send(
           new ScanCommand({
             TableName: this.tableName,
-            FilterExpression: '#s = :active AND SK = :sk',
+            FilterExpression: '#s = :active AND sk = :sk',
             ExpressionAttributeNames: { '#s': 'status' },
             ExpressionAttributeValues: {
               ':active': 'Active',
