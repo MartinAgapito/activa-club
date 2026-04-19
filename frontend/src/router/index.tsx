@@ -16,6 +16,7 @@ const VerifyOtpPage = lazy(() => import('@/pages/auth/VerifyOtpPage'))
 const AuthCallbackPage = lazy(() => import('@/pages/auth/AuthCallbackPage'))
 const MemberDashboardPage = lazy(() => import('@/pages/member/DashboardPage'))
 const AvailabilityPage = lazy(() => import('@/pages/member/AvailabilityPage'))
+const AreaAvailabilityPage = lazy(() => import('@/pages/member/AreaAvailabilityPage'))
 const MyReservationsPage = lazy(() => import('@/pages/member/MyReservationsPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/DashboardPage'))
 const ManagerCalendarPage = lazy(() => import('@/pages/admin/ManagerCalendarPage'))
@@ -119,6 +120,11 @@ export const router = createBrowserRouter([
             // AC-011 + AC-012: Availability selector & booking
             path: 'reservations/new',
             element: <AvailabilityPage />,
+          },
+          {
+            // AC-011: Area availability query (read-only — reserve CTA active in AC-012)
+            path: 'availability',
+            element: <AreaAvailabilityPage />,
           },
         ],
       },
