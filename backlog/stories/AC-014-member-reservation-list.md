@@ -4,7 +4,7 @@
 **Prioridad:** Alta
 **Story Points:** 3
 **Estado:** Backlog
-**Fecha:** 2026-04-05
+**Fecha:** 2026-04-18
 **Autor:** Agente Senior Product Owner
 
 ---
@@ -35,7 +35,6 @@ Sin una vista propia de reservas, el socio no tiene visibilidad sobre sus compro
 ## Precondiciones
 
 - El socio completó el flujo de login (AC-005 + AC-006) y tiene sesión activa.
-- El socio tiene membresía activa.
 
 ---
 
@@ -50,6 +49,7 @@ Sin una vista propia de reservas, el socio no tiene visibilidad sobre sus compro
 - [ ] El socio puede iniciar la cancelación de una reserva activa directamente desde esta vista (flujo definido en AC-013).
 - [ ] El sistema muestra cuántas reservas le quedan disponibles en la semana actual según su tipo de membresía.
 - [ ] La vista se actualiza automáticamente al volver de crear o cancelar una reserva, sin necesidad de recargar la página.
+- [ ] Si el socio tiene membresía vencida pero cuenta con reservas previas, la vista muestra su historial completo; las reservas activas que puedan existir se muestran con un aviso de que su membresía está inactiva y que no puede crear nuevas reservas.
 
 ---
 
@@ -67,7 +67,7 @@ Sin una vista propia de reservas, el socio no tiene visibilidad sobre sus compro
 - **Visibilidad restringida:** Un socio solo puede ver sus propias reservas; nunca se exponen reservas de otros socios en esta vista.
 - **Contador semanal visible:** El sistema informa cuántas reservas ha usado y cuántas le quedan en la semana actual, según los límites de su membresía.
 - **Historial completo:** Las reservas canceladas y expiradas forman parte del historial y son visibles pero no modificables.
-- **Acceso con membresía activa:** Solo los socios con membresía activa pueden acceder a esta vista.
+- **Acceso con sesión activa:** Un socio puede acceder a esta vista con sesión vigente, independientemente del estado de su membresía; si la membresía está vencida, solo puede consultar el historial y sus reservas previas, pero el sistema le informa que no puede crear nuevas reservas.
 
 ---
 
@@ -82,10 +82,9 @@ Sin una vista propia de reservas, el socio no tiene visibilidad sobre sus compro
 
 ## Definition of Done
 
-- [ ] Endpoint backend implementado y desplegado en dev.
-- [ ] La vista filtra y muestra correctamente reservas activas e historial por socio autenticado.
-- [ ] Tests unitarios escritos y pasando (sin reservas, con reservas activas, con historial, contador semanal).
-- [ ] Probado manualmente en dev (socio con distintos estados de reserva).
+- [ ] Funcionalidad implementada y desplegada en dev (backend y frontend).
+- [ ] Tests unitarios escritos y pasando.
+- [ ] Probado manualmente en dev con socios en distintos estados de membresía y reserva.
 - [ ] Código revisado y PR mergeado.
 
 ---

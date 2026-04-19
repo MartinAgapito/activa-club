@@ -90,7 +90,7 @@ export const changePasswordSchema = z
 
 export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>
 
-// ─── Reservation schema ───────────────────────────────────────────────────────
+// ─── Reservation schema (legacy — kept for backward compatibility) ────────────
 
 export const reservationSchema = z.object({
   areaId: z.string().min(1, 'Seleccioná un área'),
@@ -101,6 +101,37 @@ export const reservationSchema = z.object({
 })
 
 export type ReservationFormValues = z.infer<typeof reservationSchema>
+
+// ─── AC-012: Create reservation wizard schema ─────────────────────────────────
+
+/**
+ * Zod schema for the AC-012 create-reservation wizard.
+ * Each step validates a subset of the full payload.
+ * The full schema is used for the final mutation payload validation.
+ */
+export const createReservationSchema = z.object({
+  /** Step 1: ULID of the selected area */
+  areaId: z.string().min(1, 'Seleccioná un área'),
+
+  /** Step 2: Selected date in YYYY-MM-DD format */
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido'),
+
+  /** Step 3: Selected slot start time — must be an hourly boundary (HH:00) */
+  startTime: z
+    .string()
+    .regex(/^\d{2}:00$/, 'La hora debe ser en punto (ej. 09:00)'),
+
+  /** Step 3: Duration in minutes — multiples of 60, max 240 (VIP) */
+  durationMinutes: z
+    .number({ invalid_type_error: 'Seleccioná una duración' })
+    .multipleOf(60, 'La duración debe ser múltiplo de 60 minutos')
+    .min(60, 'La duración mínima es 60 minutos')
+    .max(240, 'La duración máxima es 240 minutos'),
+})
+
+export type CreateReservationFormValues = z.infer<typeof createReservationSchema>
 
 // ─── Member profile schema ────────────────────────────────────────────────────
 

@@ -4,7 +4,7 @@
 **Prioridad:** Alta
 **Story Points:** 3
 **Estado:** Backlog
-**Fecha:** 2026-04-05
+**Fecha:** 2026-04-18
 **Autor:** Agente Senior Product Owner
 
 ---
@@ -85,10 +85,9 @@ Sin cancelación, los cupos quedan bloqueados aunque el socio no vaya a asistir,
 
 ## Definition of Done
 
-- [ ] Endpoint backend implementado y desplegado en dev.
-- [ ] Validaciones de negocio aplicadas (plazo de cancelación, propiedad, estado de reserva, liberación de cupo y contador semanal).
-- [ ] Tests unitarios escritos y pasando (cancelación exitosa, plazo vencido, reserva ajena, reserva ya cancelada/expirada).
-- [ ] Probado manualmente en dev (cancelar con tiempo suficiente, intentar cancelar con menos de 2 horas).
+- [ ] Funcionalidad implementada y desplegada en dev (backend y frontend).
+- [ ] Tests unitarios escritos y pasando.
+- [ ] Probado manualmente en dev con escenarios dentro y fuera del plazo de cancelación.
 - [ ] Código revisado y PR mergeado.
 
 ---

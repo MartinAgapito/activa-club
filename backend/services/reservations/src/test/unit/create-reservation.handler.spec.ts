@@ -3,12 +3,17 @@ import { CreateReservationCommand } from '../../application/commands/create-rese
 import { ReservationRepositoryInterface } from '../../domain/repositories/reservation.repository.interface';
 import { AreasRepositoryInterface } from '../../application/ports/areas.repository.interface';
 import { MembersRepositoryInterface } from '../../application/ports/members.repository.interface';
+import { ReservationEntity } from '../../domain/entities/reservation.entity';
+import { ReservationStatus } from '../../domain/value-objects/reservation-status.vo';
 import {
   SlotFullException,
   WeeklyQuotaExceededException,
   AreaNotFoundException,
   AreaNotAccessibleException,
   DateInPastException,
+  MembershipInactiveException,
+  DurationExceedsMaximumException,
+  OverlapConflictException,
 } from '../../domain/exceptions/reservation.exceptions';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -193,6 +198,121 @@ describe('CreateReservationHandler', () => {
       await expect(handler.execute(makeCommand({ date: pastDate }))).rejects.toThrow(
         DateInPastException,
       );
+    });
+  });
+
+  describe('Membership inactive — AC-012', () => {
+    it('throws MembershipInactiveException when member accountStatus is suspended', async () => {
+      const suspendedMember = { ...mockMember, accountStatus: 'suspended' };
+      const handler = makeHandler(
+        {},
+        {},
+        { findById: jest.fn().mockResolvedValue(suspendedMember) },
+      );
+
+      await expect(handler.execute(makeCommand())).rejects.toThrow(MembershipInactiveException);
+    });
+
+    it('throws MembershipInactiveException when member record does not exist', async () => {
+      const handler = makeHandler({}, {}, { findById: jest.fn().mockResolvedValue(null) });
+
+      await expect(handler.execute(makeCommand())).rejects.toThrow(MembershipInactiveException);
+    });
+  });
+
+  describe('Duration validation — AC-012', () => {
+    it('throws DurationExceedsMaximumException when Silver member requests 120 min', async () => {
+      // Silver max is 60 min in mockArea
+      const handler = makeHandler();
+
+      await expect(
+        handler.execute(makeCommand({ membershipType: 'Silver', durationMinutes: 120 })),
+      ).rejects.toThrow(DurationExceedsMaximumException);
+    });
+
+    it('allows Gold member to book 120 min (within their limit)', async () => {
+      const goldArea = {
+        ...mockArea,
+        allowedMemberships: ['Silver', 'Gold', 'VIP'],
+        maxDurationMinutes: { Silver: 60, Gold: 120, VIP: 120 },
+      };
+      const goldMember = { ...mockMember };
+      const reservationRepo = makeReservationRepo();
+      const handler = new CreateReservationHandler(
+        reservationRepo,
+        makeAreasRepo({ findById: jest.fn().mockResolvedValue(goldArea) }),
+        makeMembersRepo({ findById: jest.fn().mockResolvedValue(goldMember) }),
+      );
+
+      const result = await handler.execute(
+        makeCommand({ membershipType: 'Gold', durationMinutes: 120 }),
+      );
+
+      expect(result.reservationId).toBe('res-01');
+      expect(reservationRepo.createWithTransaction).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Overlap conflict — AC-012', () => {
+    it('throws OverlapConflictException when member has a CONFIRMED reservation on same date/slot', async () => {
+      // Build an existing confirmed reservation that overlaps 10:00–11:00
+      const existingReservation = new ReservationEntity({
+        reservationId: 'existing-res',
+        memberId: 'member-01',
+        areaId: 'area-01',
+        areaName: 'Piscina Principal',
+        date: TOMORROW,
+        startTime: '10:00',
+        endTime: '11:00',
+        durationMinutes: 60,
+        status: ReservationStatus.CONFIRMED,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        expiresAt: new Date().toISOString(),
+      });
+
+      const handler = makeHandler({
+        listByMember: jest
+          .fn()
+          .mockResolvedValue({ items: [existingReservation], lastKey: null }),
+      });
+
+      // Requesting the exact same slot triggers overlap
+      await expect(handler.execute(makeCommand({ startTime: '10:00' }))).rejects.toThrow(
+        OverlapConflictException,
+      );
+    });
+
+    it('does NOT throw OverlapConflictException for a CANCELLED reservation in the same slot', async () => {
+      const cancelledReservation = new ReservationEntity({
+        reservationId: 'cancelled-res',
+        memberId: 'member-01',
+        areaId: 'area-01',
+        areaName: 'Piscina Principal',
+        date: TOMORROW,
+        startTime: '10:00',
+        endTime: '11:00',
+        durationMinutes: 60,
+        status: ReservationStatus.CANCELLED,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        expiresAt: new Date().toISOString(),
+      });
+
+      const reservationRepo = makeReservationRepo({
+        listByMember: jest
+          .fn()
+          .mockResolvedValue({ items: [cancelledReservation], lastKey: null }),
+      });
+      const handler = new CreateReservationHandler(
+        reservationRepo,
+        makeAreasRepo(),
+        makeMembersRepo(),
+      );
+
+      // Cancelled reservation should not block a new booking in the same slot
+      const result = await handler.execute(makeCommand({ startTime: '10:00' }));
+      expect(result.reservationId).toBe('res-01');
     });
   });
 });

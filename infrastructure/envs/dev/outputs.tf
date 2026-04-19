@@ -97,3 +97,74 @@ output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID. Required by CI/CD for cache invalidation after each deploy."
   value       = module.frontend.cloudfront_distribution_id
 }
+
+# ---- EP-02: Reservations DynamoDB tables --------------------
+
+output "reservations_table_name" {
+  description = "Physical name of the ReservationsTable DynamoDB table."
+  value       = module.reservations_table.table_name
+}
+
+output "reservations_table_arn" {
+  description = "ARN of the ReservationsTable DynamoDB table."
+  value       = module.reservations_table.table_arn
+}
+
+output "areas_table_name" {
+  description = "Physical name of the AreasTable DynamoDB table."
+  value       = module.areas_table.table_name
+}
+
+output "areas_table_arn" {
+  description = "ARN of the AreasTable DynamoDB table."
+  value       = module.areas_table.table_arn
+}
+
+output "area_blocks_table_name" {
+  description = "Physical name of the AreaBlocksTable DynamoDB table."
+  value       = module.area_blocks_table.table_name
+}
+
+output "area_blocks_table_arn" {
+  description = "ARN of the AreaBlocksTable DynamoDB table."
+  value       = module.area_blocks_table.table_arn
+}
+
+output "slot_occupancy_table_name" {
+  description = "Physical name of the SlotOccupancyTable DynamoDB table."
+  value       = module.slot_occupancy_table.table_name
+}
+
+output "slot_occupancy_table_arn" {
+  description = "ARN of the SlotOccupancyTable DynamoDB table."
+  value       = module.slot_occupancy_table.table_arn
+}
+
+# ---- EP-02: Reservations Lambda functions -------------------
+
+output "reservations_lambda_function_name" {
+  description = "Name of the activa-club-reservations Lambda function (main reservations handler)."
+  value       = module.reservations_lambda.function_name
+}
+
+output "reservations_lambda_function_arn" {
+  description = "ARN of the activa-club-reservations Lambda function."
+  value       = module.reservations_lambda.function_arn
+}
+
+output "reservations_expirer_lambda_function_name" {
+  description = "Name of the activa-club-reservations-expirer Lambda function (AC-016 hourly batch)."
+  value       = module.reservations_expirer_lambda.function_name
+}
+
+output "reservations_expirer_lambda_function_arn" {
+  description = "ARN of the activa-club-reservations-expirer Lambda function."
+  value       = module.reservations_expirer_lambda.function_arn
+}
+
+# ---- EP-02: EventBridge Scheduler ---------------------------
+
+output "reservations_expirer_schedule_arn" {
+  description = "ARN of the EventBridge Scheduler schedule that triggers the reservations expirer hourly."
+  value       = module.reservations_expirer_scheduler.schedule_arn
+}

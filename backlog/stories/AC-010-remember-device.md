@@ -5,6 +5,7 @@
 **Story Points:** 5
 **Estado:** Done
 **Fecha:** 2026-04-03
+**Última actualización:** 2026-04-17
 **Autor:** Agente Senior Product Owner
 
 ---
@@ -38,9 +39,10 @@ equilibrando seguridad y usabilidad.
 
 ## Precondiciones
 
-- AC-005 y AC-006 completados: flujo de login con OTP operativo.
-- AC-007 completado: la pantalla de verificación OTP está implementada en el frontend.
-- La configuración del proveedor de identidad soporta el registro de dispositivos bajo demanda (solo cuando el socio lo solicita).
+- AC-005 y AC-006 completados: flujo de login con OTP operativo (`POST /v1/auth/login` + `POST /v1/auth/verify-otp`).
+- AC-007 completado: la pantalla de verificación OTP está implementada en el frontend (`VerifyOtpPage`).
+- El App Client de Cognito tiene `refresh_token_validity = 30 days` configurado en Terraform.
+- El bloque `device_configuration` está **ausente** del recurso `aws_cognito_user_pool` en Terraform.
 - El socio tiene una cuenta con estado `CONFIRMED` y ha completado al menos un login exitoso con OTP previamente.
 
 ---
@@ -48,13 +50,12 @@ equilibrando seguridad y usabilidad.
 ## Criterios de Aceptación
 
 - [x] En la pantalla `VerifyOtpPage`, el socio ve un checkbox "Recordar este dispositivo por 30 días" desmarcado por defecto.
-- [x] Si el socio marca el checkbox y el OTP es válido, el backend registra el dispositivo como confiable.
-- [x] Si el socio no marca el checkbox, el flujo de login continúa sin registrar el dispositivo; el siguiente login desde ese dispositivo vuelve a pedir OTP.
-- [x] En un login posterior desde un dispositivo ya registrado, el backend resuelve automáticamente el challenge de dispositivo sin involucrar al socio y retorna HTTP 200 con los tokens directamente desde `POST /v1/auth/login`.
-- [x] Un identificador del dispositivo es almacenado localmente en el cliente tras el primer login con OTP exitoso y enviado en cada intento de login posterior (puede ser nulo si no existe).
-- [x] Si el dispositivo fue registrado hace más de 30 días o ya no es reconocido, el flujo vuelve a pedir OTP de forma normal sin errores visibles para el socio.
-- [x] Si el identificador de dispositivo no es reconocido (dispositivo inválido o expirado), el backend continúa el flujo normal de OTP sin exponer el error al socio.
-- [x] Todos los errores relacionados con el flujo de dispositivo siguen el esquema estándar `{ status, error: { code, message } }` y son mapeados a mensajes amigables en español en el frontend.
+- [x] Si el socio marca el checkbox y el OTP es válido, el backend incluye el `refreshToken` en la respuesta y el frontend lo guarda en `localStorage` bajo la clave `activa-club-refresh-token`.
+- [x] Si el socio no marca el checkbox, el `refreshToken` no se guarda en `localStorage`; el siguiente login desde ese dispositivo pedirá OTP normalmente.
+- [x] Al volver a abrir el browser (nueva sesión) desde un dispositivo recordado, `LoginPage` detecta el token en `localStorage`, hace un silent refresh al backend (`POST /v1/auth/refresh`), obtiene nuevos tokens y redirige al dashboard sin mostrar el formulario de login.
+- [x] Al hacer login con credenciales desde un dispositivo recordado (el refresh token ya está en localStorage), el formulario intenta silenciosamente el refresh primero; si tiene éxito, redirige al dashboard sin pedir OTP.
+- [x] Si el refresh token expiró (30 días) o fue revocado, el backend responde con error, el frontend elimina el token de `localStorage` y continúa el flujo normal (email + password → OTP).
+- [x] Todos los errores del endpoint de refresh siguen el esquema estándar `{ status, error: { code, message } }` y son mapeados a comportamientos amigables en el frontend.
 
 ---
 
@@ -69,13 +70,13 @@ equilibrando seguridad y usabilidad.
 
 ## Reglas de Negocio
 
-- **Período de vigencia:** Un dispositivo registrado es válido por 30 días; tras ese período Cognito lo invalida automáticamente y el flujo de OTP se reanuda sin intervención del sistema.
-- **Consentimiento explícito:** El dispositivo solo se registra si el socio marca el checkbox "Recordar este dispositivo"; nunca se registra de forma automática sin consentimiento.
-- **Identificador de dispositivo en almacenamiento local:** El identificador del dispositivo puede almacenarse en `localStorage` porque no contiene información de sesión ni credenciales por sí solo.
-- **Tokens de acceso NO en localStorage:** Los tokens de acceso e identidad deben almacenarse en memoria; solo el identificador de dispositivo puede ir en `localStorage`.
-- **Transparencia ante el socio:** Si el dispositivo no es reconocido o expiró, el flujo vuelve a pedir OTP sin mensajes de error confusos; el socio simplemente ve la pantalla de verificación OTP de forma normal.
-- **Sin llamadas directas al proveedor de identidad desde el frontend:** Toda la lógica de dispositivo se ejecuta en el backend.
-- **Registro bajo demanda:** El dispositivo solo se registra como confiable cuando el socio lo solicita explícitamente marcando el checkbox.
+- **Período de vigencia:** El refresh token es válido por 30 días (configurado en el App Client de Cognito con `refresh_token_validity = 30` + `token_validity_units.refresh_token = "days"`). Tras ese período el token expira y el flujo de OTP se reanuda automáticamente.
+- **Consentimiento explícito:** El refresh token solo se persiste en `localStorage` si el socio marca el checkbox "Recordar este dispositivo"; nunca se guarda automáticamente sin consentimiento.
+- **Refresh token en localStorage:** El refresh token puede almacenarse en `localStorage` porque requiere credenciales adicionales para obtener tokens de acceso y el backend valida su autenticidad contra Cognito.
+- **Tokens de acceso e identidad NO en localStorage:** `idToken` y `user` se persisten en `sessionStorage` (se limpian al cerrar el browser). `accessToken` solo vive en memoria (no persiste en absoluto). Solo el `refreshToken` va a `localStorage`.
+- **Transparencia ante el socio:** Si el refresh token expiró, el frontend elimina el token silenciosamente y muestra el formulario de login normal. El socio no ve mensajes de error confusos.
+- **Soft logout preserva el refresh token:** Al cerrar sesión, el `refreshToken` en `localStorage` se conserva deliberadamente. En el próximo login, el formulario intentará el refresh automáticamente (sin OTP) antes de seguir el flujo normal.
+- **Sin Cognito device tracking:** La implementación NO usa el mecanismo de `device_configuration` de Cognito (DEVICE_SRP_AUTH, ConfirmDevice). Ese mecanismo fue descartado porque vincula el refresh token a un device key, causando que `REFRESH_TOKEN_AUTH` falle si no se envía el device key.
 
 ---
 
@@ -83,24 +84,24 @@ equilibrando seguridad y usabilidad.
 
 | Historia / Artefacto       | Motivo                                                                                                      |
 |----------------------------|-------------------------------------------------------------------------------------------------------------|
-| AC-005                     | El endpoint de login es el punto de entrada donde se detecta el challenge de dispositivo en logins posteriores. |
-| AC-006                     | El endpoint verify-otp es donde se llama a `ConfirmDevice` si el socio marcó el checkbox.                   |
-| AC-007                     | La pantalla `VerifyOtpPage` debe actualizarse para incluir el checkbox y transmitir la decisión al backend. |
-| `aws_cognito_user_pool`    | El recurso Terraform del User Pool requiere configurar `device_configuration` con los atributos correctos.  |
+| AC-005                     | El endpoint `POST /v1/auth/login` inicia el flujo de autenticación que desemboca en OTP.                   |
+| AC-006                     | El endpoint `POST /v1/auth/verify-otp` devuelve el `refreshToken` cuando `rememberDevice=true`.             |
+| AC-007                     | La pantalla `VerifyOtpPage` incluye el checkbox y envía `rememberDevice` al backend.                       |
+| `aws_cognito_user_pool`    | El App Client debe tener `refresh_token_validity = 30 days`. El bloque `device_configuration` debe estar **ausente** (cualquier presencia activa el device tracking de Cognito y causa "Invalid Refresh Token"). |
 
 ---
 
 ## Definition of Done
 
-- [x] Endpoint backend implementado y desplegado en dev.
-- [x] Registro de dispositivo y resolución automática de challenge implementados en el backend.
-- [x] Solo socios con sesión activa pueden marcar el checkbox de recordar dispositivo.
-- [x] Pantalla de verificación OTP actualizada con checkbox "Recordar este dispositivo" y lógica de envío del identificador de dispositivo.
-- [x] Frontend almacena el identificador de dispositivo localmente y lo envía en cada intento de login.
-- [x] Errores del API mapeados a mensajes amigables en español.
-- [x] Recurso Terraform `aws_cognito_user_pool` actualizado con `device_configuration`.
-- [x] Tests unitarios escritos y pasando (flujo con dispositivo recordado, flujo sin checkbox, dispositivo expirado/inválido).
-- [x] Probado manualmente en ambiente dev (primer login con checkbox, segundo login sin OTP, login tras 30 días).
+- [x] Endpoint `POST /v1/auth/refresh` implementado y desplegado en dev; devuelve nuevos `idToken` y `accessToken` a partir de un `refreshToken` válido.
+- [x] `POST /v1/auth/verify-otp` devuelve `refreshToken` en la respuesta cuando `rememberDevice=true`.
+- [x] `VerifyOtpPage` incluye el checkbox, lee la respuesta y guarda el `refreshToken` en `localStorage` si el socio optó por recordar el dispositivo.
+- [x] `LoginPage` hace silent refresh al montar (si hay token en localStorage y no hay flag de logout).
+- [x] `LoginPage.onSubmit` intenta el refresh silencioso antes del flujo normal (email+password→OTP).
+- [x] Flag `activa-club-logged-out` en sessionStorage previene el silent refresh inmediatamente después del logout explícito.
+- [x] Recurso Terraform `aws_cognito_user_pool` NO tiene bloque `device_configuration` (ausencia intencional).
+- [x] Errores del API mapeados a comportamientos amigables en el frontend (token expirado → elimina token silenciosamente → formulario normal).
+- [x] Probado manualmente en ambiente dev (primer login con checkbox → dashboard sin OTP al reabrir; logout → formulario; login con credenciales → dashboard sin OTP).
 - [x] Código revisado y aprobado.
 - [x] Listo para despliegue.
 
@@ -108,14 +109,25 @@ equilibrando seguridad y usabilidad.
 
 ## Notas Técnicas
 
-- **Stack backend:** NestJS Lambda — módulo `auth`. Nuevos métodos en `AuthService`: `confirmDevice(deviceKey, deviceGroupKey, accessToken)` y lógica de detección y respuesta de challenges `DEVICE_SRP_AUTH` / `DEVICE_PASSWORD_VERIFIER` en el flujo de `AdminInitiateAuth`.
-- **Stack frontend:** React + TypeScript. Actualización de `VerifyOtpPage` (checkbox), `useAuthStore` (Zustand, campo `deviceKey`), y `loginService` (envío del `DeviceKey` en el request).
-- **IaC:** Terraform — bloque `device_configuration` en `aws_cognito_user_pool`:
-  ```hcl
-  device_configuration {
-    challenge_required_on_new_device     = true
-    device_only_remembered_on_user_prompt = true
-  }
-  ```
-- **Cognito SDK calls relevantes:** `ConfirmDevice`, `AdminInitiateAuth` (detección de `DEVICE_SRP_AUTH`), `AdminRespondToAuthChallenge` (respuesta de challenge de dispositivo).
-- **Design Doc:** Por crear en `docs/design/AC-010-design.md`.
+- **Implementación real — Refresh Token como mecanismo de "device":**
+  El "recuerdo de dispositivo" se implementa con el refresh token de Cognito (30 días de validez), almacenado en `localStorage`. No se usa el sistema de device tracking de Cognito (`ConfirmDevice`, `DEVICE_SRP_AUTH`).
+
+- **Por qué NO se usa Cognito device tracking:**
+  Cuando el bloque `device_configuration` está presente en el recurso Terraform (incluso con `device_only_remembered_on_user_prompt = false`), Cognito activa el modo "always remember all devices". Esto vincula el refresh token al device key, haciendo que `REFRESH_TOKEN_AUTH` falle con "Invalid Refresh Token." si no se envía el `DEVICE_KEY` en cada llamada. La solución correcta es **omitir completamente** el bloque `device_configuration`.
+
+- **Stack backend:**
+  - `POST /v1/auth/verify-otp`: acepta `rememberDevice: boolean` en el body; si es `true`, incluye `refreshToken` en la respuesta.
+  - `POST /v1/auth/refresh`: acepta `{ refreshToken: string }` en el body; llama a `AdminInitiateAuth` con `REFRESH_TOKEN_AUTH` flow y devuelve nuevos `idToken` y `accessToken`.
+
+- **Stack frontend:**
+  - `VerifyOtpPage.tsx`: checkbox UI + guarda `refreshToken` en `localStorage` si `rememberDevice=true`.
+  - `LoginPage.tsx`: silent refresh al montar + intento de refresh en `onSubmit` antes del OTP flow.
+  - `auth.store.ts`: `logout()` establece flag `activa-club-logged-out` en sessionStorage.
+  - `Header.tsx`: navega con React Router `navigate()` después del logout (evita race condition con sessionStorage).
+
+- **IaC:** Recurso Terraform `aws_cognito_user_pool` — bloque `device_configuration` **ausente** (intencional). Ver `infrastructure/modules/cognito/main.tf`.
+
+- **Claves de almacenamiento:**
+  - `activa-club-refresh-token` → `localStorage` (sobrevive browser close, 30 días)
+  - `activa-club-auth` → `sessionStorage` (Zustand persist: `user`, `idToken`, `isAuthenticated`)
+  - `activa-club-logged-out` → `sessionStorage` (flag temporal, se elimina al leer)

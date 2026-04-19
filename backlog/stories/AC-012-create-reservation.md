@@ -4,7 +4,7 @@
 **Prioridad:** Alta
 **Story Points:** 8
 **Estado:** Backlog
-**Fecha:** 2026-04-05
+**Fecha:** 2026-04-18
 **Autor:** Agente Senior Product Owner
 
 ---
@@ -90,9 +90,8 @@ La creación de reservas es el núcleo del epic EP-02 y el flujo de mayor valor 
 
 ## Definition of Done
 
-- [ ] Endpoint backend implementado y desplegado en dev.
-- [ ] Todas las validaciones de negocio aplicadas en el backend (membresía, duración, límite semanal, cupo, deuda).
-- [ ] Tests unitarios escritos y pasando (caso exitoso, cupo agotado, límite semanal, membresía inactiva, área no permitida, condición de carrera).
+- [ ] Funcionalidad implementada y desplegada en dev (backend y frontend).
+- [ ] Tests unitarios escritos y pasando.
 - [ ] Probado manualmente en dev con distintos tipos de membresía y escenarios de rechazo.
 - [ ] Código revisado y PR mergeado.
 

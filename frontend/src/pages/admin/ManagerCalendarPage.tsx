@@ -106,15 +106,15 @@ function SlotCell({ entry, onCancelReservation, onRemoveBlock, areaId, isRemovin
             variant="outline"
             className={cn(
               'mt-0.5 text-xs',
-              r?.status === 'Confirmed'
+              r?.status === 'CONFIRMED'
                 ? 'bg-green-100 text-green-700 border-green-300'
                 : 'bg-gray-100 text-gray-600 border-gray-300'
             )}
           >
-            {r?.status === 'Confirmed' ? 'Confirmada' : r?.status ?? 'Reservada'}
+            {r?.status === 'CONFIRMED' ? 'Confirmada' : r?.status ?? 'Reservada'}
           </Badge>
         </div>
-        {r?.status === 'Confirmed' && (
+        {r?.status === 'CONFIRMED' && (
           <button
             onClick={() => r && onCancelReservation(r)}
             aria-label={`Cancelar reserva de ${r?.memberName ?? 'socio'}`}

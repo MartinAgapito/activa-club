@@ -4,16 +4,16 @@
 **Prioridad:** Alta
 **Story Points:** 3
 **Estado:** Backlog
-**Fecha:** 2026-04-05
+**Fecha:** 2026-04-18
 **Autor:** Agente Senior Product Owner
 
 ---
 
 ## Historia de Usuario
 
-Como administrador del sistema,
+Como manager o administrador del club,
 Quiero que las reservas cuya hora de fin ya pasó sean marcadas automáticamente como expiradas y sus cupos queden liberados,
-Para que el sistema de disponibilidad refleje siempre el estado real de las instalaciones sin intervención manual.
+Para que el sistema de disponibilidad refleje siempre el estado real de las instalaciones sin necesidad de intervención manual.
 
 ---
 
@@ -83,10 +83,9 @@ Sin expiración automática, las reservas pasadas quedan en estado `CONFIRMED` i
 
 ## Definition of Done
 
-- [ ] Proceso automatizado implementado y desplegado en dev, ejecutándose cada hora.
-- [ ] Las reservas expiradas son marcadas correctamente y sus cupos liberados de forma atómica.
-- [ ] Tests unitarios escritos y pasando (reservas a expirar, reservas ya expiradas, error en reserva individual, idempotencia).
-- [ ] Probado manualmente en dev (crear reserva con hora pasada, verificar que el proceso la expira y el cupo queda libre).
+- [ ] Proceso automatizado implementado y desplegado en dev.
+- [ ] Tests unitarios escritos y pasando.
+- [ ] Probado manualmente en dev verificando que las reservas con hora vencida expiran y el cupo queda libre.
 - [ ] Código revisado y PR mergeado.
 
 ---
