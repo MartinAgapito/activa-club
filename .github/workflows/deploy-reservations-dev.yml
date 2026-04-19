@@ -1,0 +1,135 @@
+# ============================================================
+# .github/workflows/deploy-reservations-dev.yml
+#
+# Builds the NestJS reservations service and the reservations-expirer
+# Lambda, packages each as a deployment artifact, uploads to S3,
+# and updates the Lambda functions in dev.
+#
+# Triggers:
+#   push -> main  (backend/services/reservations** or expirer or this file)
+#
+# IAM Role : arn:aws:iam::463310123916:role/activa-club-terraform-dev-role
+# ============================================================
+
+name: Deploy Reservations Lambdas (DEV)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/services/reservations/**"
+      - "backend/services/reservations-expirer/**"
+      - ".github/workflows/deploy-reservations-dev.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  NODE_VERSION: "20"
+  ARTIFACTS_BUCKET: activa-club-lambda-artifacts-dev
+  AWS_REGION: us-east-1
+  RESERVATIONS_FUNCTION_NAME: activa-club-reservations-dev
+  EXPIRER_FUNCTION_NAME: activa-club-reservations-expirer-dev
+
+jobs:
+  build-and-deploy:
+    name: Build & Deploy Reservations Lambdas (DEV)
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::463310123916:role/activa-club-terraform-dev-role
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: GitHubActions-DeployReservations-DEV
+
+      # ── Install ────────────────────────────────────────────────────────────
+      - name: Install all dependencies
+        working-directory: backend
+        run: npm ci
+
+      # ── Build reservations NestJS Lambda ──────────────────────────────────
+      - name: Build reservations service
+        working-directory: backend
+        run: npx nest build reservations
+
+      - name: Install production dependencies only (reservations)
+        working-directory: backend
+        run: npm ci --omit=dev --ignore-scripts
+
+      - name: Package reservations Lambda
+        run: |
+          mkdir -p /tmp/reservations-pkg/dist
+          cp -r backend/services/reservations/dist/. /tmp/reservations-pkg/dist/
+          cp -r backend/node_modules /tmp/reservations-pkg/node_modules
+          cd /tmp/reservations-pkg
+          zip -r /tmp/reservations.zip dist/ node_modules/
+          echo "Reservations artifact: $(du -sh /tmp/reservations.zip | cut -f1)"
+
+      - name: Upload reservations artifact to S3
+        run: |
+          aws s3 cp /tmp/reservations.zip \
+            "s3://${{ env.ARTIFACTS_BUCKET }}/reservations/reservations.zip"
+
+      - name: Update reservations Lambda function code
+        run: |
+          if aws lambda get-function \
+               --function-name "${{ env.RESERVATIONS_FUNCTION_NAME }}" \
+               --region "${{ env.AWS_REGION }}" > /dev/null 2>&1; then
+            aws lambda update-function-code \
+              --function-name "${{ env.RESERVATIONS_FUNCTION_NAME }}" \
+              --s3-bucket     "${{ env.ARTIFACTS_BUCKET }}" \
+              --s3-key        "reservations/reservations.zip" \
+              --publish \
+              --region        "${{ env.AWS_REGION }}"
+          else
+            echo "Lambda not yet created — artifact uploaded for Terraform to use."
+          fi
+
+      # ── Build reservations-expirer Lambda (esbuild) ───────────────────────
+      - name: Install expirer dependencies
+        working-directory: backend/services/reservations-expirer
+        run: npm ci
+
+      - name: Build expirer Lambda
+        working-directory: backend/services/reservations-expirer
+        run: npm run build
+
+      - name: Package expirer Lambda
+        run: |
+          cd backend/services/reservations-expirer
+          zip -r /tmp/reservations-expirer.zip dist/
+          echo "Expirer artifact: $(du -sh /tmp/reservations-expirer.zip | cut -f1)"
+
+      - name: Upload expirer artifact to S3
+        run: |
+          aws s3 cp /tmp/reservations-expirer.zip \
+            "s3://${{ env.ARTIFACTS_BUCKET }}/reservations/reservations-expirer.zip"
+
+      - name: Update expirer Lambda function code
+        run: |
+          if aws lambda get-function \
+               --function-name "${{ env.EXPIRER_FUNCTION_NAME }}" \
+               --region "${{ env.AWS_REGION }}" > /dev/null 2>&1; then
+            aws lambda update-function-code \
+              --function-name "${{ env.EXPIRER_FUNCTION_NAME }}" \
+              --s3-bucket     "${{ env.ARTIFACTS_BUCKET }}" \
+              --s3-key        "reservations/reservations-expirer.zip" \
+              --publish \
+              --region        "${{ env.AWS_REGION }}"
+          else
+            echo "Expirer Lambda not yet created — artifact uploaded for Terraform to use."
+          fi
