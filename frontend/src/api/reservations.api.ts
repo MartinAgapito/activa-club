@@ -32,6 +32,31 @@ export interface AreaSummary {
   isActive: boolean
 }
 
+/**
+ * AC-014: Status values as returned by the backend (UPPERCASE).
+ * CONFIRMED = upcoming reservation; CANCELLED/EXPIRED = history.
+ */
+export type ReservationStatus = 'CONFIRMED' | 'CANCELLED' | 'EXPIRED'
+
+/**
+ * AC-014: Single reservation item returned by GET /v1/reservations/me.
+ */
+export interface ReservationItem {
+  reservationId: string
+  areaId: string
+  areaName: string
+  date: string             // YYYY-MM-DD
+  startTime: string        // HH:mm
+  endTime: string          // HH:mm
+  durationMinutes: number
+  status: ReservationStatus
+  createdAt: string        // ISO-8601 UTC
+}
+
+/**
+ * @deprecated Use ReservationItem for AC-014 responses.
+ * Kept temporarily for components that reference ReservationRecord from manager views.
+ */
 export interface ReservationRecord {
   reservationId: string
   areaId: string
@@ -39,7 +64,7 @@ export interface ReservationRecord {
   date: string          // YYYY-MM-DD
   startTime: string     // HH:mm
   endTime: string       // HH:mm
-  status: 'Confirmed' | 'Cancelled' | 'Completed' | 'NoShow'
+  status: ReservationStatus
   memberId?: string
   memberName?: string
   memberEmail?: string
@@ -49,12 +74,18 @@ export interface ReservationRecord {
 export interface WeeklyQuota {
   used: number
   limit: number
+  resetsAt?: string  // ISO-8601 UTC — when the weekly counter resets
 }
 
+/**
+ * AC-014: Response shape of GET /v1/reservations/me.
+ * `lastKey` is null when no more pages exist.
+ */
 export interface MyReservationsResponse {
-  reservations: ReservationRecord[]
+  items: ReservationItem[]
   weeklyQuota: WeeklyQuota
-  nextCursor?: string
+  membershipStatus: string   // 'active' | 'suspended' | etc.
+  lastKey: string | null
 }
 
 export interface ManagerReservationsResponse {
@@ -153,11 +184,16 @@ export const reservationsApi = {
   },
 
   /**
-   * AC-014: Fetch own reservations with view filter.
+   * AC-014: Fetch own reservations with view filter and cursor-based pagination.
+   * Query params: view, limit=20, lastKey (cursor).
    */
-  getMyReservations(view: 'upcoming' | 'history', cursor?: string) {
+  getMyReservations(view: 'upcoming' | 'history', lastKey?: string) {
     return apiClient.get<ApiResponse<MyReservationsResponse>>('/v1/reservations/me', {
-      params: { view, ...(cursor ? { cursor } : {}) },
+      params: {
+        view,
+        limit: 20,
+        ...(lastKey ? { lastKey } : {}),
+      },
     })
   },
 
