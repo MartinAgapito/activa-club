@@ -792,7 +792,7 @@ module "reservations_lambda" {
   source = "../../modules/lambda"
 
   function_name = "${var.project}-reservations-${var.env}"
-  handler       = "dist/lambda.handler"
+  handler       = "dist/src/infrastructure/handlers/lambda.handler"
   runtime       = "nodejs20.x"
   memory_size   = 256
   timeout       = 30
@@ -875,7 +875,7 @@ module "reservations_expirer_lambda" {
   source = "../../modules/lambda"
 
   function_name = "${var.project}-reservations-expirer-${var.env}"
-  handler       = "dist/expirer.handler"
+  handler       = "dist/index.handler"
   runtime       = "nodejs20.x"
   memory_size   = 256
   timeout       = 300
