@@ -835,7 +835,7 @@ module "reservations_lambda" {
 # generic module) and Lambda:InvokeFunction for the expirer (AC-016).
 resource "aws_iam_role_policy" "reservations_lambda_extra" {
   name = "${var.project}-reservations-extra-${var.env}"
-  role = module.reservations_lambda.role_arn
+  role = module.reservations_lambda.role_name
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -907,7 +907,7 @@ module "reservations_expirer_lambda" {
 # Supplemental inline policy — TransactWriteItems for the expirer
 resource "aws_iam_role_policy" "reservations_expirer_extra" {
   name = "${var.project}-reservations-expirer-extra-${var.env}"
-  role = module.reservations_expirer_lambda.role_arn
+  role = module.reservations_expirer_lambda.role_name
 
   policy = jsonencode({
     Version = "2012-10-17"

@@ -88,16 +88,21 @@ jobs:
             -target=aws_s3_bucket_public_access_block.lambda_artifacts \
             -var-file=dev.tfvars
 
-          # Upload a stub zip only if the real artifact is not there yet
+          # Upload stubs only if the real artifacts are not there yet
           BUCKET="activa-club-lambda-artifacts-dev"
-          KEY="members/members.zip"
-          if ! aws s3 ls "s3://${BUCKET}/${KEY}" 2>/dev/null; then
-            echo "No Lambda artifact found — uploading stub for first-time deploy"
-            echo 'exports.handler=async()=>({statusCode:503,body:"Deploying..."})' \
-              > /tmp/index.js
-            zip -j /tmp/members.zip /tmp/index.js
-            aws s3 cp /tmp/members.zip "s3://${BUCKET}/${KEY}"
-          fi
+          echo 'exports.handler=async()=>({statusCode:503,body:"Deploying..."})' \
+            > /tmp/index.js
+          zip -j /tmp/stub.zip /tmp/index.js
+
+          for KEY in \
+            "members/members.zip" \
+            "reservations/reservations.zip" \
+            "reservations/reservations-expirer.zip"; do
+            if ! aws s3 ls "s3://${BUCKET}/${KEY}" 2>/dev/null; then
+              echo "No artifact found for ${KEY} — uploading stub"
+              aws s3 cp /tmp/stub.zip "s3://${BUCKET}/${KEY}"
+            fi
+          done
 
       - name: Terraform Plan
         working-directory: ${{ env.WORKING_DIR }}
