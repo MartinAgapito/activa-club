@@ -80,6 +80,4 @@ resource "aws_scheduler_schedule" "this" {
     role_arn = aws_iam_role.scheduler.arn
     input    = var.target_input
   }
-
-  tags = local.common_tags
 }
