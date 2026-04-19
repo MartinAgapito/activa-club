@@ -7,10 +7,17 @@ import {
   MEMBERS_REPOSITORY,
   MembersRepositoryInterface,
 } from '../ports/members.repository.interface';
-import { MembershipInactiveException } from '../../domain/exceptions/reservation.exceptions';
 import { ReservationEntity } from '../../domain/entities/reservation.entity';
 import { WeeklyQuota } from '../../domain/value-objects/weekly-quota.vo';
-import { AREAS_REPOSITORY, AreasRepositoryInterface } from '../ports/areas.repository.interface';
+
+/** Weekly reservation limits per membership type (AC-012 domain rule). */
+const WEEKLY_LIMITS_BY_MEMBERSHIP: Record<string, number> = {
+  Silver: 2,
+  Gold: 3,
+  VIP: 5,
+};
+
+const DEFAULT_WEEKLY_LIMIT = 2;
 
 export interface ListMyReservationsInput {
   memberId: string;
@@ -27,8 +34,10 @@ export interface ReservationSummaryDto {
   date: string;
   startTime: string;
   endTime: string;
+  durationMinutes: number;
   status: string;
   createdAt: string;
+  canCancel: boolean;
 }
 
 export interface ListMyReservationsResult {
@@ -37,6 +46,7 @@ export interface ListMyReservationsResult {
     limit: number;
     resetsAt: string;
   };
+  membershipStatus: string;
   items: ReservationSummaryDto[];
   lastKey: string | null;
 }
@@ -61,9 +71,6 @@ export class ListMyReservationsQuery {
 
     @Inject(MEMBERS_REPOSITORY)
     private readonly membersRepo: MembersRepositoryInterface,
-
-    @Inject(AREAS_REPOSITORY)
-    private readonly areasRepo: AreasRepositoryInterface,
   ) {}
 
   async execute(input: ListMyReservationsInput): Promise<ListMyReservationsResult> {
@@ -71,26 +78,24 @@ export class ListMyReservationsQuery {
       `ListMyReservationsQuery: memberId=${input.memberId} view=${input.view} limit=${input.limit}`,
     );
 
-    // Load member profile — must exist and be active
+    // AC-014: Members with inactive memberships can still view their reservations.
+    // The endpoint does NOT throw MEMBERSHIP_INACTIVE — it returns membershipStatus
+    // so the frontend can display an appropriate banner.
     const member = await this.membersRepo.findById(input.memberId);
-    if (!member || member.accountStatus !== 'active') {
-      throw new MembershipInactiveException();
-    }
 
-    // Determine weekly limit from a representative area or default
-    // We derive a safe fallback of 0 and let the member's own area check enforce limits.
-    // For the list endpoint we just report what the member's quota state is.
-    // The weekly limit per membership is stored per-area; here we fetch the first known area
-    // or default to 0 to be safe.
-    // AC-014: "weeklyQuota" is informational — just report what is stored on the member record.
-    const weeklyResetAt = member.weeklyResetAt ?? nextMondayIso();
-    const weeklyUsed = member.weeklyReservationCount ?? 0;
+    const membershipStatus = member?.accountStatus ?? 'unknown';
+    const membershipType = member?.membershipType ?? input.membershipType ?? 'Silver';
 
-    // Derive per-membership weekly limit: look up from any area.
-    // For simplicity in the list endpoint (informational only), we store the limit
-    // as 0 when no area context is available and note it is informational.
-    // A future improvement would store the limit on the member record.
-    const weeklyLimit = 0; // Will be superseded by area-specific limit on create
+    // Determine weekly used count.
+    // If the weekly reset date has already passed, the counter is stale — report 0.
+    const weeklyResetAt = member?.weeklyResetAt ?? nextMondayIso();
+    const now = new Date();
+    const weeklyUsed =
+      member && now < new Date(weeklyResetAt) ? (member.weeklyReservationCount ?? 0) : 0;
+
+    // Derive weekly limit from the member's membership type.
+    const weeklyLimit =
+      WEEKLY_LIMITS_BY_MEMBERSHIP[membershipType] ?? DEFAULT_WEEKLY_LIMIT;
 
     const { items, lastKey } = await this.reservationRepo.listByMember({
       memberId: input.memberId,
@@ -100,6 +105,7 @@ export class ListMyReservationsQuery {
     });
 
     const quota = new WeeklyQuota(weeklyUsed, weeklyLimit, weeklyResetAt);
+    const nowMs = now.getTime();
 
     return {
       weeklyQuota: {
@@ -107,13 +113,24 @@ export class ListMyReservationsQuery {
         limit: quota.limit,
         resetsAt: quota.resetsAt,
       },
-      items: items.map(toSummaryDto),
+      membershipStatus,
+      items: items.map((r) => toSummaryDto(r, nowMs)),
       lastKey,
     };
   }
 }
 
-function toSummaryDto(r: ReservationEntity): ReservationSummaryDto {
+/**
+ * Maps a ReservationEntity to the summary DTO for the AC-014 response.
+ * `canCancel` is true only when the reservation is CONFIRMED and the
+ * cancellation window (2 hours before start) has not yet closed.
+ */
+function toSummaryDto(r: ReservationEntity, nowMs: number): ReservationSummaryDto {
+  const CANCEL_WINDOW_HOURS = 2;
+  const startUtc = new Date(`${r.date}T${r.startTime}:00Z`).getTime();
+  const canCancel =
+    r.status === 'CONFIRMED' && nowMs < startUtc - CANCEL_WINDOW_HOURS * 3600 * 1000;
+
   return {
     reservationId: r.reservationId,
     areaId: r.areaId,
@@ -121,7 +138,9 @@ function toSummaryDto(r: ReservationEntity): ReservationSummaryDto {
     date: r.date,
     startTime: r.startTime,
     endTime: r.endTime,
+    durationMinutes: r.durationMinutes,
     status: r.status,
     createdAt: r.createdAt,
+    canCancel,
   };
 }

@@ -144,6 +144,18 @@ describe('CancelReservationHandler — AC-013', () => {
         handler.execute(new CancelReservationCommand('member-01', 'res-01')),
       ).rejects.toThrow(InvalidReservationStatusException);
     });
+
+    it('throws InvalidReservationStatusException when reservation status is ACTIVE (already started)', async () => {
+      // AC-013: reservations that have already begun cannot be cancelled.
+      // In the domain model, 'ACTIVE' is treated as a non-cancellable status
+      // because isCancellable() returns false for any status other than CONFIRMED.
+      const handler = makeHandler({
+        findByKey: jest.fn().mockResolvedValue(makeReservationEntity(3, 'member-01', 'ACTIVE')),
+      });
+      await expect(
+        handler.execute(new CancelReservationCommand('member-01', 'res-01')),
+      ).rejects.toThrow(InvalidReservationStatusException);
+    });
   });
 
   describe('Not found — AC-013', () => {
