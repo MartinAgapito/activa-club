@@ -75,11 +75,31 @@ export interface ManagerReservationsResponse {
 
 // ─── Request payloads ─────────────────────────────────────────────────────────
 
+/**
+ * AC-012: POST /v1/reservations request body.
+ * Note: `durationMinutes` replaces the old `endTime` field — the backend
+ * computes endTime from startTime + durationMinutes atomically.
+ */
 export interface CreateReservationPayload {
   areaId: string
+  date: string              // YYYY-MM-DD
+  startTime: string         // HH:mm (hourly boundary)
+  durationMinutes: number   // multiple of 60; max depends on membership tier
+}
+
+/**
+ * AC-012: POST /v1/reservations response body (HTTP 201).
+ */
+export interface CreateReservationResponse {
+  reservationId: string
+  areaId: string
+  areaName: string
   date: string        // YYYY-MM-DD
   startTime: string   // HH:mm
   endTime: string     // HH:mm
+  durationMinutes: number
+  status: 'CONFIRMED'
+  createdAt: string   // ISO-8601 UTC
 }
 
 export interface CancelReservationPayload {
@@ -116,9 +136,11 @@ export const reservationsApi = {
 
   /**
    * AC-012: Create a new reservation.
+   * Body: { areaId, date, startTime, durationMinutes }
+   * Success: HTTP 201 with CreateReservationResponse
    */
   createReservation(payload: CreateReservationPayload) {
-    return apiClient.post<ApiResponse<ReservationRecord>>('/v1/reservations', payload)
+    return apiClient.post<ApiResponse<CreateReservationResponse>>('/v1/reservations', payload)
   },
 
   /**

@@ -15,9 +15,9 @@ const VerifyEmailPage = lazy(() => import('@/pages/auth/VerifyEmailPage'))
 const VerifyOtpPage = lazy(() => import('@/pages/auth/VerifyOtpPage'))
 const AuthCallbackPage = lazy(() => import('@/pages/auth/AuthCallbackPage'))
 const MemberDashboardPage = lazy(() => import('@/pages/member/DashboardPage'))
-const AvailabilityPage = lazy(() => import('@/pages/member/AvailabilityPage'))
 const AreaAvailabilityPage = lazy(() => import('@/pages/member/AreaAvailabilityPage'))
 const MyReservationsPage = lazy(() => import('@/pages/member/MyReservationsPage'))
+const CreateReservationPage = lazy(() => import('@/pages/member/CreateReservationPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/DashboardPage'))
 const ManagerCalendarPage = lazy(() => import('@/pages/admin/ManagerCalendarPage'))
 const NotFoundPage = lazy(() => import('@/pages/shared/NotFoundPage'))
@@ -117,9 +117,9 @@ export const router = createBrowserRouter([
             element: <MyReservationsPage />,
           },
           {
-            // AC-011 + AC-012: Availability selector & booking
+            // AC-012: Create reservation wizard (4-step)
             path: 'reservations/new',
-            element: <AvailabilityPage />,
+            element: <CreateReservationPage />,
           },
           {
             // AC-011: Area availability query (read-only — reserve CTA active in AC-012)
