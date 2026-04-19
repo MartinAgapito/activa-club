@@ -138,7 +138,7 @@ resource "aws_lambda_permission" "apigw_invoke" {
     "${r.method}_${replace(r.path, "/", "_")}" => r
   }
 
-  statement_id  = "AllowAPIGatewayInvoke-${each.key}"
+  statement_id  = "AllowAPIGatewayInvoke-${replace(each.key, "/[^a-zA-Z0-9_-]/", "_")}"
   action        = "lambda:InvokeFunction"
   function_name = each.value.lambda_function_name
   principal     = "apigateway.amazonaws.com"
