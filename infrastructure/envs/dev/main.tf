@@ -341,6 +341,14 @@ module "api_gateway" {
 
     # ── EP-02: Reservations ───────────────────────────────────────
 
+    # List all active areas (Member, Manager, Admin)
+    {
+      method               = "GET"
+      path                 = "/v1/areas"
+      lambda_invoke_arn    = module.reservations_lambda.invoke_arn
+      lambda_function_name = module.reservations_lambda.function_name
+      auth_required        = true
+    },
     # AC-011 — Area availability (Member, Manager, Admin)
     {
       method               = "GET"

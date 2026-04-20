@@ -42,6 +42,10 @@ import {
   MembersRepositoryInterface,
   MEMBERS_REPOSITORY,
 } from '../../application/ports/members.repository.interface';
+import {
+  AreasRepositoryInterface,
+  AREAS_REPOSITORY,
+} from '../../application/ports/areas.repository.interface';
 import { Inject } from '@nestjs/common';
 
 /**
@@ -68,7 +72,31 @@ export class ReservationsController {
 
     @Inject(MEMBERS_REPOSITORY)
     private readonly membersRepo: MembersRepositoryInterface,
+
+    @Inject(AREAS_REPOSITORY)
+    private readonly areasRepo: AreasRepositoryInterface,
   ) {}
+
+  // ─── GET /v1/areas — list all active areas ───────────────────────────────
+
+  @Get('areas')
+  @HttpCode(HttpStatus.OK)
+  @Roles('Member', 'Manager', 'Admin')
+  @ApiOperation({ summary: 'List all active recreational areas' })
+  @ApiResponse({ status: 200, description: 'Active areas returned.' })
+  async listAreas() {
+    this.logger.log('GET /v1/areas');
+    const areas = await this.areasRepo.findAllActive();
+    return areas.map((a) => ({
+      areaId: a.areaId,
+      name: a.name,
+      capacity: a.capacity,
+      openingTime: a.openingTime,
+      closingTime: a.closingTime,
+      slotDuration: a.slotDuration,
+      allowedMemberships: a.allowedMemberships,
+    }));
+  }
 
   // ─── AC-011: GET /v1/areas/{areaId}/availability ─────────────────────────
 
