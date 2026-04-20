@@ -1,5 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { useAuthStore } from '@/store'
+import { router } from '@/router'
 
 const API_URL = import.meta.env.VITE_API_URL as string
 
@@ -34,15 +35,10 @@ apiClient.interceptors.response.use(
 
     if (!isAuthEndpoint) {
       if (error.response?.status === 401) {
-        // The Zustand session in sessionStorage will be cleared when the tab closes.
-        // The refresh token in localStorage is left intact so LoginPage can attempt
-        // a silent refresh on arrival — which will fail if the token is truly expired.
-        window.location.href = '/auth/login'
+        useAuthStore.getState().clearAuth()
+        router.navigate('/auth/login', { replace: true })
       }
-
-      if (error.response?.status === 403) {
-        window.location.href = '/auth/login?reason=forbidden'
-      }
+      // 403 = insufficient role — do not redirect to login, let the component show an error
     }
 
     return Promise.reject(error)
