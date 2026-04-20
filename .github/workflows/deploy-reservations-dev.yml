@@ -62,9 +62,17 @@ jobs:
         run: npm ci
 
       # ── Build reservations NestJS Lambda ──────────────────────────────────
+      # Use tsc directly from the service directory so outDir ("./dist") is
+      # resolved relative to the tsconfig location — guaranteed output path.
       - name: Build reservations service
-        working-directory: backend
-        run: npx nest build reservations
+        working-directory: backend/services/reservations
+        run: npx tsc -p tsconfig.build.json
+
+      - name: Verify build output
+        run: |
+          echo "=== Compiled handler ==="
+          ls -la backend/services/reservations/dist/src/infrastructure/handlers/ || \
+            (echo "ERROR: handler not found at expected path" && exit 1)
 
       - name: Install production dependencies only (reservations)
         working-directory: backend
@@ -72,11 +80,13 @@ jobs:
 
       - name: Package reservations Lambda
         run: |
-          mkdir -p /tmp/reservations-pkg/dist
-          cp -r backend/services/reservations/dist/. /tmp/reservations-pkg/dist/
+          mkdir -p /tmp/reservations-pkg
+          cp -r backend/services/reservations/dist /tmp/reservations-pkg/dist
           cp -r backend/node_modules /tmp/reservations-pkg/node_modules
           cd /tmp/reservations-pkg
           zip -r /tmp/reservations.zip dist/ node_modules/
+          echo "=== Zip top-level entries ==="
+          unzip -l /tmp/reservations.zip | head -20
           echo "Reservations artifact: $(du -sh /tmp/reservations.zip | cut -f1)"
 
       - name: Upload reservations artifact to S3
