@@ -2,6 +2,7 @@ import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nes
 import { Observable, map } from 'rxjs';
 
 export interface ApiResponse<T> {
+  success: boolean;
   data: T;
   timestamp: string;
 }
@@ -15,6 +16,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ApiResponse<T
           return data as T;
         }
         return {
+          success: true,
           data,
           timestamp: new Date().toISOString(),
         } satisfies ApiResponse<T>;
