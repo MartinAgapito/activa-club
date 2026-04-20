@@ -179,7 +179,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50/50 p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50/50 p-4 py-10">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center w-full max-w-4xl">
         {/* Left: Brand panel */}
         <AuthBrandPanel />
@@ -188,7 +188,7 @@ export default function LoginPage() {
         <div className="flex justify-center lg:justify-start">
           <div className="w-full max-w-md">
             {/* Mobile-only brand header — AuthBrandPanel is hidden below lg */}
-            <div className="lg:hidden text-center mb-6">
+            <div className="lg:hidden text-center mb-10">
               <h1 className="text-3xl font-bold text-slate-900">Activa Club</h1>
               <p className="text-slate-500 text-sm mt-1">Tu club deportivo de confianza</p>
             </div>
