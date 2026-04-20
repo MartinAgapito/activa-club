@@ -187,6 +187,11 @@ export default function LoginPage() {
         {/* Right: Login form */}
         <div className="flex justify-center lg:justify-start">
           <div className="w-full max-w-md">
+            {/* Mobile-only brand header — AuthBrandPanel is hidden below lg */}
+            <div className="lg:hidden text-center mb-6">
+              <h1 className="text-3xl font-bold text-slate-900">Activa Club</h1>
+              <p className="text-slate-500 text-sm mt-1">Tu club deportivo de confianza</p>
+            </div>
             <Card className="border-slate-200 shadow-sm bg-white">
               <CardHeader className="space-y-1 pb-4">
                 <CardTitle className="text-2xl font-bold text-slate-900">

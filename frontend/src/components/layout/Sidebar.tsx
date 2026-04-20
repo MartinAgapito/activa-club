@@ -91,26 +91,21 @@ function NavItemLink({ item }: { item: NavItem }) {
   )
 }
 
-export function Sidebar() {
+function SidebarContent({ onClose }: { onClose?: () => void }) {
   const { user } = useAuthStore()
-  const { sidebarOpen } = useUIStore()
-
-  if (!sidebarOpen) return null
-
   const userRole = user?.role ?? 'Member'
-
   const visibleMemberItems = memberNavItems.filter((item) => item.roles.includes(userRole))
   const visibleAdminItems = adminNavItems.filter((item) => item.roles.includes(userRole))
   const showAdminSection = ['Admin', 'Manager'].includes(userRole)
 
   return (
-    <aside className="hidden w-64 shrink-0 border-r bg-background md:flex md:flex-col">
+    <>
       <div className="flex h-16 items-center border-b px-6">
         <Activity className="mr-2 h-6 w-6 text-primary" />
         <span className="text-lg font-bold text-primary">ActivaClub</span>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-4">
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-4" onClick={onClose}>
         {visibleMemberItems.length > 0 && (
           <div className="mb-4">
             <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -133,6 +128,37 @@ export function Sidebar() {
           </div>
         )}
       </nav>
-    </aside>
+    </>
+  )
+}
+
+export function Sidebar() {
+  const { sidebarOpen, setSidebarOpen } = useUIStore()
+
+  return (
+    <>
+      {/* Desktop sidebar — always mounted, visibility controlled by sidebarOpen */}
+      {sidebarOpen && (
+        <aside className="hidden w-64 shrink-0 border-r bg-background md:flex md:flex-col">
+          <SidebarContent />
+        </aside>
+      )}
+
+      {/* Mobile drawer — full-screen overlay below md */}
+      {sidebarOpen && (
+        <div className="md:hidden">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Drawer panel */}
+          <aside className="fixed inset-y-0 left-0 z-50 w-72 flex flex-col border-r bg-background shadow-lg">
+            <SidebarContent onClose={() => setSidebarOpen(false)} />
+          </aside>
+        </div>
+      )}
+    </>
   )
 }
