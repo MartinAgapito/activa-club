@@ -16,7 +16,7 @@ export function useAreaAvailability(areaId: string, date: string) {
     queryKey: ['area-availability', areaId, date] as const,
     queryFn: async () => {
       const res = await getAreaAvailability(areaId, date)
-      return res.data
+      return res.data.data
     },
     enabled: Boolean(areaId) && Boolean(date),
     staleTime: 30_000,   // 30 seconds — matches AC-011 design doc

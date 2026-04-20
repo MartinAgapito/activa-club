@@ -70,7 +70,7 @@ describe('useAreaAvailability', () => {
 
   it('fetches availability when areaId and date are provided', async () => {
     vi.mocked(areasApi.getAreaAvailability).mockResolvedValue({
-      data: mockResponse,
+      data: { success: true, data: mockResponse, timestamp: '2026-04-20T00:00:00.000Z' },
       status: 200,
       statusText: 'OK',
       headers: {},
@@ -91,7 +91,7 @@ describe('useAreaAvailability', () => {
 
   it('uses the correct query key', async () => {
     vi.mocked(areasApi.getAreaAvailability).mockResolvedValue({
-      data: mockResponse,
+      data: { success: true, data: mockResponse, timestamp: '2026-04-20T00:00:00.000Z' },
       status: 200,
       statusText: 'OK',
       headers: {},

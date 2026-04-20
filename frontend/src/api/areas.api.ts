@@ -1,4 +1,5 @@
 import apiClient from '@/api/client'
+import type { ApiResponse } from '@/types'
 
 // ─── Domain types (aligned with AC-011 design doc) ────────────────────────────
 
@@ -68,7 +69,7 @@ export interface ApiErrorEnvelope {
  * @param date    - Date to query in YYYY-MM-DD format
  */
 export function getAreaAvailability(areaId: string, date: string) {
-  return apiClient.get<AreaAvailabilityResponse>(
+  return apiClient.get<ApiResponse<AreaAvailabilityResponse>>(
     `/v1/areas/${areaId}/availability`,
     { params: { date } }
   )

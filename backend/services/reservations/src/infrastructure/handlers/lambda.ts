@@ -5,6 +5,7 @@ import serverlessExpress from '@vendia/serverless-express';
 import { Handler, Context, Callback } from 'aws-lambda';
 import { ReservationsModule } from '../../../reservations.module';
 import { GlobalExceptionFilter } from '../shared/filters/global-exception.filter';
+import { TransformInterceptor } from '../shared/interceptors/transform.interceptor';
 
 let cachedHandler: Handler;
 
@@ -26,6 +27,7 @@ async function bootstrap(): Promise<Handler> {
   );
 
   app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalInterceptors(new TransformInterceptor());
 
   if (process.env.NODE_ENV !== 'production') {
     const config = new DocumentBuilder()
