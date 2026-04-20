@@ -60,12 +60,12 @@ export default function LoginPage() {
     return !!localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY)
   })
 
-  // AC-010: on mount, try silent re-authentication via stored refresh token
+  // AC-010: on mount, try silent re-authentication via stored refresh token.
+  // The 'activa-club-logged-out' flag is kept alive for the entire session on
+  // the login page so that F5 does not trigger an unwanted auto-login. It is
+  // only cleared when the user actively authenticates (onSubmit / refresh success).
   useEffect(() => {
-    // User just logged out — show the form and clear the flag so the next
-    // navigation (or fresh browser session) behaves normally.
     if (sessionStorage.getItem('activa-club-logged-out')) {
-      sessionStorage.removeItem('activa-club-logged-out')
       setIsSilentRefreshing(false)
       return
     }
@@ -79,6 +79,7 @@ export default function LoginPage() {
     authApi
       .refreshToken(storedRefreshToken)
       .then((response) => {
+        sessionStorage.removeItem('activa-club-logged-out')
         const { idToken, accessToken } = response.data.data
         const { setTokens } = useAuthStore.getState()
         setTokens(idToken, accessToken)
@@ -90,7 +91,6 @@ export default function LoginPage() {
         navigate(destination, { replace: true })
       })
       .catch(() => {
-        // Refresh token expired or revoked — clear it and show the login form
         localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY)
         setIsSilentRefreshing(false)
       })
@@ -109,6 +109,7 @@ export default function LoginPage() {
         const refreshResponse = await authApi.refreshToken(storedRefreshToken)
         const { idToken, accessToken } = refreshResponse.data.data
         const { setTokens } = useAuthStore.getState()
+        sessionStorage.removeItem('activa-club-logged-out')
         setTokens(idToken, accessToken)
         const { user } = useAuthStore.getState()
         const destination =
