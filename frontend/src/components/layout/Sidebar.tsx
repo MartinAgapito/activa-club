@@ -6,6 +6,7 @@ import {
   Users,
   Settings,
   Activity,
+  MapPin,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore, useUIStore } from '@/store'
@@ -63,6 +64,12 @@ const adminNavItems: NavItem[] = [
     href: '/admin/promotions',
     icon: <Tag className="h-5 w-5" />,
     roles: ['Admin', 'Manager'],
+  },
+  {
+    label: 'Áreas',
+    href: '/admin/areas',
+    icon: <MapPin className="h-5 w-5" />,
+    roles: ['Admin'],
   },
   {
     label: 'Configuración',

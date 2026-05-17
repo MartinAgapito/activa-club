@@ -19,7 +19,7 @@ export interface AreaRecord {
 }
 
 /**
- * Port interface for reading area configuration.
+ * Port interface for reading and writing area configuration.
  *
  * The application layer uses this port — the infrastructure layer provides
  * a DynamoDB implementation.
@@ -29,4 +29,13 @@ export interface AreasRepositoryInterface {
 
   /** Returns all areas with status = 'Active'. Used by the manager calendar. */
   findAllActive(): Promise<AreaRecord[]>;
+
+  /** Returns all areas regardless of status. Used by the admin CRUD. */
+  findAll(): Promise<AreaRecord[]>;
+
+  /** Upserts an area record. If areaId is provided it must already exist. */
+  save(area: AreaRecord): Promise<AreaRecord>;
+
+  /** Updates only the status field of an existing area. */
+  updateStatus(areaId: string, status: 'Active' | 'Inactive'): Promise<void>;
 }

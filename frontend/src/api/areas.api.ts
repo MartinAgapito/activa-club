@@ -59,18 +59,65 @@ export interface ApiErrorEnvelope {
   }
 }
 
+// ─── Admin area types ─────────────────────────────────────────────────────────
+
+export interface AreaRecord {
+  areaId: string
+  name: string
+  status: 'Active' | 'Inactive'
+  capacity: number
+  slotDuration: number
+  openingTime: string
+  closingTime: string
+  cancelWindowHours: number
+  allowedMemberships: string[]
+  maxDurationMinutes: Record<string, number>
+  weeklyLimit: Record<string, number>
+}
+
+export interface CreateAreaPayload {
+  name: string
+  capacity: number
+  slotDuration: number
+  openingTime: string
+  closingTime: string
+  cancelWindowHours: number
+  allowedMemberships: string[]
+  maxDurationMinutes: Record<string, number>
+  weeklyLimit: Record<string, number>
+}
+
+export type UpdateAreaPayload = Partial<CreateAreaPayload>
+
 // ─── API functions ─────────────────────────────────────────────────────────────
 
 /**
  * AC-011: Fetch hourly slot availability for an area on a specific date.
- * Requires a valid Bearer token (attached automatically by the Axios interceptor).
- *
- * @param areaId  - ULID of the target area
- * @param date    - Date to query in YYYY-MM-DD format
  */
 export function getAreaAvailability(areaId: string, date: string) {
   return apiClient.get<ApiResponse<AreaAvailabilityResponse>>(
     `/v1/areas/${areaId}/availability`,
     { params: { date } }
+  )
+}
+
+// ─── Admin CRUD functions ─────────────────────────────────────────────────────
+
+export function adminListAllAreas() {
+  return apiClient.get<ApiResponse<AreaRecord[]>>('/v1/admin/areas')
+}
+
+export function adminCreateArea(payload: CreateAreaPayload) {
+  return apiClient.post<ApiResponse<AreaRecord>>('/v1/admin/areas', payload)
+}
+
+export function adminUpdateArea(areaId: string, payload: UpdateAreaPayload) {
+  return apiClient.put<ApiResponse<AreaRecord>>(`/v1/admin/areas/${areaId}`, payload)
+}
+
+export function adminToggleAreaStatus(areaId: string, status: 'Active' | 'Inactive') {
+  return apiClient.patch<ApiResponse<{ areaId: string; status: string }>>(
+    `/v1/admin/areas/${areaId}/status`,
+    { status }
   )
 }

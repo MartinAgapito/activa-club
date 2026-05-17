@@ -421,6 +421,39 @@ module "api_gateway" {
       lambda_function_name = module.reservations_lambda.function_name
       auth_required        = true
     },
+
+    # Admin Areas CRUD — list all (including inactive)
+    {
+      method               = "GET"
+      path                 = "/v1/admin/areas"
+      lambda_invoke_arn    = module.reservations_lambda.invoke_arn
+      lambda_function_name = module.reservations_lambda.function_name
+      auth_required        = true
+    },
+    # Admin Areas CRUD — create
+    {
+      method               = "POST"
+      path                 = "/v1/admin/areas"
+      lambda_invoke_arn    = module.reservations_lambda.invoke_arn
+      lambda_function_name = module.reservations_lambda.function_name
+      auth_required        = true
+    },
+    # Admin Areas CRUD — update
+    {
+      method               = "PUT"
+      path                 = "/v1/admin/areas/{areaId}"
+      lambda_invoke_arn    = module.reservations_lambda.invoke_arn
+      lambda_function_name = module.reservations_lambda.function_name
+      auth_required        = true
+    },
+    # Admin Areas CRUD — toggle status
+    {
+      method               = "PATCH"
+      path                 = "/v1/admin/areas/{areaId}/status"
+      lambda_invoke_arn    = module.reservations_lambda.invoke_arn
+      lambda_function_name = module.reservations_lambda.function_name
+      auth_required        = true
+    },
   ]
 
   tags = {
