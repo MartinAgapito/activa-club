@@ -20,6 +20,7 @@ const MyReservationsPage = lazy(() => import('@/pages/member/MyReservationsPage'
 const CreateReservationPage = lazy(() => import('@/pages/member/CreateReservationPage'))
 const AdminDashboardPage = lazy(() => import('@/pages/admin/DashboardPage'))
 const ManagerCalendarPage = lazy(() => import('@/pages/admin/ManagerCalendarPage'))
+const AreaManagementPage = lazy(() => import('@/pages/admin/AreaManagementPage'))
 const NotFoundPage = lazy(() => import('@/pages/shared/NotFoundPage'))
 const ProtectedLayout = lazy(() => import('@/components/layout/ProtectedLayout'))
 
@@ -153,6 +154,11 @@ export const router = createBrowserRouter([
             // AC-015 + AC-016: Manager calendar & block management
             path: 'reservations',
             element: <ManagerCalendarPage />,
+          },
+          {
+            // Admin CRUD for recreational areas
+            path: 'areas',
+            element: <AreaManagementPage />,
           },
         ],
       },

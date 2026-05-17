@@ -4,6 +4,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 // Controllers
 import { ReservationsController } from './src/presentation/controllers/reservations.controller';
 import { ManagerController } from './src/presentation/controllers/manager.controller';
+import { AdminAreasController } from './src/presentation/controllers/admin-areas.controller';
 
 // Application — commands
 import { CreateReservationHandler } from './src/application/commands/create-reservation/create-reservation.handler';
@@ -11,6 +12,9 @@ import { CancelReservationHandler } from './src/application/commands/cancel-rese
 import { ManagerCancelReservationHandler } from './src/application/commands/manager-cancel-reservation/manager-cancel-reservation.handler';
 import { CreateAreaBlockHandler } from './src/application/commands/create-area-block/create-area-block.handler';
 import { DeleteAreaBlockHandler } from './src/application/commands/delete-area-block/delete-area-block.handler';
+import { CreateAreaHandler } from './src/application/commands/create-area/create-area.handler';
+import { UpdateAreaHandler } from './src/application/commands/update-area/update-area.handler';
+import { ToggleAreaStatusHandler } from './src/application/commands/toggle-area-status/toggle-area-status.handler';
 
 // Application — queries
 import { GetAreaAvailabilityQuery } from './src/application/queries/get-area-availability.query';
@@ -38,7 +42,7 @@ import { AREAS_REPOSITORY } from './src/application/ports/areas.repository.inter
 import { MEMBERS_REPOSITORY } from './src/application/ports/members.repository.interface';
 
 @Module({
-  controllers: [ReservationsController, ManagerController],
+  controllers: [ReservationsController, ManagerController, AdminAreasController],
   providers: [
     // ── DynamoDB client singleton ──────────────────────────────────────────
     {
@@ -83,6 +87,11 @@ import { MEMBERS_REPOSITORY } from './src/application/ports/members.repository.i
     ManagerCancelReservationHandler,
     CreateAreaBlockHandler,
     DeleteAreaBlockHandler,
+
+    // ── Use case handlers — Admin Areas CRUD ──────────────────────────────
+    CreateAreaHandler,
+    UpdateAreaHandler,
+    ToggleAreaStatusHandler,
 
     // ── Queries — AC-011, AC-014, AC-015 ──────────────────────────────────
     GetAreaAvailabilityQuery,
