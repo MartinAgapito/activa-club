@@ -205,10 +205,7 @@ interface Step1Props {
 
 function Step1AreaSelect({ areas, areasLoading, areasError, onSelect }: Step1Props) {
   const areaOptions = useMemo(
-    () =>
-      (areas ?? [])
-        .filter((a) => a.isActive)
-        .map((a) => ({ areaId: a.areaId, name: a.name })),
+    () => (areas ?? []).map((a) => ({ areaId: a.areaId, name: a.name })),
     [areas]
   )
 

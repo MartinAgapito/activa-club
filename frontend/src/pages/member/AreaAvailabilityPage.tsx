@@ -95,16 +95,9 @@ export default function AreaAvailabilityPage() {
    */
   const accessibleAreas = useMemo(() => {
     if (!allAreas) return []
-    if (isManager) return allAreas.filter((a) => a.isActive)
-
-    // Infer membership tier from user display name or role metadata.
-    // The CognitoUser type does not carry membershipType, so we rely on the
-    // allowedMemberships field that comes from the areas API when available,
-    // or default to showing all areas (backend will enforce 403 on access).
-    // NOTE: When the backend sends allowedMemberships per area, apply the filter.
-    // For now we show all active areas and let the backend enforce the 403.
-    return allAreas.filter((a) => a.isActive)
-  }, [allAreas, isManager])
+    // GET /v1/areas already returns only active areas — no client-side filter needed.
+    return allAreas
+  }, [allAreas])
 
   // Fetch availability — only fires when both area and date are selected
   const {
