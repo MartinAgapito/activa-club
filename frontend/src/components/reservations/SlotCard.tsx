@@ -58,8 +58,17 @@ export interface SlotCardProps {
  * - BLOCKED    → amber background, not selectable (reason hidden from member)
  */
 export function SlotCard({ slot, onSelect, ctaDisabled = false, hideReserveButton = false }: SlotCardProps) {
-  const config = STATUS_CONFIG[slot.status]
-  const isSelectable = slot.status === 'AVAILABLE' && !ctaDisabled
+  const bookedByMe = slot.bookedByMe === true
+  const config = bookedByMe
+    ? {
+        label: 'Ya reservaste',
+        containerClass:
+          'border-blue-400 bg-blue-50 text-blue-700 cursor-not-allowed opacity-80 dark:bg-blue-950/30 dark:text-blue-300',
+        badgeClass:
+          'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+      }
+    : STATUS_CONFIG[slot.status]
+  const isSelectable = slot.status === 'AVAILABLE' && !ctaDisabled && !bookedByMe
 
   function handleClick() {
     if (isSelectable && onSelect) {

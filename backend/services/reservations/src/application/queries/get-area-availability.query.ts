@@ -43,6 +43,7 @@ export interface SlotAvailabilityDto {
   status: 'AVAILABLE' | 'FULL' | 'BLOCKED';
   blocked: boolean;
   blockReason?: string;
+  bookedByMe?: boolean;
 }
 
 export interface GetAreaAvailabilityResult {
@@ -159,7 +160,16 @@ export class GetAreaAvailabilityQuery {
     // ── 6. Load active blocks for this area+date ────────────────────────────
     const blocks = await this.areaBlockRepo.listByAreaAndDate(input.areaId, input.date);
 
-    // ── 7. Build slot list ──────────────────────────────────────────────────
+    // ── 7. Load member's own reservations for this area+date (Members only) ─
+    let memberReservations: Array<{ startTime: string; endTime: string }> = [];
+    if (isMemberRole && input.callerMemberId) {
+      const all = await this.reservationRepo.listByAreaAndDate(input.areaId, input.date);
+      memberReservations = all
+        .filter((r) => r.memberId === input.callerMemberId && r.status === 'CONFIRMED')
+        .map((r) => ({ startTime: r.startTime, endTime: r.endTime }));
+    }
+
+    // ── 8. Build slot list ──────────────────────────────────────────────────
     const slots: SlotAvailabilityDto[] = slotStartTimes.map((startTime) => {
       const endTime = TimeSlot.computeEndTime(startTime, area.slotDuration);
       const occupancy = occupancyMap.get(startTime);
@@ -180,6 +190,14 @@ export class GetAreaAvailabilityQuery {
         };
       }
 
+      const slotStartMin = TimeSlot.toMinutes(startTime);
+      const slotEndMin = TimeSlot.toMinutes(endTime);
+      const bookedByMe = memberReservations.some((r) => {
+        const rStart = TimeSlot.toMinutes(r.startTime);
+        const rEnd = TimeSlot.toMinutes(r.endTime);
+        return rStart < slotEndMin && rEnd > slotStartMin;
+      });
+
       return {
         startTime,
         endTime,
@@ -187,6 +205,7 @@ export class GetAreaAvailabilityQuery {
         total,
         status: available === 0 ? 'FULL' : 'AVAILABLE',
         blocked: false,
+        bookedByMe,
       };
     });
 

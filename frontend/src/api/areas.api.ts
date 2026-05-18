@@ -15,6 +15,8 @@ export interface SlotAvailability {
   total: number
   status: SlotStatus
   blocked: boolean
+  /** True when the authenticated member already has a confirmed reservation overlapping this slot. */
+  bookedByMe?: boolean
 }
 
 export interface WeeklyQuotaInfo {
