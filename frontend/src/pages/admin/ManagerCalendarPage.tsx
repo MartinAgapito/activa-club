@@ -343,10 +343,28 @@ export default function ManagerCalendarPage() {
                 </thead>
                 <tbody>
                   {calendarData.areas.map((area) => {
-                    // Build a map of slotKey → slot for this area
+                    // Build a map of slotKey → SlotEntry for this area.
+                    // The backend sends occupancy/capacity/blocked; we derive status here.
                     const slotMap = new Map<string, SlotEntry>()
-                    area.slots.forEach((slot) => {
-                      slotMap.set(`${slot.startTime}-${slot.endTime}`, slot)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    area.slots.forEach((slot: any) => {
+                      const derived: SlotEntry = {
+                        startTime: slot.startTime,
+                        endTime: slot.endTime,
+                        status: slot.blocked
+                          ? 'blocked'
+                          : (slot.occupancy ?? 0) >= (slot.capacity ?? 1)
+                          ? 'full'
+                          : slot.reservations?.length > 0
+                          ? 'full'
+                          : 'available',
+                        reservation: slot.reservations?.find(
+                          (r: ReservationRecord) => r.status === 'CONFIRMED'
+                        ),
+                        blockId: slot.blockId,
+                        blockReason: slot.blockReason,
+                      }
+                      slotMap.set(`${slot.startTime}-${slot.endTime}`, derived)
                     })
 
                     return (
