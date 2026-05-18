@@ -291,13 +291,13 @@ export class ReservationDynamoRepository implements ReservationRepositoryInterfa
                 Key: { pk: slotPk },
                 UpdateExpression:
                   'SET occupancy = if_not_exists(occupancy, :zero) + :inc, ' +
-                  'capacity = if_not_exists(capacity, :cap), ' +
+                  '#cap = if_not_exists(#cap, :cap), ' +
                   'area_id = :areaId, ' +
                   '#d = :date, ' +
                   'start_time = :startTime, ' +
                   'updated_at = :now',
                 ConditionExpression: 'attribute_not_exists(pk) OR occupancy < :cap',
-                ExpressionAttributeNames: { '#d': 'date' },
+                ExpressionAttributeNames: { '#d': 'date', '#cap': 'capacity' },
                 ExpressionAttributeValues: {
                   ':zero': 0,
                   ':inc': 1,
