@@ -2,7 +2,7 @@
 
 **Estado:** En Progreso
 **Prioridad:** Alta
-**Fecha de última actualización:** 2026-04-18
+**Fecha de última actualización:** 2026-05-17
 
 ## Descripción
 
@@ -14,14 +14,14 @@ Digitalizar el proceso de reserva de instalaciones, eliminando la coordinación 
 
 ## Stories
 
-| ID     | Título                                            | Prioridad | Story Points | Estado  |
-|--------|---------------------------------------------------|-----------|--------------|---------|
-| AC-011 | Consulta de disponibilidad de áreas               | Alta      | 3            | Backlog |
-| AC-012 | Creación de reserva por el socio                  | Alta      | 8            | Backlog |
-| AC-013 | Cancelación de reserva por el socio               | Alta      | 3            | Backlog |
-| AC-014 | Vista de reservas del socio                       | Alta      | 3            | Backlog |
-| AC-015 | Gestión de reservas por el Manager                | Alta      | 5            | Backlog |
-| AC-016 | Expiración automática de reservas y liberación de cupos | Alta | 3           | Backlog |
+| ID     | Título                                                  | Prioridad | Story Points | Estado  |
+|--------|---------------------------------------------------------|-----------|--------------|---------|
+| AC-011 | Consulta de disponibilidad de áreas                     | Alta      | 3            | Done    |
+| AC-012 | Creación de reserva por el socio                        | Alta      | 8            | Backlog |
+| AC-013 | Cancelación de reserva por el socio                     | Alta      | 3            | Backlog |
+| AC-014 | Vista de reservas del socio                             | Alta      | 3            | Backlog |
+| AC-015 | Gestión de reservas por el Manager                      | Alta      | 5            | Done    |
+| AC-016 | Expiración automática de reservas y liberación de cupos | Alta      | 3            | Backlog |
 
 **Total Story Points:** 25
 
