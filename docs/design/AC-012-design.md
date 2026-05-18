@@ -3,9 +3,10 @@
 **Epic:** EP-02 - Reservas
 **Story Points:** 8
 **Priority:** High
-**Status:** Design — Ready for Implementation
+**Status:** Implemented
 **Author:** Senior Software & Cloud Architect
 **Date:** 2026-04-18
+**Last Updated:** 2026-05-17
 **Depends on:** AC-005, AC-006 (authenticated session), AC-011 (availability query, upstream)
 
 ---
@@ -20,6 +21,7 @@ Key design decisions (from EP-02-design.md):
 - **Weekly quota on `MembersTable`:** `weekly_reservation_count` + `weekly_reset_at` fields on the member profile. The Lambda resets the count when `now >= weekly_reset_at` (idempotent reset via conditional UpdateItem).
 - **`member_name` denormalized** into `ReservationsTable` at creation time to avoid cross-table joins in AC-015 manager calendar queries.
 - **`expires_at` computed at creation time** as ISO-8601 UTC of `date + endTime`, stored in `ReservationsTable` for the AC-016 expirer GSI query.
+- **DynamoDB reserved keyword fix:** `capacity` is a reserved word in DynamoDB expression syntax. Any `UpdateExpression` or `ConditionExpression` referencing the `capacity` attribute on `SlotOccupancyTable` must use an alias in `ExpressionAttributeNames`: `{ "#cap": "capacity" }`. This applies to all `TransactWrite` operations in `reservation.dynamo.repository.ts`.
 
 ---
 

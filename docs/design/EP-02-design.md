@@ -4,9 +4,10 @@
 **Stories Covered:** AC-011, AC-012, AC-013, AC-014, AC-015, AC-016
 **Story Points:** 25 (3 + 8 + 3 + 3 + 5 + 3)
 **Priority:** High
-**Status:** Design — Ready for Implementation
+**Status:** Implemented
 **Author:** Senior Software & Cloud Architect
 **Date:** 2026-04-05
+**Last Updated:** 2026-05-17
 
 ---
 
@@ -41,6 +42,10 @@ All endpoints in AC-011 through AC-015 are served by a single Lambda (`activa-cl
 ### Key Design Decisions
 
 **Slot-based occupancy tracking (SlotOccupancyTable):** Rather than scanning all reservations to count occupancy on each availability query, a dedicated `SlotOccupancyTable` maintains a real-time counter per `areaId + date + startTime`. This counter is incremented/decremented atomically as part of every reservation `TransactWrite`. This keeps AC-011 `GET` cost at O(1) per slot instead of O(n reservations).
+
+**`bookedByMe` flag on availability slots (AC-011 extension, implemented 2026-05-17):** The `GetAreaAvailabilityQuery` now includes a Step 7 that loads the caller's `CONFIRMED` reservations for the queried area+date (via `GSI_AreaDate` on `ReservationsTable`), checks minute-level overlap against each slot, and sets `bookedByMe: true` on overlapping slots. This field is only populated for `Member` callers and omitted for `Manager`/`Admin`.
+
+**DynamoDB reserved keyword `capacity`:** The `capacity` attribute name is reserved in DynamoDB expression syntax. All `UpdateExpression` and `ConditionExpression` references to `capacity` in `reservation.dynamo.repository.ts` use `ExpressionAttributeNames: { "#cap": "capacity" }` to avoid `ValidationException` at runtime.
 
 **Weekly quota tracking on MembersTable:** The member profile (`MembersTable`) carries two fields: `weeklyReservationCount` (current count) and `weeklyResetAt` (ISO-8601 timestamp of the next Monday 00:00 UTC). On every reservation creation or cancellation, the Lambda checks whether `weeklyResetAt` has passed and resets the counter before applying the operation. This avoids a separate counter table and is idempotent.
 
@@ -338,6 +343,15 @@ All endpoints require `Authorization: Bearer <AccessToken>` (Cognito JWT Authori
       "blocked": false
     },
     {
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "available": 3,
+      "total": 4,
+      "status": "AVAILABLE",
+      "blocked": false,
+      "bookedByMe": true
+    },
+    {
       "startTime": "11:00",
       "endTime": "12:00",
       "available": 4,
@@ -351,6 +365,8 @@ All endpoints require `Authorization: Bearer <AccessToken>` (Cognito JWT Authori
 ```
 
 `status` per slot: `AVAILABLE` (available > 0 and not blocked), `FULL` (available == 0), `BLOCKED` (active manager block exists, regardless of occupancy).
+
+**`bookedByMe`:** Present only when caller role is `Member`. `true` if the caller has a `CONFIRMED` reservation with minute-level overlap on that slot. Omitted on `BLOCKED` slots and for Manager/Admin callers.
 
 **`weeklyQuotaInfo`:** Derived from the authenticated member's `weekly_reservation_count` and their membership type's `weekly_limit` from `AreasTable`. For Manager/Admin callers this field is omitted.
 
@@ -727,68 +743,98 @@ This endpoint invokes the `activa-club-reservations-expirer-dev` Lambda asynchro
 
 Existing skeleton extended with the following command and query handlers:
 
-**New commands:**
-- `create-reservation.command.ts` (AC-012)
-- `cancel-reservation.command.ts` (AC-013 member cancel)
-- `cancel-reservation-manager.command.ts` (AC-015 manager cancel)
-- `create-area-block.command.ts` (AC-015 block)
-- `delete-area-block.command.ts` (AC-015 unblock)
+**Commands implemented:**
+- `create-reservation/` (AC-012) — `command.ts`, `handler.ts`, `result.ts`
+- `cancel-reservation/` (AC-013 member cancel) — `command.ts`, `handler.ts`
+- `manager-cancel-reservation/` (AC-015 manager cancel) — `command.ts`, `handler.ts`
+- `create-area-block/` (AC-015 block) — `command.ts`, `handler.ts`, `result.ts`
+- `delete-area-block/` (AC-015 unblock) — `command.ts`, `handler.ts`
+- `create-area/` (AC-017 Admin CRUD) — `command.ts`, `handler.ts`
+- `update-area/` (AC-017 Admin CRUD) — `command.ts`, `handler.ts`
+- `toggle-area-status/` (AC-017 Admin CRUD) — `command.ts`, `handler.ts`
 
-**New queries:**
-- `get-area-availability.query.ts` (AC-011)
-- `list-member-reservations.query.ts` (AC-014)
+**Queries implemented:**
+- `get-area-availability.query.ts` (AC-011 + `bookedByMe` extension)
+- `list-my-reservations.query.ts` (AC-014)
 - `get-manager-calendar.query.ts` (AC-015)
 
-**New value objects (domain/value-objects):**
+**Value objects (domain/value-objects):**
 - `reservation-status.vo.ts` — `CONFIRMED | CANCELLED | EXPIRED`
 - `slot-occupancy.vo.ts` — holds `occupancy`, `capacity`, `available` (derived)
 - `weekly-quota.vo.ts` — holds `used`, `limit`, `exhausted`, `resetsAt`
 - `membership-rules.vo.ts` — holds `maxDurationMinutes`, `weeklyLimit`, `allowedMemberships`
+- `time-slot.vo.ts` — helpers: `toMinutes()`, `computeEndTime()`
 
-**Clean Architecture file tree (new additions only):**
+**Clean Architecture file tree (implemented structure):**
 
 ```
-src/
+backend/services/reservations/src/
 ├── application/
 │   ├── commands/
-│   │   ├── create-reservation.command.ts
-│   │   ├── cancel-reservation.command.ts
-│   │   ├── cancel-reservation-manager.command.ts
-│   │   ├── create-area-block.command.ts
-│   │   └── delete-area-block.command.ts
-│   └── queries/
-│       ├── get-area-availability.query.ts
-│       ├── list-member-reservations.query.ts
-│       └── get-manager-calendar.query.ts
+│   │   ├── cancel-reservation/
+│   │   ├── create-area/                   ← AC-017
+│   │   ├── create-area-block/
+│   │   ├── create-reservation/
+│   │   ├── delete-area-block/
+│   │   ├── manager-cancel-reservation/
+│   │   ├── toggle-area-status/            ← AC-017
+│   │   └── update-area/                   ← AC-017
+│   └── ports/
+│       ├── areas.repository.interface.ts  ← AreaRecord, findAll(), save(), updateStatus()
+│       └── members.repository.interface.ts
+│   queries/ (flat, not nested)
+│       ├── get-area-availability.query.ts  ← includes bookedByMe (Step 7)
+│       ├── get-manager-calendar.query.ts
+│       └── list-my-reservations.query.ts
 ├── domain/
 │   ├── entities/
+│   │   ├── area.entity.ts
+│   │   ├── area-block.entity.ts
+│   │   ├── member-profile.entity.ts
 │   │   ├── reservation.entity.ts
-│   │   └── area-block.entity.ts
-│   ├── value-objects/
-│   │   ├── reservation-status.vo.ts
-│   │   ├── slot-occupancy.vo.ts
-│   │   ├── weekly-quota.vo.ts
-│   │   └── membership-rules.vo.ts
-│   └── repositories/
-│       ├── reservation.repository.interface.ts
-│       ├── slot-occupancy.repository.interface.ts
-│       └── area-block.repository.interface.ts
+│   │   └── slot.entity.ts
+│   ├── exceptions/
+│   │   └── reservation.exceptions.ts
+│   ├── repositories/
+│   │   ├── area-block.repository.interface.ts
+│   │   ├── reservation.repository.interface.ts
+│   │   └── slot-occupancy.repository.interface.ts
+│   └── value-objects/
+│       ├── membership-rules.vo.ts
+│       ├── reservation-status.vo.ts
+│       ├── slot-occupancy.vo.ts
+│       ├── time-slot.vo.ts
+│       └── weekly-quota.vo.ts
 ├── infrastructure/
 │   ├── repositories/
-│   │   ├── reservation.dynamo.repository.ts
-│   │   ├── slot-occupancy.dynamo.repository.ts
-│   │   └── area-block.dynamo.repository.ts
+│   │   ├── area-block.dynamo.repository.ts
+│   │   ├── areas.dynamo.repository.ts     ← extended: findAll(), save(), updateStatus()
+│   │   ├── members.dynamo.repository.ts
+│   │   ├── reservation.dynamo.repository.ts  ← capacity → #cap alias fix
+│   │   └── slot-occupancy.dynamo.repository.ts
+│   ├── shared/
+│   │   ├── filters/global-exception.filter.ts
+│   │   └── interceptors/transform.interceptor.ts
+│   ├── dynamo-client.factory.ts
 │   └── handlers/
-│       └── lambda.handler.ts
+│       └── lambda.ts
 └── presentation/
     ├── controllers/
-    │   ├── reservations.controller.ts
-    │   └── manager-reservations.controller.ts
-    └── dtos/
-        ├── create-reservation.dto.ts
-        ├── cancel-reservation.dto.ts
-        ├── create-area-block.dto.ts
-        └── reservation-response.dto.ts
+    │   ├── admin-areas.controller.ts      ← AC-017 (new)
+    │   ├── manager.controller.ts
+    │   └── reservations.controller.ts
+    ├── dtos/
+    │   ├── availability-query.dto.ts
+    │   ├── cancel-reservation.dto.ts
+    │   ├── create-area.dto.ts             ← AC-017
+    │   ├── create-area-block.dto.ts
+    │   ├── create-reservation.dto.ts
+    │   ├── list-reservations-query.dto.ts
+    │   ├── manager-calendar-query.dto.ts
+    │   ├── toggle-area-status.dto.ts      ← AC-017
+    │   └── update-area.dto.ts             ← AC-017
+    └── guards/
+        └── roles.guard.ts
 ```
 
 ---

@@ -3,9 +3,10 @@
 **Epic:** EP-02 - Reservas
 **Story Points:** 3
 **Priority:** High
-**Status:** Design — Ready for Implementation
+**Status:** Implemented — extended with `bookedByMe` flag (2026-05-17)
 **Author:** Senior Software & Cloud Architect
 **Date:** 2026-04-18
+**Last Updated:** 2026-05-17
 **Depends on:** AC-005, AC-006 (authenticated session), AC-012 (downstream consumer)
 
 ---
@@ -15,6 +16,21 @@
 AC-011 exposes a read-only endpoint that returns the hourly slot availability for a specific area on a given date. The response is filtered by the requesting member's membership type (area access rules) and includes real-time occupancy computed from `SlotOccupancyTable` plus active blocks from `AreaBlocksTable`. No write operations occur. The endpoint also returns the member's current weekly quota status as an informational banner.
 
 Key design decision: occupancy is maintained in a dedicated `SlotOccupancyTable` (one item per slot), so the availability query costs a `BatchGetItem` (up to 13 items for a full 09:00–22:00 day) rather than a scan of `ReservationsTable`. This keeps the endpoint at O(1) per slot regardless of total reservations in the system.
+
+### Extension: `bookedByMe` field (implemented 2026-05-17)
+
+A new optional field `bookedByMe?: boolean` is added to each slot in the response. It is populated only when the caller's role is `Member`. When `true`, it indicates the caller already has a `CONFIRMED` reservation that overlaps with that slot — enabling the frontend to display a "Ya reservaste" indicator without requiring a separate API call.
+
+**Implementation (Step 7 of query execution):**
+
+After loading active blocks (Step 6), when `callerRole === 'Member'` and `callerMemberId` is set:
+
+1. Call `reservationRepo.listByAreaAndDate(areaId, date)` — queries `GSI_AreaDate` (already indexed).
+2. Filter results by `memberId === callerMemberId AND status === CONFIRMED`.
+3. For each slot, check minute-level overlap: `rStart < slotEndMin AND rEnd > slotStartMin`.
+4. Set `bookedByMe = true` on overlapping slots.
+
+The field is only included when `isMemberRole === true`; Manager and Admin responses omit it (value is `undefined`, serialized as absent by NestJS).
 
 ---
 
@@ -32,6 +48,7 @@ Key design decision: occupancy is maintained in a dedicated `SlotOccupancyTable`
 | `SlotOccupancyTable` | `BatchGetItem` all slot PKs for the requested date |
 | `AreaBlocksTable` | Query `GSI_AreaDateBlocks` for active blocks on that date |
 | `MembersTable` | Fetch `membership_type`, `account_status`, `weekly_reservation_count`, `weekly_reset_at` |
+| `ReservationsTable` | Query `GSI_AreaDate` for Member's own CONFIRMED reservations (Step 7 — `bookedByMe`) |
 
 ---
 
@@ -74,7 +91,8 @@ Key design decision: occupancy is maintained in a dedicated `SlotOccupancyTable`
       "available": 3,
       "total": 4,
       "status": "AVAILABLE",
-      "blocked": false
+      "blocked": false,
+      "bookedByMe": true
     },
     {
       "startTime": "10:00",
@@ -82,7 +100,8 @@ Key design decision: occupancy is maintained in a dedicated `SlotOccupancyTable`
       "available": 0,
       "total": 4,
       "status": "FULL",
-      "blocked": false
+      "blocked": false,
+      "bookedByMe": false
     },
     {
       "startTime": "11:00",
@@ -96,6 +115,9 @@ Key design decision: occupancy is maintained in a dedicated `SlotOccupancyTable`
 }
 ```
 
+> `bookedByMe` is present only when the caller's role is `Member`. For `BLOCKED` slots, `bookedByMe` is omitted (blocked slots are not bookable regardless). When `bookedByMe = true`, the slot is still shown as `AVAILABLE` (the member occupies one of the spots); the frontend uses this flag to render a "Ya reservaste" chip instead of a "Reservar" CTA.
+```
+
 **Slot `status` rules:**
 
 | Condition | Status |
@@ -103,6 +125,15 @@ Key design decision: occupancy is maintained in a dedicated `SlotOccupancyTable`
 | `blocked = true` (active `AreaBlocksTable` record covering the slot) | `BLOCKED` |
 | `blocked = false` AND `available > 0` | `AVAILABLE` |
 | `blocked = false` AND `available == 0` | `FULL` |
+
+**`bookedByMe` rules (Member callers only):**
+
+| Condition | `bookedByMe` |
+|-----------|-------------|
+| Slot is `BLOCKED` | field omitted |
+| Caller has a `CONFIRMED` reservation with minute-level overlap on this slot | `true` |
+| No overlap found | `false` |
+| Caller role is `Manager` or `Admin` | field omitted |
 
 `weeklyQuotaInfo` is omitted from responses when the caller's Cognito group is `Manager` or `Admin`.
 

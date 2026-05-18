@@ -76,7 +76,9 @@ Ver el README de cada subdirectorio para instrucciones de configuración:
 
 Ver [`docs/architecture/`](./docs/architecture/) para diagramas Mermaid y Draw.io.
 
-## Estado del Proyecto (EP-01 completado)
+## Estado del Proyecto
+
+### EP-01: Onboarding de Socios (completado)
 
 | Historia | Título | Estado |
 |----------|--------|--------|
@@ -90,6 +92,23 @@ Ver [`docs/architecture/`](./docs/architecture/) para diagramas Mermaid y Draw.i
 | AC-008 | Logout del socio — revocación de tokens | Implementado |
 | AC-009 | Redirección post-login según rol | Implementado |
 | AC-010 | Recordar dispositivo — omisión de OTP en dispositivos confiables | Implementado |
+
+### EP-02: Reservas (completado)
+
+| Historia | Título | Estado |
+|----------|--------|--------|
+| AC-011 | Consulta de disponibilidad de área (con `bookedByMe`) | Implementado |
+| AC-012 | Crear reserva (TransactWrite + cuota semanal) | Implementado |
+| AC-013 | Cancelar propia reserva (ventana de 2h) | Implementado |
+| AC-014 | Listado de reservas del socio (upcoming / history) | Implementado |
+| AC-015 | Dashboard Manager — calendario, cancelación y bloqueos | Implementado |
+| AC-016 | Expiración automática de reservas (EventBridge Scheduler) | Implementado |
+
+### EP-06: Admin Dashboard (en curso)
+
+| Historia | Título | Estado |
+|----------|--------|--------|
+| AC-017 | CRUD de áreas recreativas (Admin) | Implementado |
 
 ## CI/CD
 

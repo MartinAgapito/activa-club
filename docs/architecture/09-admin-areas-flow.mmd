@@ -1,0 +1,95 @@
+%% ActivaClub — Admin Areas CRUD + bookedByMe Availability Flow
+%% Diagram 9 of 9
+%% Last updated: 2026-05-17
+%% Stories: AC-017 (Admin Areas CRUD), AC-011 extension (bookedByMe)
+
+sequenceDiagram
+    actor Admin as Admin User
+    actor Member as Member User
+    participant FE as React SPA (Vite)
+    participant APIGW as API Gateway HTTP API
+    participant JWTAuth as Cognito JWT Authorizer
+    participant Lambda as activa-club-reservations-dev
+    participant AreasDB as AreasTable (DynamoDB)
+    participant ResvDB as ReservationsTable (DynamoDB)
+
+    %% ── Admin: List all areas (including Inactive) ──────────────────────────
+    rect rgb(230, 240, 255)
+        note over Admin,AreasDB: GET /v1/admin/areas — list all areas (Admin only)
+        Admin->>FE: Open Area Management page
+        FE->>APIGW: GET /v1/admin/areas + Bearer AccessToken
+        APIGW->>JWTAuth: Validate JWT
+        JWTAuth-->>APIGW: Claims (cognito:groups = Admin)
+        APIGW->>Lambda: Invoke AdminAreasController.listAllAreas
+        Lambda->>AreasDB: Scan (sk = CONFIG, all statuses)
+        AreasDB-->>Lambda: All area records
+        Lambda-->>APIGW: HTTP 200 [{ areaId, name, status, capacity, ... }]
+        APIGW-->>FE: HTTP 200
+        FE-->>Admin: AreaManagementPage with table of all areas
+    end
+
+    %% ── Admin: Create area ──────────────────────────────────────────────────
+    rect rgb(220, 255, 220)
+        note over Admin,AreasDB: POST /v1/admin/areas — create area (Admin only)
+        Admin->>FE: Fill AreaFormModal + submit
+        FE->>APIGW: POST /v1/admin/areas { name, capacity, slotDuration, openingTime, closingTime, cancelWindowHours, allowedMemberships, maxDurationMinutes, weeklyLimit }
+        APIGW->>JWTAuth: Validate JWT
+        JWTAuth-->>APIGW: Claims (cognito:groups = Admin)
+        APIGW->>Lambda: Invoke AdminAreasController.createArea → CreateAreaHandler
+        Note over Lambda: Generate areaId (ULID)<br/>Build AreaRecord with status=Active
+        Lambda->>AreasDB: PutItem (pk=AREA#<areaId>, sk=CONFIG)
+        AreasDB-->>Lambda: OK
+        Lambda-->>APIGW: HTTP 201 { areaId, name, status, ... }
+        APIGW-->>FE: HTTP 201
+        FE-->>Admin: Toast "Área creada" + invalidate ['admin-areas']
+    end
+
+    %% ── Admin: Update area ──────────────────────────────────────────────────
+    rect rgb(255, 245, 210)
+        note over Admin,AreasDB: PUT /v1/admin/areas/:areaId — update area (Admin only)
+        Admin->>FE: Edit area in AreaFormModal + submit
+        FE->>APIGW: PUT /v1/admin/areas/{areaId} { name?, capacity?, slotDuration?, openingTime?, closingTime?, cancelWindowHours?, allowedMemberships?, maxDurationMinutes?, weeklyLimit? }
+        APIGW->>JWTAuth: Validate JWT
+        JWTAuth-->>APIGW: Claims (cognito:groups = Admin)
+        APIGW->>Lambda: Invoke AdminAreasController.updateArea → UpdateAreaHandler
+        Lambda->>AreasDB: GetItem (pk=AREA#<areaId>, sk=CONFIG)
+        AreasDB-->>Lambda: Existing area record
+        Note over Lambda: Merge fields, preserve areaId + status
+        Lambda->>AreasDB: PutItem (full overwrite with merged data)
+        AreasDB-->>Lambda: OK
+        Lambda-->>APIGW: HTTP 200 { areaId, name, status, ... }
+        APIGW-->>FE: HTTP 200
+        FE-->>Admin: Toast "Área actualizada" + invalidate ['admin-areas', 'areas']
+    end
+
+    %% ── Admin: Toggle area status ────────────────────────────────────────────
+    rect rgb(255, 225, 225)
+        note over Admin,AreasDB: PATCH /v1/admin/areas/:areaId/status — toggle status (Admin only)
+        Admin->>FE: Click Activate/Deactivate button
+        FE->>APIGW: PATCH /v1/admin/areas/{areaId}/status { status: "Active" | "Inactive" }
+        APIGW->>JWTAuth: Validate JWT
+        JWTAuth-->>APIGW: Claims (cognito:groups = Admin)
+        APIGW->>Lambda: Invoke AdminAreasController.toggleStatus → ToggleAreaStatusHandler
+        Lambda->>AreasDB: UpdateItem SET #s = :status WHERE attribute_exists(pk)
+        AreasDB-->>Lambda: OK (or ConditionalCheckFailed → 404)
+        Lambda-->>APIGW: HTTP 200 { areaId, status }
+        APIGW-->>FE: HTTP 200
+        FE-->>Admin: Toast "Área activada/desactivada" + invalidate ['admin-areas', 'areas']
+    end
+
+    %% ── Member: Availability with bookedByMe ────────────────────────────────
+    rect rgb(240, 230, 255)
+        note over Member,ResvDB: GET /v1/areas/:areaId/availability — bookedByMe extension (Member only)
+        Member->>FE: Select area + date in AreaAvailabilityPage
+        FE->>APIGW: GET /v1/areas/{areaId}/availability?date=YYYY-MM-DD + Bearer AccessToken
+        APIGW->>JWTAuth: Validate JWT
+        JWTAuth-->>APIGW: Claims (sub, cognito:groups = Member, custom:membership_type)
+        APIGW->>Lambda: Invoke GetAreaAvailabilityQuery (steps 1–6 same as before)
+        Note over Lambda: Step 7 NEW — load member's CONFIRMED<br/>reservations for this area+date via<br/>listByAreaAndDate() filtered by memberId
+        Lambda->>ResvDB: Query GSI_AreaDate (area_id + date)
+        ResvDB-->>Lambda: All reservations for area+date
+        Note over Lambda: Filter by memberId === caller's memberId<br/>and status === CONFIRMED<br/>Check minute-level overlap per slot → bookedByMe = true/false
+        Lambda-->>APIGW: HTTP 200 { slots: [{ ..., bookedByMe?: boolean }] }
+        APIGW-->>FE: HTTP 200
+        FE-->>Member: SlotGrid with "Ya reservaste" indicator on overlapping slots
+    end

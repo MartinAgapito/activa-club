@@ -15,6 +15,7 @@ Each diagram is a standalone `.mmd` file (one diagram per file — required by M
 | `06-remember-device-flow.mmd` | Remember device — skip OTP on trusted devices | AC-010 |
 | `07-payments-flow.mmd` | Stripe checkout + webhook sequence | EP-04 |
 | `08-promotions-flow.mmd` | SNS promotions broadcast sequence | EP-05 |
+| `09-admin-areas-flow.mmd` | Admin Areas CRUD + `bookedByMe` availability extension | AC-017, AC-011 ext |
 
 ## How to render
 
