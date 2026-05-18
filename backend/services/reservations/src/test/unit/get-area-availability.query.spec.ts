@@ -136,7 +136,7 @@ function makeBlock(areaId: string, startTime: string, endTime: string): AreaBloc
 }
 
 function makeQuery({
-  reservationRepo = { findKeysByReservationId: jest.fn(), findByKey: jest.fn(), listByMember: jest.fn(), listByAreaAndDate: jest.fn(), findExpiredConfirmed: jest.fn(), createWithTransaction: jest.fn(), cancelWithTransaction: jest.fn(), expireWithTransaction: jest.fn(), batchCancelWithTransaction: jest.fn() },
+  reservationRepo = { findKeysByReservationId: jest.fn(), findByKey: jest.fn(), listByMember: jest.fn(), listByAreaAndDate: jest.fn().mockResolvedValue([]), findExpiredConfirmed: jest.fn(), createWithTransaction: jest.fn(), cancelWithTransaction: jest.fn(), expireWithTransaction: jest.fn(), batchCancelWithTransaction: jest.fn() },
   slotOccupancyRepo = { batchGetSlotOccupancies: jest.fn(), getSlotOccupancy: jest.fn() },
   areaBlockRepo = { listByAreaAndDate: jest.fn().mockResolvedValue([]), findKeysByBlockId: jest.fn(), create: jest.fn(), deactivate: jest.fn() },
   areasRepo = { findById: jest.fn().mockResolvedValue(mockAreaSilverGold), findAllActive: jest.fn() },
