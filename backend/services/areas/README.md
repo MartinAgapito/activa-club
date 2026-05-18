@@ -5,46 +5,14 @@ Tabla: `AreasTable`
 
 ## Responsabilidad
 
-Catálogo de áreas recreativas y configuración de horarios:
-- Definición de áreas (nombre, descripción, capacidad, amenidades)
-- Configuración de horarios (horario de apertura, fechas bloqueadas)
-- Reglas de capacidad por plan de membresía
-- Gestión de imágenes de áreas (referencias a S3)
+Catálogo de áreas recreativas para consulta pública de Miembros, Managers y Admins:
+- Listar áreas activas disponibles para reserva
+- Detalle de un área individual con su configuración y horario
 
-## Estructura Clean Architecture
-
-```
-src/
-├── application/
-│   ├── commands/
-│   │   ├── create-area.command.ts
-│   │   ├── update-area.command.ts
-│   │   ├── deactivate-area.command.ts
-│   │   └── set-area-schedule.command.ts
-│   └── queries/
-│       ├── get-area-by-id.query.ts
-│       └── list-active-areas.query.ts
-├── domain/
-│   ├── entities/
-│   │   └── area.entity.ts
-│   ├── value-objects/
-│   │   ├── area-status.vo.ts         # Active | Inactive | Maintenance
-│   │   ├── schedule.vo.ts            # Horario de apertura, duración de turno
-│   │   └── capacity-rule.vo.ts
-│   └── repositories/
-│       └── area.repository.interface.ts
-├── infrastructure/
-│   ├── repositories/
-│   │   └── area.dynamo.repository.ts
-│   └── handlers/
-│       └── lambda.handler.ts
-└── presentation/
-    ├── controllers/
-    │   └── areas.controller.ts
-    └── dtos/
-        ├── create-area.dto.ts
-        └── area-response.dto.ts
-```
+> **CRUD de áreas (Admin):** Los endpoints de creación, actualización y toggle de estado de áreas
+> (`POST/PUT/PATCH /v1/admin/areas`) están implementados en `activa-club-reservations-dev` mediante
+> `AdminAreasController`. Este Lambda (`activa-club-areas-dev`) solo sirve consultas de solo lectura.
+> Esta decisión fue tomada para no duplicar el acceso a `AreasTable` entre dos Lambdas.
 
 ## Endpoints de la API
 
@@ -52,28 +20,26 @@ src/
 |--------|------|------|-------------|
 | GET | /v1/areas | Member+ | Listar todas las áreas activas |
 | GET | /v1/areas/:id | Member+ | Detalle y horario de un área |
-| POST | /v1/areas | Admin | Crear nueva área |
-| PATCH | /v1/areas/:id | Admin | Actualizar datos del área |
-| DELETE | /v1/areas/:id | Admin | Desactivar área |
-| PUT | /v1/areas/:id/schedule | Admin | Configurar horario del área |
 
 ## DynamoDB: AreasTable
 
-| Atributo | Tipo | Notas |
-|----------|------|-------|
-| `PK` | String | `AREA#<areaId>` |
-| `SK` | String | `METADATA` |
-| `areaId` | String | ULID |
-| `name` | String | |
-| `description` | String | |
-| `capacity` | Number | Máximo de usuarios concurrentes |
-| `slotDuration` | Number | Minutos por turno (ej. 60) |
-| `openingTime` | String | HH:MM |
-| `closingTime` | String | HH:MM |
-| `amenities` | List | Lista de etiquetas de amenidades |
-| `imageUrls` | List | URLs de S3/CloudFront |
-| `status` | String | Active / Inactive / Maintenance |
-| `cancelWindow` | Number | Horas antes del turno en que cierra la cancelación |
-| `createdAt` | String | ISO 8601 |
+| Atributo DynamoDB | Atributo de dominio | Tipo | Notas |
+|-------------------|---------------------|------|-------|
+| `pk` | — | String | `AREA#<areaId>` |
+| `sk` | — | String | `CONFIG` (implementación real; documentos anteriores decían `METADATA`) |
+| `area_id` | `areaId` | String | ULID |
+| `name` | `name` | String | |
+| `status` | `status` | String | `Active` / `Inactive` |
+| `capacity` | `capacity` | Number | Máximo de usuarios por slot |
+| `slot_duration` | `slotDuration` | Number | Minutos por turno (ej. 60) |
+| `opening_time` | `openingTime` | String | `HH:MM` |
+| `closing_time` | `closingTime` | String | `HH:MM` |
+| `cancel_window_hours` | `cancelWindowHours` | Number | Horas antes de la cancelación |
+| `allowed_memberships` | `allowedMemberships` | List | `["Silver", "Gold", "VIP"]` |
+| `max_duration_minutes` | `maxDurationMinutes` | Map | `{ Silver: N, Gold: N, VIP: N }` |
+| `weekly_limit` | `weeklyLimit` | Map | `{ Silver: N, Gold: N, VIP: N }` |
 
-GSI: `GSI_Status` — PK: `status` (filtrar áreas activas de forma eficiente)
+> **Nota sobre SK:** La implementación usa `CONFIG` como sort key (no `METADATA`). Todos los `GetItem`
+> y `Scan` en `AreasDynamoRepository` usan `sk = CONFIG`.
+
+GSI: `GSI_Status` — PK: `status` (proyectado para futura optimización; actualmente se usa Scan con FilterExpression a MVP scale)

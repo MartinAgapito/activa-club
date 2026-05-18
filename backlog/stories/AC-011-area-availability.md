@@ -3,7 +3,7 @@
 **Epic:** EP-02 - Reservas
 **Prioridad:** Alta
 **Story Points:** 3
-**Estado:** Backlog
+**Estado:** Done
 **Fecha:** 2026-04-18
 **Autor:** Agente Senior Product Owner
 
@@ -43,17 +43,18 @@ Sin visibilidad de disponibilidad, el socio no puede planificar su visita y term
 
 ## Criterios de Aceptación
 
-- [ ] El socio puede seleccionar un área, una fecha y una franja horaria, y el sistema le muestra si hay cupo disponible.
-- [ ] El sistema muestra únicamente las áreas accesibles según el tipo de membresía del socio (Silver, Gold o VIP).
-- [ ] Para cada franja horaria, el sistema indica el número de cupos restantes sobre el total.
-- [ ] Si una franja horaria está completamente ocupada, se muestra como "Sin disponibilidad" y no puede seleccionarse.
-- [ ] Si una franja horaria está bloqueada administrativamente, se muestra como no disponible sin exponer el motivo del bloqueo al socio.
-- [ ] El socio solo puede consultar disponibilidad para fechas desde hoy hasta 7 días en el futuro.
-- [ ] Si el socio selecciona una fecha anterior a hoy, el sistema muestra un mensaje indicando que no se pueden consultar fechas pasadas.
-- [ ] Si el socio ya alcanzó su límite de reservas semanales, el sistema muestra un aviso indicando que no puede realizar más reservas esta semana, pero puede seguir consultando disponibilidad.
-- [ ] Si el socio intenta acceder a la consulta de disponibilidad con membresía inactiva o deuda pendiente, el sistema le deniega el acceso y le muestra un mensaje explicando el motivo.
-- [ ] Si no hay áreas configuradas para el tipo de membresía del socio, el sistema muestra un mensaje informativo.
-- [ ] La disponibilidad mostrada refleja el estado actual, incluyendo reservas activas y bloqueos vigentes.
+- [x] El socio puede seleccionar un área, una fecha y una franja horaria, y el sistema le muestra si hay cupo disponible.
+- [x] El sistema muestra únicamente las áreas accesibles según el tipo de membresía del socio (Silver, Gold o VIP).
+- [x] Para cada franja horaria, el sistema indica el número de cupos restantes sobre el total.
+- [x] Si una franja horaria está completamente ocupada, se muestra como "Sin disponibilidad" y no puede seleccionarse.
+- [x] Si una franja horaria está bloqueada administrativamente, se muestra como no disponible sin exponer el motivo del bloqueo al socio.
+- [x] El socio solo puede consultar disponibilidad para fechas desde hoy hasta 7 días en el futuro.
+- [x] Si el socio selecciona una fecha anterior a hoy, el sistema muestra un mensaje indicando que no se pueden consultar fechas pasadas.
+- [x] Si el socio ya alcanzó su límite de reservas semanales, el sistema muestra un aviso indicando que no puede realizar más reservas esta semana, pero puede seguir consultando disponibilidad.
+- [x] Si el socio intenta acceder a la consulta de disponibilidad con membresía inactiva o deuda pendiente, el sistema le deniega el acceso y le muestra un mensaje explicando el motivo.
+- [x] Si no hay áreas configuradas para el tipo de membresía del socio, el sistema muestra un mensaje informativo.
+- [x] La disponibilidad mostrada refleja el estado actual, incluyendo reservas activas y bloqueos vigentes.
+- [x] Para cada franja horaria, el sistema indica si el socio autenticado ya tiene una reserva confirmada en ese slot (campo `bookedByMe: true`); el slot se muestra con un distintivo visual "Ya reservaste" y no puede seleccionarse nuevamente.
 
 ---
 
@@ -89,19 +90,20 @@ Sin visibilidad de disponibilidad, el socio no puede planificar su visita y term
 
 ## Definition of Done
 
-- [ ] Endpoint backend implementado y desplegado en ambiente dev.
-- [ ] Tests unitarios escritos y pasando.
-- [ ] Probado manualmente en dev con socios de distintos tipos de membresía.
-- [ ] Errores del API mapeados a mensajes amigables en el frontend.
-- [ ] Código revisado y PR mergeado a main.
+- [x] Endpoint backend implementado y desplegado en ambiente dev.
+- [x] Tests unitarios escritos y pasando.
+- [x] Probado manualmente en dev con socios de distintos tipos de membresía.
+- [x] Errores del API mapeados a mensajes amigables en el frontend.
+- [x] Código revisado y PR mergeado a main.
 
 ---
 
 ## Notas Técnicas
 
-- **Endpoint:** `GET /v1/areas/availability?areaId={id}&date={YYYY-MM-DD}` — protegido, requiere `Authorization: Bearer <AccessToken>`.
-- **Tablas DynamoDB:** `areas` (configuración de áreas, capacidad máxima, horarios habilitados, tipo de membresía requerida), `reservations` (reservas activas para calcular ocupación), `area-blocks` (bloqueos manuales).
-- **Lógica de disponibilidad:** Para cada franja horaria del día solicitado, contar reservas con `status = ACTIVE` o `CONFIRMED` y restar de la capacidad máxima del área. Los registros en `area-blocks` con cobertura sobre la franja también la marcan como no disponible.
+- **Endpoint:** `GET /v1/areas/:areaId/availability?date={YYYY-MM-DD}` — protegido, requiere `Authorization: Bearer <AccessToken>`.
+- **Campo `bookedByMe`:** El backend verifica si el `memberId` (extraído del token) tiene una reserva con `status = CONFIRMED` en cada slot. Cuando es así, el slot incluye `bookedByMe: true` en la respuesta; el frontend renderiza el componente `SlotCard` con badge azul "Ya reservaste" y deshabilita la selección.
+- **Tablas DynamoDB:** `areas` (configuración de áreas, capacidad máxima, horarios habilitados, tipo de membresía requerida), `reservations` (reservas activas para calcular ocupación y detectar `bookedByMe`), `area-blocks` (bloqueos manuales).
+- **Lógica de disponibilidad:** Para cada franja horaria del día solicitado, contar reservas con `status = CONFIRMED` y restar de la capacidad máxima del área. Los registros en `area-blocks` con cobertura sobre la franja también la marcan como no disponible.
 - **Control RBAC:** Cognito Authorizer valida el JWT. El campo `membershipType` del perfil del socio determina qué áreas se exponen en la respuesta.
-- **Frontend:** Grilla de franjas horarias (09:00–22:00, bloques de 1 hora) con selector de fecha. Shadcn/ui `Calendar` + grilla de slots. React Query para fetch con invalidación automática al cambiar la fecha seleccionada.
-- **Design Doc:** `docs/design/AC-011-design.md` (a crear por el Arquitecto).
+- **Frontend:** Grilla de franjas horarias (09:00–22:00, bloques de 1 hora) con selector de fecha. Componente `SlotCard` con estados: disponible, sin cupo, bloqueado, y `bookedByMe` (badge azul, selección deshabilitada). React Query para fetch con invalidación automática al cambiar la fecha seleccionada.
+- **Design Doc:** `docs/design/AC-011-design.md`.

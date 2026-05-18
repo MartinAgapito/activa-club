@@ -7,16 +7,21 @@ Documentación técnica de la plataforma ActivaClub.
 ```
 docs/
 ├── architecture/       # Diagramas de arquitectura del sistema
-│   ├── architecture.mmd          # Diagrama 1: Overview general (C4-style, graph TB)
-│   ├── 02-registration-flow.mmd  # Diagrama 2: Registro + verificación de email
-│   ├── 03-login-otp-flow.mmd     # Diagrama 3: Login + OTP MFA
-│   ├── 04-logout-flow.mmd        # Diagrama 4: Logout + revocación de tokens
-│   ├── 05-role-redirect-flow.mmd # Diagrama 5: Redirección post-login por rol
+│   ├── architecture.mmd            # Diagrama 1: Overview general (C4-style, graph TB)
+│   ├── 02-registration-flow.mmd    # Diagrama 2: Registro + verificación de email
+│   ├── 03-login-otp-flow.mmd       # Diagrama 3: Login + OTP MFA
+│   ├── 04-logout-flow.mmd          # Diagrama 4: Logout + revocación de tokens
+│   ├── 05-role-redirect-flow.mmd   # Diagrama 5: Redirección post-login por rol
 │   ├── 06-remember-device-flow.mmd # Diagrama 6: Recordar dispositivo
-│   ├── 07-payments-flow.mmd      # Diagrama 7: Pagos Stripe + webhook
-│   ├── 08-promotions-flow.mmd    # Diagrama 8: Difusión SNS de promociones
-│   └── architecture.drawio       # Versión Draw.io del diagrama 1
+│   ├── 07-payments-flow.mmd        # Diagrama 7: Pagos Stripe + webhook
+│   ├── 08-promotions-flow.mmd      # Diagrama 8: Difusión SNS de promociones
+│   ├── 09-admin-areas-flow.mmd     # Diagrama 9: Admin Areas CRUD + bookedByMe
+│   └── architecture.drawio         # Versión Draw.io del diagrama 1
 ├── design/             # Documentos de diseño técnico por historia (AC-XXX-design.md)
+│   ├── EP-02-design.md             # Diseño épica completa de reservas
+│   ├── AC-001 a AC-010             # EP-01 onboarding
+│   ├── AC-011 a AC-016             # EP-02 reservas
+│   └── AC-017-design.md            # EP-06 Admin CRUD áreas
 └── api/                # Especificaciones OpenAPI (si se mantienen por separado del código)
 ```
 

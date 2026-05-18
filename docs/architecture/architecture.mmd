@@ -1,6 +1,6 @@
 %% ActivaClub - System Overview (C4 Container Level)
-%% Diagram 1 of 8
-%% Last updated: 2026-04-05
+%% Diagram 1 of 9
+%% Last updated: 2026-05-17
 
 graph TB
     subgraph Actors
@@ -34,6 +34,7 @@ graph TB
     subgraph Lambdas["AWS Lambda (one per service)"]
         LM["activa-club-members"]
         LR["activa-club-reservations"]
+        LRE["activa-club-reservations-expirer"]
         LP["activa-club-payments"]
         LPR["activa-club-promotions"]
         LG["activa-club-guests"]
@@ -41,9 +42,16 @@ graph TB
         LAD["activa-club-admin"]
     end
 
+    subgraph EventBridge["AWS EventBridge Scheduler"]
+        EBS["Rate: 1 hour"]
+    end
+
     subgraph DynamoDB["Amazon DynamoDB (Multi-Table)"]
         MT["MembersTable"]
+        SMT["SeedMembersTable"]
         RT["ReservationsTable"]
+        SOT["SlotOccupancyTable"]
+        ABT["AreaBlocksTable"]
         PT["PaymentsTable"]
         PRT["PromotionsTable"]
         GT["GuestsTable"]
@@ -77,9 +85,16 @@ graph TB
     APIGW --> LG
     APIGW --> LA
     APIGW --> LAD
+    LR -.->|async InvokeFunction| LRE
+    EBS -.->|rate 1h| LRE
 
     LM --> MT
+    LM --> SMT
     LR --> RT
+    LR --> SOT
+    LR --> ABT
+    LR --> AT
+    LR --> MT
     LP --> PT
     LP --> Stripe
     LPR --> PRT
@@ -92,6 +107,11 @@ graph TB
     LAD --> PRT
     LAD --> GT
     LAD --> AT
+    LAD --> SOT
+    LAD --> ABT
+
+    LRE --> RT
+    LRE --> SOT
 
     UP -.->|CustomEmailSender trigger| CES
 
