@@ -27,9 +27,11 @@ export interface AreaAvailabilityResponse {
 export interface AreaSummary {
   areaId: string
   name: string
-  type: string
   capacity: number
-  isActive: boolean
+  openingTime: string
+  closingTime: string
+  slotDuration: number
+  allowedMemberships: string[]
 }
 
 /**
