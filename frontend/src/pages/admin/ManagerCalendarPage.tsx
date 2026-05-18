@@ -139,7 +139,7 @@ export default function ManagerCalendarPage() {
 
   const { data: areasData } = useAreas()
   const activeAreas: AreaSummary[] = useMemo(
-    () => (areasData ?? []).filter((a) => a.isActive),
+    () => areasData ?? [],
     [areasData]
   )
 

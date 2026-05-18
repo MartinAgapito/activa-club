@@ -68,8 +68,6 @@ export function CreateBlockModal({
     onClose()
   }
 
-  const activeAreas = areas.filter((a) => a.isActive)
-
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
       <DialogContent className="max-w-md">
@@ -100,7 +98,7 @@ export function CreateBlockModal({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {activeAreas.map((area) => (
+                      {areas.map((area) => (
                         <SelectItem key={area.areaId} value={area.areaId}>
                           {area.name}
                         </SelectItem>

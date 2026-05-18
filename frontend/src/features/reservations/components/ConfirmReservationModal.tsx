@@ -57,7 +57,6 @@ export function ConfirmReservationModal({
               <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
               <div>
                 <p className="font-medium">{area.name}</p>
-                <p className="text-xs text-muted-foreground capitalize">{area.type}</p>
               </div>
             </div>
 
